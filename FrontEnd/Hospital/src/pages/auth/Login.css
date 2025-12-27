@@ -1,0 +1,19 @@
+/* Dark base */
+.bg-night {
+  background-color: #070b18;
+}
+
+/* Top glow */
+.from-night-top {
+  --tw-gradient-from: #0c1733;
+}
+
+/* Radial vignette */
+.bg-radial-night {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(20, 30, 60, 0.35) 0%,
+    rgba(7, 11, 24, 0.9) 60%,
+    #070b18 100%
+  );
+}

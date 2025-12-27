@@ -1,0 +1,170 @@
+import {createToken,
+  getNextToken,
+  skipCurrentTokenByDoctor,
+  completeCurrentTokenByDoctor,
+  cancelToken,
+  getPatientActiveToken,
+  getUpcomingTokensForPatient,
+  getExpectedTokenNumber,
+} from "../services/token.service.js";
+
+export const createTokenController=async(req,res)=>{
+    try{
+        const {departmentId,priority,appointmentDate}=req.body;
+        if (!req.user.isPhoneVerified) {
+          return res.status(403).json({
+            message: "Phone number not verified",
+          });
+        }
+        const token=await createToken({
+            patientId: req.user._id,
+            departmentId,
+            requestedPriority: priority,
+            createdByRole: req.user.role,
+            appointmentDate,
+        });
+        res.status(201).json({
+            message:"Token created successfully",
+            token,
+        });
+    }
+    catch(error){
+        res.status(400).json({
+            message:error.message,
+        })
+    }
+};
+
+export const callNextTokenController=async(req,res)=>{
+    try {
+        const {departmentId}=req.body;
+        const token =await getNextToken(departmentId,req.user._id);
+        if(!token){
+            return res.status(200).json({
+                message:"No Patient Waiting",
+            });
+        }
+
+        res.status(200).json({
+            message: "Next token called",
+            token,
+        });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+export const completeCurrentTokenController = async (req, res) => {
+  try {
+    const doctorId = req.user.id; 
+
+    const token = await completeCurrentTokenByDoctor(doctorId);
+
+    res.status(200).json({
+      message: "Token completed",
+      token,
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const skipCurrentTokenController = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+
+    const token = await skipCurrentTokenByDoctor(doctorId);
+
+    res.status(200).json({
+      message: "Token skipped",
+      token,
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const cancelTokenController = async (req, res) => {
+  try {
+    const { id: tokenId } = req.params;
+
+    const token = await cancelToken(tokenId, req.user._id);
+
+    res.status(200).json({
+      message: "Token cancelled successfully",
+      token,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+
+export const getMyCurrentTokenController = async (req, res) => {
+  try {
+    const patientId = req.user.id;
+
+    const token = await getPatientActiveToken(patientId);
+
+    if (!token) {
+      return res.json(null);
+    }
+
+    return res.json({
+      _id: token._id,
+      tokenNumber: token.tokenNumber,
+      status: token.status,
+      departmentId: token.department._id,
+      departmentName: token.department.name,
+      priority:token.priority,
+      waitingCount: token.waitingCount,
+    });
+    
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching token", error: error.message });
+  }
+};
+
+export const getMyUpcomingTokens = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const tokens = await getUpcomingTokensForPatient(userId);
+
+    return res.status(200).json({
+      success: true,
+      count: tokens.length,
+      data: tokens,
+    });
+    
+  } catch (error) {
+    console.error("Fetch Tokens Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching tokens",
+    });
+  }
+};
+
+export const previewTokenNumber = async (req, res, next) => {
+  try {
+    const { departmentId, appointmentDate } = req.query;
+
+    if (!departmentId || !appointmentDate) {
+      return res.status(400).json({
+        message: "departmentId and appointmentDate are required",
+      });
+    }
+
+    const expectedTokenNumber = await getExpectedTokenNumber({
+      departmentId,
+      appointmentDate,
+    });
+
+    return res.status(200).json({
+      expectedTokenNumber,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
