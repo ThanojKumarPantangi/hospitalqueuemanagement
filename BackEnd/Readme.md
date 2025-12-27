@@ -1,63 +1,54 @@
-backend/
-│
-├── src/
-│   ├── app.js
-│   ├── server.js
-│
-│   ├── config/
-│   │   └── database.config.js
-│
-│   ├── models/
-│   │   ├── user.model.js
-│   │   ├── department.model.js
-│   │   ├── token.model.js
-│   │   ├── visit.model.js
-│   │   ├── otp.model.js
-│   │   └── refreshToken.model.js
-│
-│   ├── routes/
-│   │   ├── auth.routes.js
-│   │   ├── token.routes.js
-│   │   ├── department.routes.js
-│   │   ├── visit.routes.js
-│   │   ├── analytics.routes.js
-│   │   ├── tv.routes.js
-│   │   └── otp.routes.js
-│
-│   ├── controllers/
-│   │   ├── auth.controller.js
-│   │   ├── token.controller.js
-│   │   ├── department.controller.js
-│   │   ├── visit.controller.js
-│   │   ├── analytics.controller.js
-│   │   ├── tv.controller.js
-│   │   └── otp.controller.js
-│
-│   ├── services/
-│   │   ├── auth.service.js
-│   │   ├── token.service.js
-│   │   ├── visit.service.js
-│   │   ├── analytics.service.js
-│   │   └── otp.service.js
-│
-│   ├── middlewares/
-│   │   ├── auth.middleware.js
-│   │   ├── role.middleware.js
-│   │   ├── otpRateLimit.middleware.js
-│
-│   ├── sockets/
-│   │   └── index.js
-│   │
-│   ├── utils/
-│   │   ├── jwt.util.js
-│   │
-│   └── scripts/
-│       └── seedAdmin.js
-│
-├── .env
-├── .env.example
-├── package.json
-└── README.md
+| Level | Path                                     | Type      | Description                     |
+| ----: | ---------------------------------------- | --------- | ------------------------------- |
+|     1 | `backend/`                               | Directory | Backend root                    |
+|     2 | `backend/src/`                           | Directory | Application source code         |
+|     3 | `src/app.js`                             | File      | Express app configuration       |
+|     3 | `src/server.js`                          | File      | Server entry point              |
+|     3 | `src/config/`                            | Directory | Configuration files             |
+|     4 | `config/database.config.js`              | File      | Database connection config      |
+|     3 | `src/models/`                            | Directory | Database models                 |
+|     4 | `models/user.model.js`                   | File      | User schema                     |
+|     4 | `models/department.model.js`             | File      | Department schema               |
+|     4 | `models/token.model.js`                  | File      | Queue token schema              |
+|     4 | `models/visit.model.js`                  | File      | Patient visit schema            |
+|     4 | `models/otp.model.js`                    | File      | OTP schema                      |
+|     4 | `models/refreshToken.model.js`           | File      | Refresh token schema            |
+|     3 | `src/routes/`                            | Directory | API route definitions           |
+|     4 | `routes/auth.routes.js`                  | File      | Authentication routes           |
+|     4 | `routes/token.routes.js`                 | File      | Token management routes         |
+|     4 | `routes/department.routes.js`            | File      | Department routes               |
+|     4 | `routes/visit.routes.js`                 | File      | Visit routes                    |
+|     4 | `routes/analytics.routes.js`             | File      | Analytics routes                |
+|     4 | `routes/tv.routes.js`                    | File      | TV display routes               |
+|     4 | `routes/otp.routes.js`                   | File      | OTP routes                      |
+|     3 | `src/controllers/`                       | Directory | Request–response handlers       |
+|     4 | `controllers/auth.controller.js`         | File      | Auth controller                 |
+|     4 | `controllers/token.controller.js`        | File      | Token controller                |
+|     4 | `controllers/department.controller.js`   | File      | Department controller           |
+|     4 | `controllers/visit.controller.js`        | File      | Visit controller                |
+|     4 | `controllers/analytics.controller.js`    | File      | Analytics controller            |
+|     4 | `controllers/tv.controller.js`           | File      | TV controller                   |
+|     4 | `controllers/otp.controller.js`          | File      | OTP controller                  |
+|     3 | `src/services/`                          | Directory | Business logic layer            |
+|     4 | `services/auth.service.js`               | File      | Auth logic                      |
+|     4 | `services/token.service.js`              | File      | Token logic                     |
+|     4 | `services/visit.service.js`              | File      | Visit logic                     |
+|     4 | `services/analytics.service.js`          | File      | Analytics logic                 |
+|     4 | `services/otp.service.js`                | File      | OTP logic                       |
+|     3 | `src/middlewares/`                       | Directory | Express middlewares             |
+|     4 | `middlewares/auth.middleware.js`         | File      | JWT auth middleware             |
+|     4 | `middlewares/role.middleware.js`         | File      | Role-based access               |
+|     4 | `middlewares/otpRateLimit.middleware.js` | File      | OTP rate limiting               |
+|     3 | `src/sockets/`                           | Directory | WebSocket logic                 |
+|     4 | `sockets/index.js`                       | File      | Socket.IO setup                 |
+|     3 | `src/utils/`                             | Directory | Utility helpers                 |
+|     4 | `utils/jwt.util.js`                      | File      | JWT helper functions            |
+|     3 | `src/scripts/`                           | Directory | One-time scripts                |
+|     4 | `scripts/seedAdmin.js`                   | File      | Seed admin user                 |
+|     2 | `backend/.env`                           | File      | Environment variables (ignored) |
+|     2 | `backend/.env.example`                   | File      | Env template                    |
+|     2 | `backend/package.json`                   | File      | Project metadata & deps         |
+|     2 | `backend/README.md`                      | File      | Documentation                   |
 
 
 
