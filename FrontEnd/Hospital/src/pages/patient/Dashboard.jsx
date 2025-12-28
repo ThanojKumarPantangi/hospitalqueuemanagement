@@ -81,7 +81,6 @@ function PatientDashboard() {
     };
   }, []);
 
-
   // --- 2. Scroll Listener for Sticky Mini-Token ---
   useEffect(() => {
   let visible = false;

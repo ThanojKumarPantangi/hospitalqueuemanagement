@@ -1,8 +1,9 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { signupApi } from "../../api/auth.api";
 import Toast from "../../components/ui/Toast";
+import { motion } from "framer-motion";
+import { User, Mail, Lock, Phone, ArrowRight, ShieldCheck } from "lucide-react";
 
 function Signup() {
   const [email, setEmail] = useState("");
@@ -11,44 +12,35 @@ function Signup() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
   const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
+  const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
 
-        if (!name || !email || !password) {
-            setError("All fields are required");
-            setToast({ show: true, message:"All fields are required", type: "error" });
-            return;
-        }
+    if (!name || !email || !password || !phone) {
+      setError("All fields are required");
+      setToast({ show: true, message: "All fields are required", type: "error" });
+      return;
+    }
 
-        try {
-            setLoading(true);
+    try {
+      setLoading(true);
+      await signupApi({ name, email, phone, password });
 
-            await signupApi({
-                name,
-                email,
-                phone,
-                password,
-            });
-            
-            sessionStorage.setItem("otpPhone", phone);
-            sessionStorage.setItem("otpEmail", email);
-            navigate("/verify-otp", { state: { phone, email } });
-
-        } catch (err) {
-            const message =
-            err.response?.data?.message || "Signup failed. Try again.";
-            setError(message);
-            setToast({ show: true, message:err.response?.data?.message|| "Signup failed. Try again.", type: "error" });
-        } finally {
-            setLoading(false);
-        }
-    };
-
+      sessionStorage.setItem("otpPhone", phone);
+      sessionStorage.setItem("otpEmail", email);
+      navigate("/verify-otp", { state: { phone, email } });
+    } catch (err) {
+      const message = err.response?.data?.message || "Signup failed";
+      setError(message);
+      setToast({ show: true, message, type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -60,127 +52,143 @@ function Signup() {
         />
       )}
 
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-6 transition-colors dark:bg-gray-950">
-      {/* Exact same setup as Login: max-w-4xl and rounded-3xl */}
-        <div className="grid w-full max-w-4xl grid-cols-1 overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-gray-900 md:grid-cols-2">
-          
-          {/* LEFT SIDE: Branding/Illustration */}
-          <div className="hidden flex-col justify-center bg-teal-50 p-10 dark:bg-gray-800/50 md:flex">
-            <div className="text-left">
-              <h1 className="text-3xl font-black tracking-tight text-gray-900 dark:text-white lg:text-4xl">
-                WELCOME <span className="text-teal-500">!</span>
-              </h1>
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                Create your account to get started<br />with our hospital services.
-              </p>
+      {/* ===== SAME BACKGROUND AS LOGIN ===== */}
+      <div className="fixed inset-0 -z-10 bg-night overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-night-top to-transparent" />
+        <div className="absolute inset-0 bg-radial-night" />
+        <div className="absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/70 to-transparent" />
+      </div>
+
+      {/* ===== CARD ===== */}
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="
+            w-full max-w-md
+            rounded-3xl
+            bg-[#0e1628]/80
+            backdrop-blur-xl
+            border border-white/10
+            shadow-[0_30px_80px_rgba(0,0,0,0.65)]
+          "
+        >
+          {/* ===== HEADER ===== */}
+          <div className="px-8 pt-10 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-500/90 shadow-lg shadow-teal-500/30">
+              <ShieldCheck className="h-7 w-7 text-white" />
             </div>
-            
-            <div className="mt-8 flex justify-center">
-              <img
-                src="https://cdn-icons-png.flaticon.com/512/3774/3774299.png"
-                alt="Doctor Illustration"
-                className="w-48 object-contain transition-transform hover:scale-105"
-              />
-            </div>
+
+            <h1 className="text-2xl font-black text-white tracking-tight">
+              LOGO <span className="text-teal-400">Hospital</span>
+            </h1>
+            <p className="mt-1 text-[11px] tracking-[0.25em] text-gray-400 uppercase">
+              Create Account
+            </p>
           </div>
 
-          {/* RIGHT SIDE: Tightened Form */}
-          <div className="flex flex-col justify-center p-8 lg:p-12">
-            <form onSubmit={handleSubmit} className="mx-auto w-full max-w-sm">
-              <header className="mb-8">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-white text-center md:text-left">
-                  <span className="text-teal-500">LOGO</span> Hospital
-                </h2>
-                <p className="text-xs font-medium uppercase tracking-wider text-gray-400 mt-1 text-center md:text-left">
-                  Join our community
-                </p>
-              </header>
+          {/* ===== FORM ===== */}
+          <form onSubmit={handleSubmit} className="px-8 py-8 space-y-5">
+            {/* Name */}
+            <Input
+              icon={<User />}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Full Name"
+              loading={loading}
+            />
 
-              <div className="space-y-4">
-                {/* Name Field */}
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-gray-500 dark:text-gray-400">
-                    FULL NAME
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value.trim())}
-                    className="w-full px-4 py-3 rounded-xl border transition-all duration-200 text-sm bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 focus:outline-none dark:bg-gray-800/50 dark:border-gray-700 dark:text-white dark:focus:bg-gray-800 dark:focus:border-teal-400 dark:focus:ring-teal-400/10"
-                    placeholder="John Doe"
-                  />
-                </div>
+            {/* Email */}
+            <Input
+              icon={<Mail />}
+              value={email}
+              onChange={(e) => setEmail(e.target.value.trim())}
+              placeholder="Email address"
+              loading={loading}
+            />
 
-                {/* Email Field */}
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-gray-500 dark:text-gray-400">
-                    EMAIL ADDRESS
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value.trim())}
-                    className="w-full px-4 py-3 rounded-xl border transition-all duration-200 text-sm bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 focus:outline-none dark:bg-gray-800/50 dark:border-gray-700 dark:text-white dark:focus:bg-gray-800 dark:focus:border-teal-400 dark:focus:ring-teal-400/10"
-                    placeholder="name@hospital.com"
-                  />
-                </div>
+            {/* Phone */}
+            <Input
+              icon={<Phone />}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/\s+/g, ""))}
+              placeholder="Phone number"
+              loading={loading}
+            />
 
-                {/* Password Field */}
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-gray-500 dark:text-gray-400">
-                    PASSWORD
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value.trim())}
-                    className="w-full px-4 py-3 rounded-xl border transition-all duration-200 text-sm bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 focus:outline-none dark:bg-gray-800/50 dark:border-gray-700 dark:text-white dark:focus:bg-gray-800 dark:focus:border-teal-400 dark:focus:ring-teal-400/10"
-                    placeholder="••••••••"
-                  />
-                </div>
-                {/* Phone Field */}
-                <div>
-                  <label className="mb-1 block text-xs font-semibold text-gray-500 dark:text-gray-400">
-                    PHONE NO
-                  </label>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\s+/g, ""))}
-                    className="w-full px-4 py-3 rounded-xl border transition-all duration-200 text-sm bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 focus:outline-none dark:bg-gray-800/50 dark:border-gray-700 dark:text-white dark:focus:bg-gray-800 dark:focus:border-teal-400 dark:focus:ring-teal-400/10"
-                    placeholder="9XXXXXXXX9"
-                  />
-                </div>
-              </div>
+            {/* Password */}
+            <Input
+              icon={<Lock />}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value.trim())}
+              placeholder="Password"
+              loading={loading}
+            />
 
-              {error && (
-                <p className="mt-3 text-xs font-medium text-red-500">{error}</p>
+            {error && <p className="text-xs font-medium text-red-400">{error}</p>}
+
+            {/* Submit */}
+            <motion.button
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: loading ? 1 : 0.97 }}
+              disabled={loading}
+              className="
+                w-full rounded-xl bg-teal-500 py-3
+                text-sm font-bold text-white
+                shadow-lg shadow-teal-500/30
+                disabled:opacity-70
+              "
+            >
+              {loading ? (
+                <div className="mx-auto h-4 w-32 rounded bg-white/40 animate-pulse" />
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  SIGN UP <ArrowRight className="h-4 w-4" />
+                </span>
               )}
+            </motion.button>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="mt-6 w-full rounded-xl bg-teal-500 py-3 text-sm font-bold text-white shadow-lg shadow-teal-500/30 transition hover:bg-teal-600 active:scale-[0.98] disabled:opacity-70"
-              >
-                {loading ? "CREATING ACCOUNT..." : "SIGN UP"}
-              </button>
-
-              <footer className="mt-8 text-center">
-                <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
-                  <p className="text-xs text-gray-500">
-                    Already have an account?{" "}
-                    <Link to="/login" className="font-bold text-teal-600 hover:text-teal-700 dark:text-teal-400">
-                      Login
-                    </Link>
-                  </p>
-                </div>
-              </footer>
-            </form>
-          </div>
-        </div>
+            {/* Footer */}
+            {!loading && (
+              <div className="pt-6 text-center">
+                <p className="text-xs text-gray-400">
+                  Already have an account?{" "}
+                  <Link to="/login" className="font-bold text-teal-400 hover:text-teal-300">
+                    Log in
+                  </Link>
+                </p>
+              </div>
+            )}
+          </form>
+        </motion.div>
       </div>
     </>
-  
+  );
+}
+
+/* ===== Reusable Input (same style as Login) ===== */
+function Input({ icon, loading, type = "text", ...props }) {
+  if (loading) return <div className="h-11 rounded-xl bg-white/10 animate-pulse" />;
+
+  return (
+    <div className="relative">
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400">
+        {icon}
+      </span>
+      <input
+        type={type}
+        {...props}
+        className="
+          w-full rounded-xl pl-11 pr-4 py-3 text-sm
+          bg-white/5 text-white placeholder-gray-400
+          border border-white/10
+          focus:border-teal-400 focus:ring-4 focus:ring-teal-400/10
+          outline-none transition
+        "
+      />
+    </div>
   );
 }
 
