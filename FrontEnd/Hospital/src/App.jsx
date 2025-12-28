@@ -7,6 +7,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleRoute from "./routes/RoleRoute";
 import PatientDashboard from "./pages/patient/Dashboard";
 import Token from "./pages/patient/Token.jsx";
+import MyVisits from "./pages/patient/MyVisits.jsx";
 import DoctorDashboard from "./pages/doctor/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import Loader from "./components/Loader.jsx"
@@ -30,8 +31,7 @@ function App() {
             <Route element={<RoleRoute allowedRoles={["PATIENT"]} />}>
               <Route path="/patient/dashboard" element={<PatientDashboard />} />
               <Route path="/tokens" element={<Token />} />
-              <Route path="/history" element={<PatientDashboard />} />
-
+              <Route path="/history" element={<MyVisits />} />
             </Route>
             <Route element={<RoleRoute allowedRoles={["DOCTOR"]} />}>
               <Route path="/doctor/dashboard" element={<DoctorDashboard />} />

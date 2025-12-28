@@ -8,12 +8,22 @@ import {
 
 const router=express.Router();
 
-router.post("/",authMiddleware,roleMiddleware("DOCTOR"),createVisitController);
+router.post("/",
+  authMiddleware,
+  roleMiddleware("DOCTOR"),
+  createVisitController);
 
 router.get(
   "/patient/:patientId",
   authMiddleware,
-  roleMiddleware("DOCTOR", "ADMIN", "PATIENT"),
+  roleMiddleware("DOCTOR"," ADMIN"),
+  getPatientVisitsController
+);
+
+router.get(
+  "/me",
+  authMiddleware,
+  roleMiddleware("PATIENT"),
   getPatientVisitsController
 );
 

@@ -30,10 +30,14 @@ export const createVisit=async({
         return visit;
 };
 
-export const getPatientVisits=async(patientId,limit = 5)=>{
-    const visits=await Visit.find({patient:patientId})
+export const getPatientVisitsService = async (
+  patientId,
+  { limit = 10 } = {}
+) => {
+  return Visit.find({ patient: patientId })
     .populate("doctor", "name")
     .populate("department", "name")
-    .sort({ createdAt: -1 });
-    return visits;
-}
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+};
