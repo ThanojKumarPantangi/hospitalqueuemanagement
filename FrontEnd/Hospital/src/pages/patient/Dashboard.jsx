@@ -4,6 +4,8 @@ import { useEffect, useState,useRef } from 'react';
 import Navbar from '../../components/Navbar/PatientNavbar';
 import AnimatedQuote from '../../components/AnimatedQuote';
 import { useSocket} from "../../hooks/useSocket";
+import { useTokenSocket } from "../../hooks/useTokenSocket";
+import StickyMiniToken from "../../components/token/StickyMiniToken";
 import { getMyTokenApi,getMyUpcomingTokensApi,cancelTokenApi,createTokenApi,getAllDepartmentsApi,previewTokenNumberApi } from "../../api/token.api";
 import Toast from "../../components/ui/Toast";
 import Loader from "../../components/Loader";
@@ -20,8 +22,6 @@ function PatientDashboard() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [showSticky, setShowSticky] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const joinedDeptRef = useRef(null);
   const MIN_LOADER_TIME = 2000; 
 
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -282,131 +282,72 @@ useEffect(() => {
 }, [departmentId, appointmentDate]);
 
 
-// --- 3. Socket.io Real-Time Listeners ---
-useEffect(() => {
-  if (!socketRef?.current) return;
+useTokenSocket({
+  socketRef,
+  token,
 
-  const socket = socketRef.current;
-  const prevDept = joinedDeptRef.current;
-  const nextDept = token?.departmentId;
+  onCalled: ({ tokenId }) => {
+  if (!tokenId) return;
 
-  /* ---------- JOIN / LEAVE DEPARTMENT ROOM ---------- */
+  setToken(prev => {
+    if (!prev || prev._id !== tokenId) return prev;
 
-  // Leave old department
-  if (prevDept && prevDept !== nextDept) {
-    socket.emit("leave-department", prevDept);
-    joinedDeptRef.current = null;
-  }
-
-  // Join new department
-  if (nextDept && prevDept !== nextDept) {
-    socket.emit("join-department", nextDept);
-    joinedDeptRef.current = nextDept;
-  }
-
-  /* ---------- TOKEN EVENT HANDLERS ---------- */
-
-  const onTokenCalled = ({ tokenId }) => {
-    setToken(prev => {
-      if (!prev || prev._id !== tokenId){
-        setToast({
-          type: "success",
-          message: `Present Called Token Is #${prev.tokenNumber}`,
-        });
-        return prev;
-      } 
-
-      setToast({
-        type: "success",
-        message: `Your token #${prev.tokenNumber} is being called.`,
-      });
-
-      return { ...prev, status: "CALLED" };
+    setToast({
+      type: "success",
+      message: `Your token #${prev.tokenNumber} is being called.`,
     });
-  };
 
-  const onTokenSkipped = ({ tokenId }) => {
-    setToken(prev => {
-      if (!prev || prev._id !== tokenId)
-        {
-          setToast({
-          type: "success",
-          message: `Present Skipped Token Is #${prev.tokenNumber}`,
-        });
-        return prev;
-        } 
+    return { ...prev, status: "CALLED" };
+  });
+},
 
+
+  onSkipped: ({ tokenId }) => {
+    if (!tokenId) return;
+
+    setToken(prev =>
+      prev && prev._id === tokenId
+        ? { ...prev, status: "SKIPPED" }
+        : prev
+    );
+
+    if (token?._id === tokenId) {
       setToast({
         type: "error",
-        message: `Your token #${prev.tokenNumber} is skipped.`,
+        message: `Your token #${token.tokenNumber} was skipped.`,
       });
+    }
+  },
 
-      return { ...prev, status: "SKIPPED" };
-    });
-  };
+  onCompleted: ({ tokenId }) => {
+    if (!tokenId) return;
 
-  const onTokenCompleted = ({ tokenId }) => {
-    setToken(prev => {
-      if (!prev || prev._id !== tokenId)
-        {
-          setToast({
-          type: "success",
-          message: `Present Completed Token Is #${prev.tokenNumber}`,
-        });
-        return prev;
-        } 
-
+    if (token?._id === tokenId) {
       setToast({
         type: "success",
-        message: `Your token #${prev.tokenNumber} is completed.`,
+        message: `Your token #${token.tokenNumber} is completed.`,
       });
+      setToken(null);
+    }
+  },
 
-      return null;
-    });
-  };
+  onNoShow: ({ tokenId }) => {
+    if (token?._id === tokenId) {
+      setToken(null);
+    }
+  },
 
-  const onTokenNoShow = ({ tokenId }) => {
-    setToken(prev =>
-      prev && prev._id === tokenId ? null : prev
-    );
-  };
+  onQueueUpdate: ({ tokenId, waitingCount }) => {
+    if (!tokenId || typeof waitingCount !== "number") return;
 
-  /* ---------- SOCKET LISTENERS ---------- */
-
-  socket.on("TOKEN_CALLED", onTokenCalled);
-  socket.on("TOKEN_SKIPPED", onTokenSkipped);
-  socket.on("TOKEN_COMPLETED", onTokenCompleted);
-  socket.on("TOKEN_NO_SHOW", onTokenNoShow);
-
-  /* ---------- CLEANUP ---------- */
-  return () => {
-    socket.off("TOKEN_CALLED", onTokenCalled);
-    socket.off("TOKEN_SKIPPED", onTokenSkipped);
-    socket.off("TOKEN_COMPLETED", onTokenCompleted);
-    socket.off("TOKEN_NO_SHOW", onTokenNoShow);
-  };
-}, [token?.departmentId,socketRef]);
-
-  // Queue Position Update
-  useEffect(() => {
-  if (!socketRef?.current) return;
-
-  const socket = socketRef.current;
-
-  const onQueuePositionUpdate = ({ tokenId, waitingCount }) => {
     setToken(prev =>
       prev && prev._id === tokenId
         ? { ...prev, waitingCount }
         : prev
     );
-  };
+  },
+});
 
-  socket.on("QUEUE_POSITION_UPDATE", onQueuePositionUpdate);
-
-  return () => {
-    socket.off("QUEUE_POSITION_UPDATE", onQueuePositionUpdate);
-  };
-}, [socketRef]);
 
   // --- 4. Loading State ---
   if (loading) {
@@ -426,6 +367,11 @@ useEffect(() => {
 
   return (
     <>
+      <StickyMiniToken
+        token={token}
+        show={showSticky}
+      />
+
       {/* Notifications */}
       {toast && (
         <Toast
@@ -435,98 +381,6 @@ useEffect(() => {
         />
       )}
 
-      {/* STICKY MINI-TOKEN (Visible only when scrolling and token exists) */}
-      <AnimatePresence>
-        {showSticky && token && (
-          <motion.div
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
-            className="fixed top-20 left-1/2 -translate-x-1/2 z-50"
-          >
-            <motion.div
-              layout
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-              className="
-                bg-white/85 dark:bg-gray-900/85
-                backdrop-blur-xl
-                border border-teal-100 dark:border-teal-800
-                shadow-2xl
-                rounded-3xl
-                px-6 pt-3 pb-3
-                w-[320px]
-                cursor-default
-              "
-            >
-              {/* ================= COLLAPSED ROW ================= */}
-              <motion.div layout className="flex items-center justify-between gap-4">
-                {/* LEFT */}
-                <div className="flex items-center gap-3">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-                  </span>
-
-                  <div className="leading-none">
-                    <p className="text-xs font-black text-gray-800 dark:text-white tracking-tight">
-                      Token #{token.tokenNumber}
-                    </p>
-                    <p className="text-[10px] font-semibold text-teal-600 dark:text-teal-400">
-                      {isCalled ? "Proceed Now" : "Waiting"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* RIGHT */}
-                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-600 dark:text-gray-300">
-                  <Users size={14} />
-                  {isCalled ? "CALLED" : `${token.waitingCount} AHEAD`}
-                </div>
-              </motion.div>
-
-              {/* ================= EXPANDED DETAILS (HOVER ONLY) ================= */}
-              <AnimatePresence>
-                {isHovered && (
-                  <motion.div
-                    layout
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="
-                      mt-3 pt-3
-                      border-t border-gray-200 dark:border-gray-700
-                      space-y-2
-                    "
-                  >
-                    <div className="flex justify-between items-center text-[10px] font-semibold text-gray-600 dark:text-gray-300">
-                      <span className="flex items-center gap-1 uppercase tracking-wide text-gray-400">
-                        <Building2 size={12} />
-                        Department
-                      </span>
-                      <span className="font-bold text-gray-800 dark:text-gray-100">
-                        {token.departmentName}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-[10px] font-semibold text-gray-600 dark:text-gray-300">
-                      <span className="flex items-center gap-1 uppercase tracking-wide text-gray-400">
-                        <Zap size={12} />
-                        Priority
-                      </span>
-                      <span className="font-bold text-gray-800 dark:text-gray-100">
-                        {token.priority}
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 p-4 md:p-6 space-y-8 pb-24">
         <Navbar activePage="Dashboard" />
