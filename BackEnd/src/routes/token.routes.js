@@ -11,7 +11,8 @@ import {
     cancelTokenController,
     getMyCurrentTokenController,
     getMyUpcomingTokens,
-    previewTokenNumber
+    previewTokenNumber,
+    getPatientTokenHistoryController,
 } from "../controllers/token.controller.js";
 
 const router=express.Router();
@@ -69,6 +70,13 @@ router.get("/preview",
   authMiddleware,
   roleMiddleware("ADMIN","PATIENT"),
   previewTokenNumber
+);
+
+router.get(
+  "/history",
+  authMiddleware,
+  roleMiddleware("PATIENT"),
+  getPatientTokenHistoryController
 );
 
 export default router;

@@ -360,6 +360,32 @@ export const getUpcomingTokensForPatient = async (patientId) => {
   }));
 };
 
+
+/* ===================== PATIENT TOKEN HISTORY===================== */
+export const getPatientTokenHistory = async (patientId) => {
+  const tokens = await Token.find({
+    patient: patientId,
+    status: { $in: ["COMPLETED", "CANCELLED", "SKIPPED"] },
+  })
+    .populate("department", "name")
+    .sort({ appointmentDate: -1, createdAt: -1 })
+    .lean();
+
+  return tokens.map((token) => ({
+    _id: token._id,
+    tokenNumber: token.tokenNumber,
+    status: token.status,
+    appointmentDate: token.appointmentDate,
+    departmentId: token.department._id,
+    departmentName: token.department.name,
+    priority: token.priority,
+    completedAt: token.completedAt || null,
+    cancelledAt: token.cancelledAt || null,
+    skippedAt: token.skippedAt || null,
+  }));
+};
+
+
 /* ===================== Expected Token Number ===================== */
 export const getExpectedTokenNumber = async ({
   departmentId,

@@ -22,7 +22,7 @@ function PatientDashboard() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [showSticky, setShowSticky] = useState(false);
-  const MIN_LOADER_TIME = 2000; 
+  const MIN_LOADER_TIME = 500; 
 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingId, setCancellingId] = useState(null);
@@ -260,7 +260,6 @@ useEffect(() => {
       });
 
       const tokenNumber = res.data.expectedTokenNumber;
-
       // ✅ Save in cache
       previewCacheRef.current.set(cacheKey, tokenNumber);
 

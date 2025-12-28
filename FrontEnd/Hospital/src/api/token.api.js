@@ -29,3 +29,8 @@ export const previewTokenNumberApi = ({ departmentId, appointmentDate }) => {
     },
   });
 };
+
+
+export const getTokenHistoryApi = () => {
+  return api.get("/api/tokens/history");
+};

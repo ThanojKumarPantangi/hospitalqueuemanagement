@@ -6,6 +6,7 @@ import {createToken,
   getPatientActiveToken,
   getUpcomingTokensForPatient,
   getExpectedTokenNumber,
+  getPatientTokenHistory,
 } from "../services/token.service.js";
 
 export const createTokenController=async(req,res)=>{
@@ -142,6 +143,21 @@ export const getMyUpcomingTokens = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error while fetching tokens",
+    });
+  }
+};
+
+export const getPatientTokenHistoryController = async (req, res) => {
+  try {
+    const patientId = req.user.id;
+
+    const tokens = await getPatientTokenHistory(patientId);
+
+    res.status(200).json(tokens);
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch token history",
+      error: error.message,
     });
   }
 };

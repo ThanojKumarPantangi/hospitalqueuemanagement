@@ -112,7 +112,7 @@ function StickyMiniToken({ token, show }) {
                       <Building2 size={12} /> Department
                     </span>
                     <span className="font-bold text-gray-900 dark:text-gray-100">
-                      {token.departmentName}
+                      {token?.departmentName?.toUpperCase()}
                     </span>
                   </div>
 
