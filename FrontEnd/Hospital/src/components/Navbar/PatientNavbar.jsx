@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
-import ThemeToggle from "../ThemeToggle";
-import {useAuth} from "../../hooks/useAuth"
+import ThemeToggle from "../button/ThemeToggle";
+import {useAuth} from "../../hooks/useAuth";
+import HospitalIcon from '../icon/HospitalIcon';
+import {motion} from "framer-motion";
 
 
 const Navbar = ({ activePage='Dashboard' }) => {
@@ -13,8 +15,8 @@ const Navbar = ({ activePage='Dashboard' }) => {
 
   const navLinks = [
     { name: 'Dashboard', href: '/patient/dashboard' },
-    { name: 'My Tokens', href: '/tokens' },
-    { name: 'Visit History', href: '/history' },
+    { name: 'My Tokens', href: '/patient/tokens' },
+    { name: 'Visit History', href: '/patient/history' },
   ];
   const onLogout = () => {
     navigate("/logout")
@@ -25,14 +27,31 @@ const Navbar = ({ activePage='Dashboard' }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           
-          {/* Logo Section */}
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-lg flex items-center justify-center shadow-lg shadow-teal-500/20">
-              <span className="text-white font-bold text-xl">+</span>
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-2">
+            {/* Icon container */}
+            <div className="
+              flex items-center justify-center rounded-lg
+              bg-cyan-400/10
+              border border-cyan-400/20
+            ">
+              <HospitalIcon className="w-10 h-9 text-blue-600" />
             </div>
-            <span className="text-lg font-black tracking-tighter text-gray-800 dark:text-white uppercase">
-              Care<span className="text-teal-500">Queue</span>
-            </span>
+
+
+            {/* Hospital name */}
+            <motion.h1
+              className="
+                text-lg font-semibold tracking-wide
+                bg-gradient-to-r from-cyan-400 via-sky-400 to-emerald-400
+                bg-clip-text text-transparent
+              "
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            >
+            Kumar Hospitals
+            </motion.h1>
           </div>
 
           {/* Desktop Navigation */}

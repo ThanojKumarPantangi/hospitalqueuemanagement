@@ -53,10 +53,23 @@ router.patch(
 router.patch(
   "/doctor/on-leave",
   authMiddleware,
-  roleMiddleware("ADMIN"),
+  roleMiddleware("ADMIN","DOCTOR"),
   markDoctorOnLeave
 );
 
+router.patch(
+  "/doctor/return-from-leave",
+  authMiddleware,
+  roleMiddleware("ADMIN","DOCTOR"),
+  markDoctorAvailable
+);
+
+router.patch(
+  "/doctor/activate",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  activateDoctor
+);
 
 router.patch(
   "/doctor/inactive",
@@ -79,25 +92,10 @@ router.get(
   getDepartmentsStatus
 );
 
-router.get("/doctors/not-verified", 
+router.get("/doctor/not-verified", 
   authMiddleware, 
   roleMiddleware("ADMIN"),
   getNotVerifiedDoctors);
-
-router.patch(
-  "/doctors/return-from-leave",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  markDoctorAvailable
-);
-
-router.patch(
-  "/doctors/activate",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  activateDoctor
-);
-
 
 router.get("/dashboard/summary", 
   authMiddleware, 
@@ -111,13 +109,13 @@ router.patch("/departments/:departmentId/close",
   closeDepartment
 );
 
-router.get("/doctors/:doctorId",
+router.get("/doctor/:doctorId",
   authMiddleware,
   roleMiddleware("ADMIN"),
   getDoctorById
 );
 
-router.get("/doctors",
+router.get("/doctor",
   authMiddleware,
   roleMiddleware("ADMIN"),
   getDoctors

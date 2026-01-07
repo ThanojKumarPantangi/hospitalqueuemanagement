@@ -8,7 +8,12 @@ dotenv.config({ path: "./src/.env"});
 connectDB();
 
 const server = http.createServer(app);
-initSocket(server);
+
+// initSocket(server);
+
+const io = initSocket(server);
+global.io = io;
+
 
 
 const PORT = process.env.PORT || 5000;

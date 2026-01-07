@@ -1,3 +1,4 @@
+import User from "../models/user.model.js";
 import {createToken,
   getNextToken,
   skipCurrentTokenByDoctor,
@@ -7,6 +8,7 @@ import {createToken,
   getUpcomingTokensForPatient,
   getExpectedTokenNumber,
   getPatientTokenHistory,
+  getDoctorQueueSummary,
 } from "../services/token.service.js";
 
 export const createTokenController=async(req,res)=>{
@@ -38,7 +40,13 @@ export const createTokenController=async(req,res)=>{
 
 export const callNextTokenController=async(req,res)=>{
     try {
-        const {departmentId}=req.body;
+        const doctor = await User.findOne({ _id: req.user._id });
+        if (!doctor) {
+        return res.status(400).json({
+          message: "Doctor profile not found",
+        });
+      }
+        const departmentId = doctor.departments;
         const token =await getNextToken(departmentId,req.user._id);
         if(!token){
             return res.status(200).json({
@@ -182,5 +190,32 @@ export const previewTokenNumber = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+};
+
+
+/* ===================== GET QUEUE SUMMARY ===================== */
+
+export const getDoctorQueueSummaryController = async (req, res) => {
+  try {
+    const  departmentId  = req.user.departments;
+
+    if (!departmentId) {
+      return res.status(400).json({
+        message: "Department ID is required",
+      });
+    }
+
+    const summary = await getDoctorQueueSummary({ departmentId });
+
+    res.status(200).json({
+      success: true,
+      data: summary,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };

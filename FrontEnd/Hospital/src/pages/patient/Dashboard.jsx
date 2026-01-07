@@ -2,13 +2,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {Calendar as CalendarIcon, User,Users, AlertTriangle,Building2,Zap,Bell,Timer,UserCheck,QrCode,MapPin,Ticket,ChevronRight,RefreshCcw, } from 'lucide-react';
 import { useEffect, useState,useRef } from 'react';
 import Navbar from '../../components/Navbar/PatientNavbar';
-import AnimatedQuote from '../../components/AnimatedQuote';
+import AnimatedQuote from '../../components/animation/AnimatedQuote';
 import { useSocket} from "../../hooks/useSocket";
 import { useTokenSocket } from "../../hooks/useTokenSocket";
 import StickyMiniToken from "../../components/token/StickyMiniToken";
 import { getMyTokenApi,getMyUpcomingTokensApi,cancelTokenApi,createTokenApi,getAllDepartmentsApi,previewTokenNumberApi } from "../../api/token.api";
 import Toast from "../../components/ui/Toast";
-import Loader from "../../components/Loader";
+import Loader from "../../components/animation/Loader";
+
 import Badge from "../../components/badge/badge.jsx";
 import "./patient.css";
 
@@ -22,7 +23,7 @@ function PatientDashboard() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [showSticky, setShowSticky] = useState(false);
-  const MIN_LOADER_TIME = 500; 
+  const MIN_LOADER_TIME = 2500; 
 
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancellingId, setCancellingId] = useState(null);
@@ -352,9 +353,6 @@ useTokenSocket({
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-[#212121]/80 backdrop-blur-sm">
       <Loader />
-      <p className="text-gray-400 text-xs uppercase tracking-widest">
-        Loading…
-      </p>
     </div>
   );
 }
@@ -395,18 +393,18 @@ useTokenSocket({
                 {token ? `Monitoring your live appointment in ${token?.departmentName?.toUpperCase()}` : "Welcome back! How are you feeling today?"}
               </p>
             </div>
-           <div className="hidden sm:flex items-center gap-2 pb-1">
-            <span className="relative flex h-2 w-2">
-              {isConnected && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              )}
-              <span className={`relative inline-flex rounded-full h-2 w-2 ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
-            </span>
+            <div className="hidden sm:flex items-center gap-2 pb-1">
+              <span className="relative flex h-2 w-2">
+                {isConnected && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                )}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isConnected ? "bg-green-500" : "bg-red-500"}`} />
+              </span>
 
-            <p className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? "text-gray-400" : "text-red-400"}`}>
-              {isConnected ? "Live System Connected" : "System Disconnected"}
-            </p>
-          </div>
+              <p className={`text-[10px] font-bold uppercase tracking-widest ${isConnected ? "text-gray-400" : "text-red-400"}`}>
+                {isConnected ? "Live System Connected" : "System Disconnected"}
+              </p>
+            </div>
 
 
           </header>

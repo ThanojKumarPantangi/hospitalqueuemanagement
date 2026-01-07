@@ -193,10 +193,13 @@ export const getDoctors = async (req, res) => {
 
 export const markDoctorOnLeave = async (req, res) => {
   try {
-    const { doctorId } = req.body;
+    const doctorId =
+      req.user.role === "ADMIN"
+        ? req.body.doctorId
+        : req.user.id;
 
     const doctor = await User.findById(doctorId);
-    if (!doctor) {
+    if (!doctor || doctor.role !== "DOCTOR") {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
@@ -215,7 +218,12 @@ export const markDoctorOnLeave = async (req, res) => {
     doctor.isActive = true;
     await doctor.save();
 
-    res.status(200).json({ message: "Doctor marked as on leave" });
+    res.status(200).json({
+      message:
+        req.user.role === "ADMIN"
+          ? "Doctor marked as on leave"
+          : "You are now on break",
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -223,7 +231,10 @@ export const markDoctorOnLeave = async (req, res) => {
 
 export const markDoctorAvailable = async (req, res) => {
   try {
-    const { doctorId } = req.body;
+    const doctorId =
+      req.user.role === "ADMIN"
+        ? req.body.doctorId
+        : req.user.id;
 
     const doctor = await User.findById(doctorId);
     if (!doctor || doctor.role !== "DOCTOR") {
@@ -246,7 +257,10 @@ export const markDoctorAvailable = async (req, res) => {
     await doctor.save();
 
     res.status(200).json({
-      message: "Doctor marked as available",
+      message:
+        req.user.role === "ADMIN"
+          ? "Doctor marked as available"
+          : "You are now available",
     });
   } catch (error) {
     res.status(400).json({ message: error.message });

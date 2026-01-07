@@ -3,23 +3,36 @@ import {
   getPatientVisitsService,
 } from "../services/visit.service.js";
 
-export const createVisitController=async(req,res)=>{
-    try {
-        const {tokenId,symptoms,diagnosis,prescriptions}=req.body;
-        const visit=await createVisit({
-            tokenId,
-            doctorId:req.user._id,
-            symptoms,
-            diagnosis,
-            prescriptions,
-        });
-        res.status(201).json({
-            message:"Visit Record Created Successfully",
-            visit,
-        });
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
+import Visit from "../models/visit.model.js";
+
+export const createVisitController = async (req, res) => {
+  try {
+    const {
+      tokenId,
+      symptoms,
+      diagnosis,
+      prescriptions,
+      followUpDate,
+      vitals,
+    } = req.body;
+
+    const visit = await createVisit({
+      tokenId,
+      doctorId: req.user._id,
+      symptoms,
+      diagnosis,
+      prescriptions,
+      followUpDate,
+      vitals,
+    });
+
+    res.status(201).json({
+      message: "Visit Record Created Successfully",
+      visit,
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
 };
 
 export const getPatientVisitsController = async (req, res) => {

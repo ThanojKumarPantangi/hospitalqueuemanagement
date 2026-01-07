@@ -1,0 +1,64 @@
+import express from "express";
+import {
+  getMyDoctorProfile,
+  getDoctorProfileById,
+  updateMyDoctorProfile,
+  adminUpdateDoctorProfile,
+  getPublicDoctors,
+} from "../controllers/doctorProfile.controller.js";
+import authMiddleware from "../middlewares/auth.middleware.js";
+import roleMiddleware from "../middlewares/role.middleware.js";
+
+const router = express.Router();
+
+/**
+ * 👨‍⚕️ Doctor → get own profile
+ */
+router.get(
+  "/me",
+  authMiddleware,
+  roleMiddleware("DOCTOR"),
+  getMyDoctorProfile
+);
+
+/**
+ * 👨‍💼 Admin → get any doctor profile by userId
+ */
+router.get(
+  "/:userId",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  getDoctorProfileById
+);
+
+/**
+ * 👨‍⚕️ Doctor → update own profile
+ */
+router.patch(
+  "/me",
+  authMiddleware,
+  roleMiddleware("DOCTOR"),
+  updateMyDoctorProfile
+);
+
+/**
+ * 👨‍💼 Admin → update any doctor profile
+ */
+router.patch(
+  "/:userId",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  adminUpdateDoctorProfile
+);
+
+/**
+ * 👨‍⚕️ PATIENT → Doctor profile
+ */
+
+router.get("/doctors",
+  authMiddleware,
+  roleMiddleware("PATIENT"),
+  getPublicDoctors
+);
+
+export default router;

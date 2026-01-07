@@ -27,7 +27,12 @@ const tokenSchema = new mongoose.Schema(
       default: "NORMAL",
       index: true,
     },
-
+    priorityRank: {
+      type: Number,
+      enum: [1, 2, 3],
+      required: true,
+      index: true,
+    },
     status: {
       type: String,
       enum: [
@@ -81,7 +86,7 @@ tokenSchema.index({
   department: 1,
   appointmentDate: 1,
   status: 1,
-  priority: 1,
+  priorityRank: 1,
   createdAt: 1,
 });
 

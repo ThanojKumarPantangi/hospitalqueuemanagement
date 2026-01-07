@@ -4,7 +4,6 @@ export const getMyTokenApi = () => {
   return api.get("/api/tokens/my");
 };
 
-
 export const getMyUpcomingTokensApi = (config = {}) => {
   return api.get("/api/tokens/my/upcoming",config);
 };

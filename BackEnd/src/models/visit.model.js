@@ -28,19 +28,31 @@ const visitSchema=new mongoose.Schema(
 
     symptoms: {
       type: String,
+      trim: true,
     },
 
     diagnosis: {
       type: String,
+      trim: true
     },
-
+    vitals: {
+      temperature: String,
+      bp: String,
+      pulse: String,
+      weight: String,
+    },
     prescriptions: [
       {
         medicineName: String,
         dosage: String,
+        frequency: String,
         duration: String,
+        instructions: String,
       },
     ],
+    followUpDate:{ 
+      type: Date 
+    },
   },
   { timestamps: true }
 )

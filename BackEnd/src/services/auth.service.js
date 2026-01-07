@@ -2,26 +2,79 @@ import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import { generateAccessToken,generateRefreshToken } from "../utils/jwt.util.js";
+import Session from "../models/session.model.js";
 
-export const loginService = async (email, password) => {
+// export const loginService = async (email, password) => {
+//   const user = await User.findOne({ email }).select("+password");
+//   if (!user) throw new Error("Invalid Credentials");
+
+//   const match = await bcrypt.compare(password, user.password);
+//   if (!match) throw new Error("Invalid Credentials");
+
+// if (!user.isPhoneVerified) {
+//   throw new Error("Phone number not verified");
+// }
+
+// if (user.role === "DOCTOR" && !user.isVerified) {
+//   throw new Error("Doctor not approved by admin");
+// }
+
+//   const payload = {
+//     id: user._id,
+//     role: user.role,
+//     name:user.name,
+//   };
+
+//   return {
+//     accessToken: generateAccessToken(payload),
+//     refreshToken: generateRefreshToken(payload),
+//     user,
+//   };
+// };
+
+export const loginService = async (email, password, req) => {
   const user = await User.findOne({ email }).select("+password");
   if (!user) throw new Error("Invalid Credentials");
 
   const match = await bcrypt.compare(password, user.password);
   if (!match) throw new Error("Invalid Credentials");
 
-if (!user.isPhoneVerified) {
-  throw new Error("Phone number not verified");
-}
+  if (!user.isPhoneVerified) {
+    throw new Error("Phone number not verified");
+  }
 
-if (user.role === "DOCTOR" && !user.isVerified) {
-  throw new Error("Doctor not approved by admin");
-}
+  if (user.role === "DOCTOR" && !user.isVerified) {
+    throw new Error("Doctor not approved by admin");
+  }
 
+  /**
+   * 🔐 ENFORCE SINGLE SESSION FOR DOCTOR / ADMIN
+   */
+  if (user.role === "DOCTOR" || user.role === "ADMIN") {
+    await Session.updateMany(
+      { user: user._id, isActive: true },
+      { isActive: false }
+    );
+  }
+
+  /**
+   * ✅ CREATE SESSION (NEW)
+   */
+  const session = await Session.create({
+    user: user._id,
+    role: user.role,
+    device: req.headers["user-agent"]?.substring(0, 120),
+    ipAddress: req.ip,
+  });
+
+  /**
+   * 🔑 ADD sessionId TO PAYLOAD
+   */
   const payload = {
     id: user._id,
     role: user.role,
-    name:user.name,
+    name: user.name,
+    sessionId: session._id,
   };
 
   return {
@@ -30,6 +83,7 @@ if (user.role === "DOCTOR" && !user.isVerified) {
     user,
   };
 };
+
 
 export const signupService = async ({
   name,

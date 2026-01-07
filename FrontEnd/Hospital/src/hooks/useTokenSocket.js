@@ -8,6 +8,10 @@ export function useTokenSocket({
   onCompleted,
   onNoShow,
   onQueueUpdate,
+
+  onNewMessage,
+  onMissedMessages,
+
 }) {
   const joinedDeptRef = useRef(null);
 
@@ -18,7 +22,7 @@ export function useTokenSocket({
     const socket = socketRef.current;
 
     const joinDepartment = () => {
-      const deptId = token?.departmentId;
+      const deptId = token?.departmentId||token?.departments;
       if (!deptId) return;
 
       if (joinedDeptRef.current !== deptId) {
@@ -43,7 +47,7 @@ export function useTokenSocket({
       socket.off("disconnect", leaveDepartment);
       leaveDepartment();
     };
-  }, [token?.departmentId, socketRef]);
+  }, [token?.departmentId,socketRef,token]);
 
   /* ---------- TOKEN EVENTS ---------- */
   useEffect(() => {
@@ -70,4 +74,27 @@ export function useTokenSocket({
     socket.off("QUEUE_POSITION_UPDATE", handleQueue);
   };
 }, [socketRef, onCalled, onSkipped, onCompleted, onNoShow, onQueueUpdate]);
+
+/* ---------- MESSAGE EVENTS ---------- */
+useEffect(() => {
+  if (!socketRef?.current) return;
+
+  const socket = socketRef.current;
+
+  const handleNewMessage = (message) => {
+    onNewMessage?.(message);
+  };
+
+  const handleMissedMessages = (messages = []) => {
+    onMissedMessages?.(messages);
+  };
+
+  socket.on("messages:new", handleNewMessage);
+  socket.on("messages:missed", handleMissedMessages);
+
+  return () => {
+    socket.off("messages:new", handleNewMessage);
+    socket.off("messages:missed", handleMissedMessages);
+  };
+}, [socketRef, onNewMessage, onMissedMessages]);
 }

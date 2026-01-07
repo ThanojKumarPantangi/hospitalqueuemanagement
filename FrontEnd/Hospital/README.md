@@ -1,3 +1,6 @@
+SmartQ: An Intelligent Hospital Queue Management System Using Priority Scheduling and Real-Time Updates
+
+
 hospital-queue-frontend/
 │
 ├── index.html

@@ -5,6 +5,9 @@ import {
   getDailyPatientCount,
   getDepartmentLoad,
   getDoctorWorkload,
+  getTodayRevenue,
+  getRevenueByDepartment,
+  getPaymentStats,
 } from "../controllers/analytics.controller.js";
 
 const router = express.Router();
@@ -28,6 +31,24 @@ router.get(
   authMiddleware,
   roleMiddleware("ADMIN"),
   getDoctorWorkload
+);
+
+router.get("/payments/revenue/today", 
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  getTodayRevenue
+);
+
+router.get("/payments/revenue/department",
+  authMiddleware,
+  roleMiddleware("ADMIN"), 
+  getRevenueByDepartment
+);
+
+router.get("/payments/stats",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  getPaymentStats
 );
 
 export default router;

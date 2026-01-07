@@ -11,6 +11,15 @@ import otpRoutes from "./routes/otp.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import tvRoutes from "./routes/tv.routes.js";
 import departmentRoutes from "./routes/department.route.js";
+import doctorRoutes from "./routes/doctorProfile.routes.js";
+import messageRoutes from "./routes/message.routes.js";
+import sessionRoutes from "./routes/session.routes.js";
+import userRoutes from "./routes/user.routes.js";
+
+
+import paymentRoutes from "./routes/payment.route.js";
+import paymentWebhookRoutes from "./routes/payment.webhook.routes.js";
+import refundRoutes from "./routes/refund.routes.js";
 
 
 import {
@@ -20,6 +29,7 @@ import {
 } from "./middlewares/rateLimiter.middleware.js";
 
 const app = express();
+app.set("trust proxy", true);
 /* ------------------ Core middleware ------------------ */
 app.use(express.json());
 app.use(cookieParser());
@@ -47,8 +57,12 @@ app.use((req, res, next) => {
 });
 
 
+
+
+
 /* ------------------ Routes ------------------ */
-app.use("/api/auth", authLimiter,authRoutes);
+//, authLimiter
+app.use("/api/auth",authRoutes);
 
 //tokenLimiter,
 app.use("/api/tokens",tokenRoutes);
@@ -58,6 +72,21 @@ app.use("/api/otp", otpRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/tv", tvRoutes);
 app.use("/api/departments", departmentRoutes);
+app.use("/api/doctors", doctorRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/sessions", sessionRoutes);
+app.use("/api/users", userRoutes);
+
+
+// payments
+app.use("/api/payments", paymentRoutes);
+app.use(
+  "/api/payments/webhook",
+  express.raw({ type: "application/json" }),
+  paymentWebhookRoutes
+);
+app.use("/api/refunds", refundRoutes);
+
 
 /* ------------------ Health check ------------------ */
 app.get("/health", (req, res) => {

@@ -1,6 +1,7 @@
 import Token from "../models/token.model.js";
 import Department from "../models/department.model.js";
 import User from "../models/user.model.js";
+import Visit from "../models/visit.model.js";
 import { getIO } from "../sockets/index.js";
 
 /* ===================== CONSTANTS ===================== */
@@ -16,6 +17,12 @@ const TOKEN_STATES = {
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: [],
+};
+
+const PRIORITY_ORDER = {
+  EMERGENCY: 3,
+  SENIOR: 2,
+  NORMAL: 1,
 };
 
 /* ===================== UTILS ===================== */
@@ -105,12 +112,14 @@ export const createToken = async ({
         : 1;
 
       const token = await Token.create({
-        tokenNumber: nextTokenNumber,
-        patient: patientId,
-        department: departmentId,
-        priority: finalPriority,
-        appointmentDate: selectedDate,
-      });
+      tokenNumber: nextTokenNumber,
+      patient: patientId,
+      department: departmentId,
+      priority: finalPriority,
+      priorityRank: PRIORITY_ORDER[finalPriority],
+      appointmentDate: selectedDate,
+    });
+
 
       if (selectedDate.getTime() === today.getTime()) {
         await recalculateQueuePositions(departmentId);
@@ -168,10 +177,11 @@ export const getNextToken = async (departmentId, doctorId) => {
       calledAt: new Date(),
     },
     {
-      sort: { priority: -1, tokenNumber: 1 }, 
+      sort: { priorityRank: -1, tokenNumber: 1 },
       new: true,
     }
-  );
+  ).populate("patient", "name")
+  ;
 
   if (!nextToken) {
     throw new Error("No waiting tokens available");
@@ -181,6 +191,7 @@ export const getNextToken = async (departmentId, doctorId) => {
     tokenId: nextToken._id,
     tokenNumber: nextToken.tokenNumber,
     doctorId,
+    patientName: nextToken.patient?.name,
   });
   await recalculateQueuePositions(departmentId);
 
@@ -190,19 +201,42 @@ export const getNextToken = async (departmentId, doctorId) => {
 /* ===================== COMPLETE TOKEN ===================== */
 
 export const completeToken = async (tokenId) => {
+  const today = getStartOfDay();
+
+  // 1️⃣ Load token (single source of truth)
   const token = await Token.findById(tokenId);
   if (!token) throw new Error("Token not found");
 
+  // 2️⃣ Ensure token is for today
+  if (token.appointmentDate.getTime() !== today.getTime()) {
+    throw new Error("Cannot complete token not scheduled for today");
+  }
+
+  // 3️⃣ Ensure correct state
   if (!isTransitionAllowed(token.status, "COMPLETED")) {
     throw new Error("Invalid token state transition");
   }
 
+  // 4️⃣ HARD VALIDATION: visit must exist for THIS token & department
+  const visitExists = await Visit.exists({
+    token: token._id,                 // same token
+    department: token.department,     // same department
+  });
+
+  if (!visitExists) {
+    throw new Error(
+      "Visit record for this token and department is required before completion"
+    );
+  }
+
+  // 5️⃣ Complete token
   token.status = "COMPLETED";
   token.completedAt = new Date();
   await token.save();
 
   emit("TOKEN_COMPLETED", token.department, { tokenId });
   await recalculateQueuePositions(token.department);
+
   return token;
 };
 
@@ -412,11 +446,6 @@ export const getExpectedTokenNumber = async ({
   return expectedTokenNumber;
 };
 
-const PRIORITY_ORDER = {
-  EMERGENCY: 3,
-  SENIOR: 2,
-  NORMAL: 1,
-};
 
 /* ===================== Recalculate Queue Positions ===================== */
 export const recalculateQueuePositions = async (departmentId) => {
@@ -425,22 +454,23 @@ export const recalculateQueuePositions = async (departmentId) => {
 
   // 1️⃣ Fetch all waiting tokens for today + department
   const tokens = await Token.find({
-    department: departmentId,
-    appointmentDate: today,
-    status: "WAITING",
-  })
-    .select("_id patient priority tokenNumber")
-    .lean();
+  department: departmentId,
+  appointmentDate: today,
+  status: "WAITING",
+})
+  .select("_id patient priority priorityRank tokenNumber")
+  .sort({ priorityRank: -1, tokenNumber: 1 })
+  .lean();
 
   if (!tokens.length) return;
 
   // 2️⃣ Sort by priority DESC, tokenNumber ASC
-  tokens.sort((a, b) => {
-    const pDiff =
-      PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
-    if (pDiff !== 0) return pDiff;
-    return a.tokenNumber - b.tokenNumber;
-  });
+  // tokens.sort((a, b) => {
+  //   const pDiff =
+  //     PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
+  //   if (pDiff !== 0) return pDiff;
+  //   return a.tokenNumber - b.tokenNumber;
+  // });
 
   // 3️⃣ Emit waitingCount to each user privately
   tokens.forEach((token, index) => {
@@ -452,4 +482,81 @@ export const recalculateQueuePositions = async (departmentId) => {
       }
     );
   });
+};
+
+
+const formatTime = (date) =>
+  date.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+/* ===================== DASHBOARD QUEUE SUMMARY ===================== */
+export const getDoctorQueueSummary = async ({ departmentId }) => {
+  const today = getStartOfDay();
+
+  // 1️⃣ Load department (for OPD start time)
+  const department = await Department.findById(departmentId).lean();
+  if (!department) throw new Error("Department not found");
+
+  const opdStartTime = department.opdStartTime || "09:00"; // fallback
+  const slotMinutes = department.slotDurationMinutes || 10;
+
+  const [startHour, startMinute] = opdStartTime.split(":").map(Number);
+
+  // 2️⃣ Counts
+  const [
+    totalToday,
+    completed,
+    remaining,
+    waitingTokens,
+  ] = await Promise.all([
+    Token.countDocuments({
+      department: departmentId,
+      appointmentDate: today,
+    }),
+    Token.countDocuments({
+      department: departmentId,
+      appointmentDate: today,
+      status: "COMPLETED",
+    }),
+    Token.countDocuments({
+      department: departmentId,
+      appointmentDate: today,
+      status: "WAITING",
+    }),
+    Token.find({
+      department: departmentId,
+      appointmentDate: today,
+      status: "WAITING",
+    })
+      .sort({ priorityRank: -1, tokenNumber: 1 })
+      .limit(5)
+      .populate("patient", "name")
+      .select("tokenNumber priority patient")
+      .lean(),
+  ]);
+
+  // 3️⃣ Calculate expected time
+  const nextWaiting = waitingTokens.map((t, index) => {
+    const time = new Date();
+    time.setHours(startHour);
+    time.setMinutes(startMinute + index * slotMinutes);
+    time.setSeconds(0);
+
+    return {
+      token: t.tokenNumber,
+      name: t.patient?.name || "Unknown",
+      priority: t.priority,
+      time: formatTime(time),
+    };
+  });
+
+  return {
+    totalToday,
+    completed,
+    remaining,
+    nextWaiting,
+  };
 };

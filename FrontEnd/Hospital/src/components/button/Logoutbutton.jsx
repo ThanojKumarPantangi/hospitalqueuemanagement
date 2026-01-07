@@ -8,7 +8,7 @@ const Logout = ({
   brandName = "NEURAL",
   brandAccent = "CARE",
   duration = 3000,
-  onCancel = () => console.log("Logout Cancelled"),
+  onCancel = () => console.log(),
 }) => {
   const [progress, setProgress] = useState(0);
   const { user,logout } = useAuth();

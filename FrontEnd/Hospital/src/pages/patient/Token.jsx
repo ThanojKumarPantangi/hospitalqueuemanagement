@@ -5,7 +5,7 @@ import { useEffect, useState ,useRef} from "react";
 import Badge from "../../components/badge/badge.jsx";
 import Navbar from "../../components/Navbar/PatientNavbar";
 import Toast from "../../components/ui/Toast";
-import Loader from "../../components/Loader";
+import Loader from "../../components/animation/Loader.jsx";
 import StickyMiniToken from "../../components/token/StickyMiniToken";
 
 import { useSocket } from "../../hooks/useSocket";

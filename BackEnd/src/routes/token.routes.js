@@ -13,6 +13,7 @@ import {
     getMyUpcomingTokens,
     previewTokenNumber,
     getPatientTokenHistoryController,
+    getDoctorQueueSummaryController
 } from "../controllers/token.controller.js";
 
 const router=express.Router();
@@ -23,21 +24,22 @@ router.post("/",
   createTokenController
 );
 
-router.post("/call-next",
+router.post(
+  "/doctor/call-next",
   authMiddleware,
   roleMiddleware("DOCTOR"),
   callNextTokenController
 );
 
 router.post(
-  "/doctor/token/complete",
+  "/doctor/complete",
   authMiddleware,
   roleMiddleware("DOCTOR"),
   completeCurrentTokenController
 );
 
 router.post(
-  "/doctor/token/skip",
+  "/doctor/skip",
   authMiddleware,
   roleMiddleware("DOCTOR"),
   skipCurrentTokenController
@@ -77,6 +79,13 @@ router.get(
   authMiddleware,
   roleMiddleware("PATIENT"),
   getPatientTokenHistoryController
+);
+
+router.get(
+  "/dashboard/queue-summary",
+  authMiddleware,
+  roleMiddleware("DOCTOR","ADMIN"),
+  getDoctorQueueSummaryController
 );
 
 export default router;
