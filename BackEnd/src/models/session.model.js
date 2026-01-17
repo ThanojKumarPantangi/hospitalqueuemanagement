@@ -20,13 +20,12 @@ const sessionSchema = new mongoose.Schema(
     lastSeenAt: {
       type: Date,
       default: Date.now,
-      index: true,
     },
   },
   { timestamps: true }
 );
 
-// 🧹 AUTO DELETE after 30 days of inactivity
+// 🧹 AUTO DELETE after 10 days of inactivity
 sessionSchema.index(
   { lastSeenAt: 1 },
   { expireAfterSeconds: 10 * 24 * 60 * 60 }

@@ -81,4 +81,17 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// 🔹 Doctor dashboard stats
+userSchema.index({
+  role: 1,
+  isVerified: 1,
+  isActive: 1,
+  isAvailable: 1,
+});
+
+userSchema.index({
+  role: 1,
+  departments: 1,
+});
+
 export default mongoose.model("User", userSchema);

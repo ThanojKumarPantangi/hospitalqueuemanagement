@@ -3,24 +3,6 @@ import { loginService,signupService,doctorSignupService } from "../services/auth
 import { rotateRefreshToken } from "../services/tokenRotation.service.js";
 import RefreshToken from "../models/refreshToken.model.js";
 
-// export const login = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-//     const { accessToken, refreshToken, user } =
-//       await loginService(email, password);
-
-//     res.cookie("refreshToken", refreshToken, {
-//       httpOnly: true,
-//       secure: process.env.NODE_ENV === "production",
-//       sameSite: "strict",
-//       maxAge: 7 * 24 * 60 * 60 * 1000,
-//     });
-
-//     res.json({ accessToken, role: user.role });
-//   } catch (err) {
-//     res.status(401).json({ message: err.message });
-//   }
-// };
 
 export const login = async (req, res) => {
   try {

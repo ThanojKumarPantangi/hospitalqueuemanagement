@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 export function useTokenSocket({
   socketRef,
   token,
+  departmentId ,
   onCalled,
   onSkipped,
   onCompleted,
@@ -18,11 +19,10 @@ export function useTokenSocket({
   /* ---------- JOIN / LEAVE DEPARTMENT (RECONNECT SAFE) ---------- */
   useEffect(() => {
     if (!socketRef?.current) return;
-
     const socket = socketRef.current;
 
     const joinDepartment = () => {
-      const deptId = token?.departmentId||token?.departments;
+      const deptId = departmentId||token?.departmentId;
       if (!deptId) return;
 
       if (joinedDeptRef.current !== deptId) {
@@ -47,7 +47,7 @@ export function useTokenSocket({
       socket.off("disconnect", leaveDepartment);
       leaveDepartment();
     };
-  }, [token?.departmentId,socketRef,token]);
+  }, [departmentId,socketRef,token,token?.departmentId]);
 
   /* ---------- TOKEN EVENTS ---------- */
   useEffect(() => {

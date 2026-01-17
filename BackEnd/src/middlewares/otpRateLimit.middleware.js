@@ -1,15 +1,15 @@
 import OTP from "../models/otp.model.js";
 
-const OTP_WINDOW_MINUTES = 10;  
-const MAX_OTP_REQUESTS = 3;    
+const OTP_WINDOW_MINUTES = 10;
+const MAX_OTP_REQUESTS = 3;
 
 export const otpRateLimit = async (req, res, next) => {
   try {
-    const { phone } = req.body;
+    const { email } = req.body;
 
-    if (!phone) {
+    if (!email) {
       return res.status(400).json({
-        message: "Phone number is required",
+        message: "Email is required",
       });
     }
 
@@ -18,7 +18,7 @@ export const otpRateLimit = async (req, res, next) => {
     );
 
     const recentOtpCount = await OTP.countDocuments({
-      phone,
+      email,
       createdAt: { $gte: windowStart },
     });
 

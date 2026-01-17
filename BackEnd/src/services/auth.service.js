@@ -3,34 +3,9 @@ import User from "../models/user.model.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import { generateAccessToken,generateRefreshToken } from "../utils/jwt.util.js";
 import Session from "../models/session.model.js";
+import PatientProfile from "../models/patientProfile.model.js";
+import DoctorProfile from "../models/doctorProfile.model.js"
 
-// export const loginService = async (email, password) => {
-//   const user = await User.findOne({ email }).select("+password");
-//   if (!user) throw new Error("Invalid Credentials");
-
-//   const match = await bcrypt.compare(password, user.password);
-//   if (!match) throw new Error("Invalid Credentials");
-
-// if (!user.isPhoneVerified) {
-//   throw new Error("Phone number not verified");
-// }
-
-// if (user.role === "DOCTOR" && !user.isVerified) {
-//   throw new Error("Doctor not approved by admin");
-// }
-
-//   const payload = {
-//     id: user._id,
-//     role: user.role,
-//     name:user.name,
-//   };
-
-//   return {
-//     accessToken: generateAccessToken(payload),
-//     refreshToken: generateRefreshToken(payload),
-//     user,
-//   };
-// };
 
 export const loginService = async (email, password, req) => {
   const user = await User.findOne({ email }).select("+password");
@@ -102,7 +77,7 @@ export const signupService = async ({
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await User.create({
-    name,
+    name:name.trim().toLowerCase(),
     email,
     phone,
     password: hashedPassword,

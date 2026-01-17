@@ -26,15 +26,11 @@ const doctorProfileSchema = new mongoose.Schema(
       min: 0,
       max: 60,
     },
-    consultationFee: {
-      type: Number,
-      min: 0,
-    },
-    slotDurationMinutes: {
-      type: Number,
-      default: 10,
-      min: 5,
-      max: 60,
+    department: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+      required: true,
+      index: true,
     },
 
     opdTimings: [

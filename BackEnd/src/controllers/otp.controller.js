@@ -3,8 +3,8 @@ import { sendOTP, verifyOTP } from "../services/otp.service.js";
 export const sendOTPController = async (req, res) => {
 
     try {
-        const { phone,email } = req.body;
-        await sendOTP(phone,email);
+        const { email } = req.body;
+        await sendOTP(email);
 
         res.status(200).json({
             message: "OTP sent successfully",
@@ -17,9 +17,9 @@ export const sendOTPController = async (req, res) => {
 
 export const verifyOTPController = async (req, res) => {
   try {
-    const { phone, otp } = req.body;
+    const { email, otp } = req.body;
 
-    await verifyOTP(phone, otp);
+    await verifyOTP(email, otp);
 
     res.status(200).json({
       message: "Phone number verified successfully",

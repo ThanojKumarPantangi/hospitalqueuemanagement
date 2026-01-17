@@ -4,8 +4,9 @@ import roleMiddleware from "../middlewares/role.middleware.js";
 
 import {
   createDepartment,
-  closeDepartment,
+  updateDepartmentStatus,
   createDoctor,
+  updateDepartmentSettings,
   verifyDoctor,
   getNotVerifiedDoctors,
   getDoctorById,
@@ -42,8 +43,14 @@ router.post(
   createDoctor
 );
 
+router.patch("/:departmentId",
+    authMiddleware,
+    roleMiddleware("ADMIN"),
+    updateDepartmentSettings
+);
+
 router.patch(
-  "/doctor/:doctorId/departments",
+  "/departments/:doctorId",
   authMiddleware,
   roleMiddleware("ADMIN"),
   updateDoctorDepartments
@@ -103,10 +110,10 @@ router.get("/dashboard/summary",
   getAdminDashboardSummary
 );
 
-router.patch("/departments/:departmentId/close", 
+router.patch("/departments/:departmentId/status", 
   authMiddleware, 
   roleMiddleware("ADMIN"),
-  closeDepartment
+  updateDepartmentStatus
 );
 
 router.get("/doctor/:doctorId",
@@ -115,7 +122,7 @@ router.get("/doctor/:doctorId",
   getDoctorById
 );
 
-router.get("/doctor",
+router.get("/doctors",
   authMiddleware,
   roleMiddleware("ADMIN"),
   getDoctors

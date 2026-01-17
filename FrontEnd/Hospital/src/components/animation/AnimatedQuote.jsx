@@ -1,90 +1,162 @@
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Quote, Sparkles } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { Quote } from "lucide-react";
 
-/* ---------------- QUOTES DATA ---------------- */
-const QUOTES = [
-  "Your care is in progress, please relax.",
-  "Every moment brings you closer to care.",
-  "We are preparing for your consultation.",
-  "Your health journey is moving forward.",
-  "Thank you for your patience and trust.",
-];
+const ROTATION_BASE = 6000;
 
-export default function AnimatedQuote() {
+export default function AnimatedQuote({ token, Namedoc }) {
+  const prefersReducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
-  const [isTabActive, setIsTabActive] = useState(true);
-  const ROTATION_TIME = 6000; // Duration for each quote (6 seconds)
 
-  /* ---------- TAB VISIBILITY LOGIC ---------- */
+  const {
+    status,
+    minMinutes,
+    maxMinutes,
+    waitingCount,
+    doctorName,
+  } = token;
+
+  /* ---------------- MODE ---------------- */
+  const mode =
+    status === "CALLED"
+      ? "CALLED"
+      : status === "SKIPPED"
+      ? "SKIPPED"
+      : "WAITING";
+
+  /* ---------------- WAIT-INTENSITY ---------------- */
+  const intensity = useMemo(() => {
+    if (typeof minMinutes !== "number") return 1;
+    if (minMinutes <= 5) return 1.4;     // urgent
+    if (minMinutes <= 15) return 1.1;    // moderate
+    return 0.9;                          // calm
+  }, [minMinutes]);
+
+  const rotationTime = ROTATION_BASE / intensity;
+
+  /* ---------------- QUOTES ---------------- */
+  const quotes = useMemo(() => {
+    if (mode === "CALLED") {
+      return [`Dr. ${doctorName?.toUpperCase() || Namedoc?.toUpperCase() || "Doctor"} is calling you now.`];
+    }
+
+    if (mode === "SKIPPED") {
+      return ["You were skipped. Please stay alert."];
+    }
+
+    if (typeof minMinutes === "number" && typeof maxMinutes === "number") {
+      return [
+        `Estimated wait: ${minMinutes}–${maxMinutes} minutes.`,
+        `${waitingCount ?? "Some"} patients ahead of you.`,
+        "We’re preparing for your consultation.",
+      ];
+    }
+
+    return [
+      "Your token is registered.",
+      "Queue has not started yet.",
+    ];
+  }, [mode, minMinutes, maxMinutes, waitingCount, doctorName, Namedoc]);
+
+  /* ---------------- ROTATION ---------------- */
   useEffect(() => {
-    const onVisibilityChange = () => setIsTabActive(!document.hidden);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, []);
+    if (prefersReducedMotion) return;
+    if (mode !== "WAITING") return;
 
-  /* ---------- QUOTE ROTATION LOGIC ---------- */
-  useEffect(() => {
-    if (!isTabActive) return;
+    const t = setTimeout(
+      () => setIndex((i) => (i + 1) % quotes.length),
+      rotationTime
+    );
 
-    const timer = setTimeout(() => {
-      setIndex((prev) => (prev + 1) % QUOTES.length);
-    }, ROTATION_TIME);
+    return () => clearTimeout(t);
+  }, [index, mode, quotes.length, rotationTime, prefersReducedMotion]);
 
-    return () => clearTimeout(timer);
-  }, [index, isTabActive]);
+  const currentQuote = quotes?.[index] ?? "";
+  const words = currentQuote.split(" ");
 
-  const words = QUOTES[index].split(" ");
-
+  /* ---------------- RENDER ---------------- */
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: "easeOut" }}
-      className="relative w-full rounded-[2.5rem] border border-white/40 dark:border-white/5 
-                 bg-white/40 dark:bg-gray-900/40 backdrop-blur-3xl 
-                 shadow-[0_20px_60px_rgba(0,0,0,0.03)] dark:shadow-none 
-                 overflow-hidden p-10 md:p-16 text-center"
+      layout
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, type: "spring", bounce: 0.3 }}
+      className="relative overflow-hidden rounded-[2rem] 
+                 border border-white/60 dark:border-white/10 
+                 bg-gradient-to-br from-white/60 to-white/30 dark:from-gray-900/60 dark:to-gray-800/30
+                 backdrop-blur-xl shadow-2xl shadow-emerald-900/5 dark:shadow-emerald-500/5
+                 p-10 md:p-14 text-center group"
     >
-      {/* 1. Decorative Sparkle (Top Right) */}
-      <div className="absolute top-8 right-10 text-teal-400/30 hidden md:block">
-        <Sparkles size={28} className="animate-pulse" />
-      </div>
+      {/* Background Decorative Glow (Optional Subtle Gradient) */}
+      <div className="absolute -top-20 -left-20 w-40 h-40 bg-emerald-400/20 rounded-full blur-[80px] pointer-events-none" />
+      <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-teal-400/20 rounded-full blur-[80px] pointer-events-none" />
 
-      {/* 2. Main Icon with Pulsing Background */}
-      <div className="flex justify-center mb-10">
-        <div className="relative">
-          <motion.div 
-            animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
-            transition={{ duration: 4, repeat: Infinity }}
-            className="absolute inset-0 bg-teal-400 blur-2xl rounded-full"
+      {/* Icon Section */}
+      <div className="flex justify-center mb-8 relative">
+        {/* Pulse Effect behind icon */}
+        {!prefersReducedMotion && mode === "WAITING" && (
+          <motion.div
+            animate={{ scale: [1, 1.5], opacity: [0.3, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+            className="absolute inset-0 m-auto h-16 w-16 rounded-2xl bg-emerald-500/20 z-0"
           />
-          <div className="relative z-10 h-16 w-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 
-                          flex items-center justify-center shadow-lg shadow-teal-500/20">
-            <Quote className="text-white" size={28} fill="currentColor" />
-          </div>
-        </div>
+        )}
+        
+        <motion.div
+          animate={
+            prefersReducedMotion
+              ? {}
+              : { 
+                  y: [0, -5, 0],
+                  scale: mode === 'CALLED' ? 1.1 : 1 
+                }
+          }
+          transition={{ 
+            y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+            scale: { duration: 0.5 }
+          }}
+          className={`relative z-10 h-16 w-16 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20
+                      ${mode === 'CALLED' 
+                        ? 'bg-gradient-to-br from-emerald-500 to-green-600 ring-4 ring-emerald-200 dark:ring-emerald-900' 
+                        : 'bg-gradient-to-br from-teal-500 to-emerald-600'}`}
+        >
+          <Quote size={28} className="text-white fill-white/20" />
+        </motion.div>
       </div>
 
-      {/* 3. Quote Text (Word-by-Word Blur Reveal) */}
-      <div className="min-h-[110px] flex items-center justify-center">
+      {/* Quote Text Area */}
+      <div className="min-h-[100px] flex justify-center items-center relative z-10">
         <AnimatePresence mode="wait">
           <motion.div
-            key={index}
-            className="flex flex-wrap justify-center gap-x-3 gap-y-2"
+            key={`${mode}-${index}`}
+            className="flex flex-wrap justify-center gap-x-2.5 gap-y-1"
           >
             {words.map((word, i) => (
               <motion.span
-                key={i}
-                initial={{ opacity: 0, filter: "blur(12px)", y: 12 }}
-                animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-                exit={{ opacity: 0, filter: "blur(8px)", y: -10 }}
+                key={`${index}-${i}`}
+                initial={
+                  prefersReducedMotion
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: 15, filter: "blur(8px)", scale: 0.9 }
+                }
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)", scale: 1 }}
+                exit={
+                   prefersReducedMotion 
+                   ? { opacity: 0 } 
+                   : { opacity: 0, y: -10, filter: "blur(4px)", transition: { duration: 0.2 } }
+                }
                 transition={{
-                  delay: i * 0.1,
                   duration: 0.5,
-                  ease: [0.22, 1, 0.36, 1] // Custom cubic-bezier for premium feel
+                  delay: prefersReducedMotion ? 0 : i * 0.05,
+                  type: "spring",
+                  stiffness: 120,
+                  damping: 15
                 }}
-                className="text-2xl md:text-3xl font-semibold tracking-tight text-slate-800 dark:text-slate-100"
+                className={`text-2xl md:text-3xl font-bold tracking-tight ${
+                  mode === "CALLED"
+                    ? "text-emerald-600 dark:text-emerald-400 drop-shadow-sm"
+                    : "text-slate-700 dark:text-slate-100"
+                }`}
               >
                 {word}
               </motion.span>
@@ -93,19 +165,18 @@ export default function AnimatedQuote() {
         </AnimatePresence>
       </div>
 
-      {/* 4. Minimal Divider */}
-      <div className="mt-8 h-px w-20 mx-auto bg-gradient-to-r from-transparent via-teal-500/30 to-transparent" />
-
-      {/* 5. Animated Timing Progress Bar (Bottom) */}
-      <div className="absolute bottom-0 left-0 w-full h-1.5 bg-gray-100/50 dark:bg-gray-800/30">
-        <motion.div
-          key={index}
-          initial={{ width: "0%" }}
-          animate={{ width: "100%" }}
-          transition={{ duration: ROTATION_TIME / 1000, ease: "linear" }}
-          className="h-full bg-gradient-to-r from-teal-400 via-emerald-500 to-teal-400"
-        />
-      </div>
+      {/* Progress Bar */}
+      {mode === "WAITING" && !prefersReducedMotion && (
+        <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-200/50 dark:bg-gray-700/30">
+          <motion.div
+            key={index}
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{ duration: rotationTime / 1000, ease: "linear" }}
+            className="h-full bg-gradient-to-r from-teal-400 via-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+          />
+        </div>
+      )}
     </motion.div>
   );
 }

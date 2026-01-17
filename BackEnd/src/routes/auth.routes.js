@@ -8,6 +8,6 @@ router.post("/login", login);
 router.post("/refresh", refreshTokenController);
 router.post("/logout", logoutController);
 router.post("/signup", signupController);
-router.post("/doctor/signup", doctorSignupController);
+router.post("/doctor-signup", doctorSignupController);
 
 export default router;

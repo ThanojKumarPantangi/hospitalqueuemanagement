@@ -5,7 +5,7 @@ import { Bell, AlertCircle, Circle } from "lucide-react";
 import { useTokenSocket } from "../../hooks/useTokenSocket";
 import { useSocket } from "../../hooks/useSocket";
 import BulletinHistoryModal from "./BulletinHistoryModal";
-import {getMessageHistoryApi} from "../../api/message.api"
+import {getMessageHistoryApi,markMessagesReadApi} from "../../api/message.api"
 
 export default function Bulletins({
   departmentId,
@@ -43,59 +43,99 @@ export default function Bulletins({
           : [message, ...prev]
       );
     },
-    onMissedMessages: (messages) => {
-      if (!Array.isArray(messages)) return;
+  onMissedMessages: (messages) => {
+    if (!Array.isArray(messages)) return;
 
-      const announcements = messages.filter(
-        (m) =>
-          m?.type === "ANNOUNCEMENT" &&
-          (!m.metadata?.departmentId ||
-            m.metadata.departmentId === departmentId)
+    // ✅ Only keep announcements
+    const announcements = messages.filter(
+      (m) => m?.type === "ANNOUNCEMENT"
+    );
+
+    if (!announcements.length) return;
+
+    setBulletins((prev) => {
+      const existingIds = new Set(
+        prev.map((m) => m._id?.toString())
       );
 
-      if (!announcements.length) return;
+      const fresh = announcements.filter(
+        (m) => !existingIds.has(m._id?.toString())
+      );
 
-      setBulletins((prev) => {
-        const existingIds = new Set(prev.map((m) => m._id));
-        const fresh = announcements.filter(
-          (m) => !existingIds.has(m._id)
-        );
-        return [...fresh, ...prev];
-      });
-    },
+      return [...fresh, ...prev];
+    });
+  },
   });
 
+// Fetch the message 
+const fetchMessageHistory = useCallback(async (pageToLoad = 1) => {
+  setLoadingHistory(true);
 
-const fetchMessageHistory = useCallback(
-  async (pageToLoad = 1) => {
-    if (loadingHistory || !hasMore) return;
+  try {
+    const res = await getMessageHistoryApi({
+      page: pageToLoad,
+      limit: 20,
+    });
 
+
+    const data = res.data;
+    if (!data.success) throw new Error("Failed to fetch messages");
+
+    setHistory((prev) =>
+      pageToLoad === 1 ? data.messages : [...prev, ...data.messages]
+    );
+
+    setHasMore(data.hasMore);
+    setPage(pageToLoad);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoadingHistory(false);
+  }
+}, []); 
+
+// Mark the Message as Read
+const markReadWithFallback = async (messageIds) => {
+  const socket = socketRef.current;
+
+  // Prefer socket if available
+  if (socket && socket.connected) {
     try {
-      setLoadingHistory(true);
-
-      const res = await getMessageHistoryApi({
-        page: pageToLoad,
-        limit: 20,
-      });
-
-      const data = res.data; 
-
-      if (!data.success) throw new Error("Failed to fetch messages");
-
-      setHistory(prev =>
-        pageToLoad === 1 ? data.messages : [...prev, ...data.messages]
-      );
-
-      setHasMore(data.hasMore);
-      setPage(pageToLoad);
+      socket.emit("messages:read", messageIds);
+      return;
     } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingHistory(false);
+      console.warn("Socket mark read failed, falling back to HTTP", err);
     }
-  },
-  [loadingHistory, hasMore]
-);
+  }
+
+  // Fallback to HTTP
+  try {
+    await markMessagesReadApi({ messageIds });
+  } catch (err) {
+    console.error("HTTP mark read failed", err);
+  }
+};
+// Mark All them Read
+const markAllRead = () => {
+  const unreadIds = history
+    .filter((m) => m.readAt === null)
+    .map((m) => m._id);
+
+  if (unreadIds.length === 0) return;
+
+  // 1️⃣ Optimistic UI update
+  setHistory((prev) =>
+    prev.map((m) =>
+      m.readAt === null
+        ? { ...m, readAt: new Date().toISOString() }
+        : m
+    )
+  );
+
+  // 2️⃣ Backend sync (socket → HTTP fallback)
+  markReadWithFallback(unreadIds);
+};
+
 
 
 useEffect(() => {
@@ -107,8 +147,6 @@ useEffect(() => {
 
   fetchMessageHistory(1);
 }, [isHistoryOpen, fetchMessageHistory]);
-
-
 
 
   /* ===============================
@@ -258,6 +296,20 @@ useEffect(() => {
             onClose={() => setIsHistoryOpen(false)}
             bulletins={history}
             title={`${title} – History`}
+
+            onMarkRead={(messageIds) => {
+            setHistory((prev) =>
+              prev.map((m) =>
+                messageIds.includes(m._id)
+                  ? { ...m, readAt: new Date().toISOString() }
+                  : m
+              )
+            );
+
+            // 2️⃣ Backend sync (socket → HTTP fallback)
+            markReadWithFallback(messageIds);
+            }}
+            onMarkAllRead={markAllRead}
         />
 
     </motion.div>

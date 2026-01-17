@@ -4,6 +4,9 @@ import User from "../models/user.model.js";
 import Visit from "../models/visit.model.js";
 import { getIO } from "../sockets/index.js";
 
+import { calculateWaitingTime } from "../utils/waitingTime.util.js";
+import DoctorProfile from "../models/doctorProfile.model.js";
+
 /* ===================== CONSTANTS ===================== */
 
 const MAX_ADVANCE_DAYS = 5;
@@ -62,9 +65,11 @@ export const createToken = async ({
     throw new Error("Department is not open");
   }
 
-//   if (!department.doctors || department.doctors.length === 0) {
-//   throw new Error("No doctors available in this department");
-// }
+  const doctors=await User.find({ departments: departmentId,isActive: true,role:"DOCTOR"});
+
+  if (doctors===null ||doctors.length === 0) {
+    throw new Error("No doctors available in this department");
+  }
 
   const today = getStartOfDay();
   const selectedDate = getStartOfDay(appointmentDate);
@@ -142,7 +147,7 @@ export const getNextToken = async (departmentId, doctorId) => {
 
   const doctor = await User.findById(doctorId);
   if (!doctor || !doctor.isActive || !doctor.isAvailable) {
-    throw new Error("Doctor is not available");
+    throw new Error("Doctor is not available or on break");
   }
 
  
@@ -163,6 +168,8 @@ export const getNextToken = async (departmentId, doctorId) => {
   if (!department || !department.isOpen) {
     throw new Error("Department is closed");
   }
+
+  const doctorName = await User.findById(doctorId).select("name").lean();
 
   // 5️⃣ Atomic pick + update next token
   const nextToken = await Token.findOneAndUpdate(
@@ -191,6 +198,7 @@ export const getNextToken = async (departmentId, doctorId) => {
     tokenId: nextToken._id,
     tokenNumber: nextToken.tokenNumber,
     doctorId,
+    doctorName: doctorName?.name || "Doctor",
     patientName: nextToken.patient?.name,
   });
   await recalculateQueuePositions(departmentId);
@@ -365,9 +373,24 @@ export const getPatientActiveToken = async (patientId) => {
     t => t._id.toString() === token._id.toString()
   );
 
+  const department = await Department.findOne({ _id: token.department._id })
+  .select("slotDurationMinutes")
+  .lean();
+
+  const slotDurationMinutes = department?.slotDurationMinutes || 10;
+
+  const waitingTime = calculateWaitingTime({
+    patientsAhead: index,
+    slotDurationMinutes,
+  });
+
+  const { minMinutes, maxMinutes } = waitingTime;
+
   return {
     ...token,
     waitingCount: index >= 0 ? index : 0,
+    minMinutes,
+    maxMinutes,
   };
 };
 
@@ -452,6 +475,14 @@ export const recalculateQueuePositions = async (departmentId) => {
   const io = getIO();
   const today = getStartOfDay();
 
+  
+
+  const department = await Department.findOne({ _id: departmentId })
+  .select("slotDurationMinutes")
+  .lean();
+
+  const slotDurationMinutes = department?.slotDurationMinutes || 10;
+
   // 1️⃣ Fetch all waiting tokens for today + department
   const tokens = await Token.find({
   department: departmentId,
@@ -464,25 +495,23 @@ export const recalculateQueuePositions = async (departmentId) => {
 
   if (!tokens.length) return;
 
-  // 2️⃣ Sort by priority DESC, tokenNumber ASC
-  // tokens.sort((a, b) => {
-  //   const pDiff =
-  //     PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
-  //   if (pDiff !== 0) return pDiff;
-  //   return a.tokenNumber - b.tokenNumber;
-  // });
 
   // 3️⃣ Emit waitingCount to each user privately
   tokens.forEach((token, index) => {
+    const waitingTime = calculateWaitingTime({
+      patientsAhead: index,
+      slotDurationMinutes,
+    });
     io.to(`user:${token.patient.toString()}`).emit(
       "QUEUE_POSITION_UPDATE",
       {
         tokenId: token._id,
-        waitingCount: index,
+        ...waitingTime,
       }
     );
   });
 };
+
 
 
 const formatTime = (date) =>
@@ -493,14 +522,16 @@ const formatTime = (date) =>
   });
 
 /* ===================== DASHBOARD QUEUE SUMMARY ===================== */
-export const getDoctorQueueSummary = async ({ departmentId }) => {
+export const getDoctorQueueSummary = async ({ departmentId,userId}) => {
   const today = getStartOfDay();
 
   // 1️⃣ Load department (for OPD start time)
   const department = await Department.findById(departmentId).lean();
   if (!department) throw new Error("Department not found");
 
-  const opdStartTime = department.opdStartTime || "09:00"; // fallback
+  const doctorProfile = await DoctorProfile.findOne({ user:userId })
+
+  const opdStartTime = doctorProfile?.opdTimings?.[0]?.startTime|| "09:00"; // fallback
   const slotMinutes = department.slotDurationMinutes || 10;
 
   const [startHour, startMinute] = opdStartTime.split(":").map(Number);

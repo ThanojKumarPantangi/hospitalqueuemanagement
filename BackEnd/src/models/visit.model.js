@@ -24,6 +24,7 @@ const visitSchema=new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Token",
       required: true,
+      unique: true, 
     },
 
     symptoms: {

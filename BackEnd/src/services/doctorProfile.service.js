@@ -4,7 +4,7 @@ import User from "../models/user.model.js";
 export const fetchDoctorProfileByUserId = async (userId) => {
   // 1️⃣ Ensure user exists
   const user = await User.findById(userId)
-    .select("name role doctorRollNo isVerified departments isAvailable");
+    .select("name role doctorRollNo isVerified isAvailable isActive");
 
   if (!user) {
     throw new Error("User not found");
@@ -15,56 +15,97 @@ export const fetchDoctorProfileByUserId = async (userId) => {
     throw new Error("User is not a doctor");
   }
 
-  // 3️⃣ Fetch doctor profile
+  // 3️⃣ Fetch doctor profile with department
   const profile = await DoctorProfile.findOne({ user: userId })
-    .populate("user", "name doctorRollNo isVerified")
+    .populate("department", "name consultationFee slotDurationMinutes")
     .lean();
-
   if (!profile) {
     throw new Error("Doctor profile not found");
   }
 
   return {
-    ...profile,
-    user,
+    user: {
+      _id: user._id,
+      name: user.name,
+      doctorRollNo: user.doctorRollNo,
+      isVerified: user.isVerified,
+      isAvailable: user.isAvailable,
+      isActive: user.isActive,
+    },
+    profile,
   };
 };
 
 const DOCTOR_ALLOWED_FIELDS = [
   "bio",
-  "consultationFee",
-  "slotDurationMinutes",
   "opdTimings",
 ];
+
+const ADMIN_ALLOWED_FIELDS = [
+  ...DOCTOR_ALLOWED_FIELDS,
+  "department",
+  "specialization",
+  "experienceYears",
+  "qualifications",
+];
+
 
 export const updateDoctorProfileByRole = async ({
   actor,
   targetUserId,
   payload,
 }) => {
-  // 1️⃣ Ensure target user exists & is a doctor
+  // 1️⃣ Validate target user
   const user = await User.findById(targetUserId).select("role");
-
   if (!user || user.role !== "DOCTOR") {
     throw new Error("Target user is not a doctor");
   }
 
-  // 2️⃣ Ownership check for doctors
-  if (actor.role === "DOCTOR" && actor._id.toString() !== targetUserId.toString()) {
+  // 2️⃣ Ownership check
+  if (
+    actor.role === "DOCTOR" &&
+    actor._id.toString() !== targetUserId.toString()
+  ) {
     throw new Error("Doctors can update only their own profile");
   }
 
-  // 3️⃣ Field-level permission filtering
-  let updateData = {};
+  // 3️⃣ Find profile
+  let profile = await DoctorProfile.findOne({ user: targetUserId });
 
-  if (actor.role === "ADMIN") {
-    updateData = payload; // full access
-  } else {
-    // DOCTOR
-    for (const key of DOCTOR_ALLOWED_FIELDS) {
-      if (payload[key] !== undefined) {
-        updateData[key] = payload[key];
+  // 4️⃣ CREATE → ADMIN ONLY
+  if (!profile) {
+    if (actor.role !== "ADMIN") {
+      throw new Error("Only admin can create doctor profile");
+    }
+
+    const requiredFields = ["department", "specialization"];
+    for (const field of requiredFields) {
+      if (!payload[field]) {
+        throw new Error(`${field} is required to create doctor profile`);
       }
+    }
+
+    profile = await DoctorProfile.create({
+      user: targetUserId,
+      department: payload.department,
+      specialization: payload.specialization,
+      experienceYears: payload.experienceYears,
+      qualifications: payload.qualifications,
+      opdTimings: payload.opdTimings,
+      bio: payload.bio,
+    });
+
+    return profile;
+  }
+
+  // 5️⃣ UPDATE
+  const allowedFields =
+    actor.role === "ADMIN" ? ADMIN_ALLOWED_FIELDS : DOCTOR_ALLOWED_FIELDS;
+
+  const updateData = {};
+  for (const key of allowedFields) {
+    if (payload[key] !== undefined) {
+      updateData[key] = payload[key];
     }
   }
 
@@ -72,25 +113,24 @@ export const updateDoctorProfileByRole = async ({
     throw new Error("No permitted fields to update");
   }
 
-  // 4️⃣ Validate OPD timings (basic safety)
+  // 6️⃣ Validate OPD timings
   if (updateData.opdTimings) {
     for (const slot of updateData.opdTimings) {
+      if (!slot.startTime || !slot.endTime) {
+        throw new Error("OPD timing must include startTime and endTime");
+      }
       if (slot.startTime >= slot.endTime) {
         throw new Error("Invalid OPD timing range");
       }
     }
   }
 
-  // 5️⃣ Update profile
-  const profile = await DoctorProfile.findOneAndUpdate(
+  // 7️⃣ Apply update
+  profile = await DoctorProfile.findOneAndUpdate(
     { user: targetUserId },
-    updateData,
-    { new: true }
+    { $set: updateData },
+    { new: true, runValidators: true }
   );
-
-  if (!profile) {
-    throw new Error("Doctor profile not found");
-  }
 
   return profile;
 };
@@ -99,49 +139,62 @@ export const fetchPublicDoctors = async ({
   department,
   specialization,
 }) => {
+  // 1️⃣ Base user filter (public visibility)
   const userFilter = {
     role: "DOCTOR",
     isActive: true,
     isVerified: true,
   };
 
-  if (department) {
-    userFilter.departments = department;
-  }
-
-  const doctors = await User.find(userFilter)
-    .select("name departments isAvailable")
+  const users = await User.find(userFilter)
+    .select("name isAvailable")
     .lean();
 
-  const userIds = doctors.map(d => d._id);
+  if (users.length === 0) return [];
 
+  const userIds = users.map(u => u._id);
+
+  // 2️⃣ Profile filter (OPERATIONAL)
   const profileFilter = {
     user: { $in: userIds },
   };
+
+  if (department) {
+    profileFilter.department = department;
+  }
 
   if (specialization) {
     profileFilter.specialization = specialization;
   }
 
+  // 3️⃣ Fetch profiles with department
   const profiles = await DoctorProfile.find(profileFilter)
-    .select("user specialization experienceYears consultationFee")
+    .populate("department", "name consultationFee")
+    .select("user specialization experienceYears department")
     .lean();
 
   const profileMap = new Map(
     profiles.map(p => [p.user.toString(), p])
   );
 
-  return doctors.map(d => {
-    const profile = profileMap.get(d._id.toString());
+  // 4️⃣ Merge user + profile data
+  return users
+    .map(u => {
+      const profile = profileMap.get(u._id.toString());
+      if (!profile) return null;
 
-    return {
-      userId: d._id,
-      name: d.name,
-      specialization: profile?.specialization || null,
-      experienceYears: profile?.experienceYears || null,
-      consultationFee: profile?.consultationFee || null,
-      departments: d.departments,
-      isAvailable: d.isAvailable,
-    };
-  });
+      return {
+        userId: u._id,
+        name: u.name,
+        specialization: profile.specialization,
+        experienceYears: profile.experienceYears,
+        consultationFee: profile.department.consultationFee,
+        department: {
+          id: profile.department._id,
+          name: profile.department.name,
+        },
+        isAvailable: u.isAvailable,
+      };
+    })
+    .filter(Boolean);
 };

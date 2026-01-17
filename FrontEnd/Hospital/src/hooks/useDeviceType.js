@@ -7,8 +7,8 @@ export const useDeviceType = () => {
     const detect = () => {
       const width = window.innerWidth;
 
-      if (width < 990) setDevice("mobile");
-      else if (width < 1024) setDevice("tablet");
+      if (width <1040) setDevice("mobile");
+      else if (width < 1041) setDevice("tablet");
       else setDevice("desktop");
     };
 

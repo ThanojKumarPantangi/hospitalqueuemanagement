@@ -5,3 +5,7 @@ export const getMessageHistoryApi = ({ page, limit = 20 }) => {
     params: { page, limit },
   });
 };
+
+export const markMessagesReadApi = ({ messageIds }) => {
+  return api.post("/api/messages/read", { messageIds });
+};

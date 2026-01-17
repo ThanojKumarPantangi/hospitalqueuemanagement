@@ -15,7 +15,7 @@ import doctorRoutes from "./routes/doctorProfile.routes.js";
 import messageRoutes from "./routes/message.routes.js";
 import sessionRoutes from "./routes/session.routes.js";
 import userRoutes from "./routes/user.routes.js";
-
+import patientProfileRoutes from "./routes/patientProfile.routes.js";
 
 import paymentRoutes from "./routes/payment.route.js";
 import paymentWebhookRoutes from "./routes/payment.webhook.routes.js";
@@ -72,10 +72,11 @@ app.use("/api/otp", otpRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/tv", tvRoutes);
 app.use("/api/departments", departmentRoutes);
-app.use("/api/doctors", doctorRoutes);
+app.use("/api/doctorProfile", doctorRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/patient-profile", patientProfileRoutes)
 
 
 // payments

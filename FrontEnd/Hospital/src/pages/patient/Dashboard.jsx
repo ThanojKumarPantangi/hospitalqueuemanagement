@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import {Calendar as CalendarIcon, User,Users, AlertTriangle,Building2,Zap,Bell,Timer,UserCheck,QrCode,MapPin,Ticket,ChevronRight,RefreshCcw, } from 'lucide-react';
+import {Bell,Timer,UserCheck,QrCode,Ticket,ChevronRight,RefreshCcw,
+        BellRing, MapPin, Sparkles, ArrowRightCircle,Clock } from 'lucide-react';
 import { useEffect, useState,useRef } from 'react';
 import Navbar from '../../components/Navbar/PatientNavbar';
 import AnimatedQuote from '../../components/animation/AnimatedQuote';
@@ -9,8 +10,10 @@ import StickyMiniToken from "../../components/token/StickyMiniToken";
 import { getMyTokenApi,getMyUpcomingTokensApi,cancelTokenApi,createTokenApi,getAllDepartmentsApi,previewTokenNumberApi } from "../../api/token.api";
 import Toast from "../../components/ui/Toast";
 import Loader from "../../components/animation/Loader";
+import Bulletins from "../../components/Bulletins/Bulletins";
 
-import Badge from "../../components/badge/badge.jsx";
+import CreateTokenModal from '../../components/tokenmodal/CreateTokenModal.jsx';
+import CancelTokenModal from '../../components/tokenmodal/CancelTokenModal.jsx';
 import "./patient.css";
 
 
@@ -131,14 +134,14 @@ function PatientDashboard() {
   const fetchDepartments = async () => {
     try {
       const res = await  getAllDepartmentsApi();
-      setDepartments(res.data);
+      setDepartments(res.data.departments);
     } catch (err) {
       console.error("Failed to load departments", err);
     }
   };
 
   fetchDepartments();
-}, [showCreateTokenModal]);
+}, []);
 
   // Precheck list card animation
   const checklistItem = {
@@ -280,12 +283,13 @@ useEffect(() => {
   };
 }, [departmentId, appointmentDate]);
 
-
+// Token Logic
 useTokenSocket({
   socketRef,
   token,
 
-  onCalled: ({ tokenId }) => {
+  /* ---------------- CALLED ---------------- */
+  onCalled: ({ tokenId, doctorName }) => {
   if (!tokenId) return;
 
   setToken(prev => {
@@ -293,60 +297,121 @@ useTokenSocket({
 
     setToast({
       type: "success",
-      message: `Your token #${prev.tokenNumber} is being called.`,
+      message: `Your token #${prev.tokenNumber} is being called by Dr. ${doctorName}.`,
     });
-
-    return { ...prev, status: "CALLED" };
+    sessionStorage.setItem("doctorName", doctorName);
+    return {
+      ...prev,    
+      doctorName,  
+      status: "CALLED",
+    };
   });
 },
 
 
+  /* ---------------- SKIPPED ---------------- */
   onSkipped: ({ tokenId }) => {
     if (!tokenId) return;
 
-    setToken(prev =>
-      prev && prev._id === tokenId
-        ? { ...prev, status: "SKIPPED" }
-        : prev
-    );
+    setToken(prev => {
+      if (!prev || prev._id !== tokenId) return prev;
 
-    if (token?._id === tokenId) {
       setToast({
         type: "error",
-        message: `Your token #${token.tokenNumber} was skipped.`,
+        message: `Your token #${prev.tokenNumber} was skipped.`,
       });
-    }
+      sessionStorage.removeItem("doctorName");
+      return null;
+    });
+    setToken(null)
   },
 
+  /* ---------------- COMPLETED ---------------- */
   onCompleted: ({ tokenId }) => {
     if (!tokenId) return;
 
-    if (token?._id === tokenId) {
+    setToken(prev => {
+      if (!prev || prev._id !== tokenId) return prev;
+
       setToast({
         type: "success",
-        message: `Your token #${token.tokenNumber} is completed.`,
+        message: `Your token #${prev.tokenNumber} is completed.`,
       });
-      setToken(null);
-    }
+      sessionStorage.removeItem("doctorName");
+      return null; // token lifecycle ends
+    });
   },
 
+  /* ---------------- NO SHOW ---------------- */
   onNoShow: ({ tokenId }) => {
-    if (token?._id === tokenId) {
-      setToken(null);
-    }
+    if (!tokenId) return;
+
+    setToken(prev => {
+      if (!prev || prev._id !== tokenId) return prev;
+      sessionStorage.removeItem("doctorName");
+      return null;
+    });
   },
 
-  onQueueUpdate: ({ tokenId, waitingCount }) => {
-    if (!tokenId || typeof waitingCount !== "number") return;
+  /* ---------------- QUEUE UPDATE ---------------- */
+  onQueueUpdate: ({
+    tokenId,
+    minMinutes,
+    maxMinutes,
+    patientsAhead,
+  }) => {
+    if (!tokenId) return;
 
-    setToken(prev =>
-      prev && prev._id === tokenId
-        ? { ...prev, waitingCount }
-        : prev
-    );
+    setToken(prev => {
+      if (!prev || prev._id !== tokenId) return prev;
+
+      return {
+        ...prev,
+        waitingCount:
+          typeof patientsAhead === "number"
+            ? patientsAhead
+            : prev.waitingCount,
+
+        minMinutes:
+          typeof minMinutes === "number"
+            ? minMinutes
+            : prev.minMinutes,
+
+        maxMinutes:
+          typeof maxMinutes === "number"
+            ? maxMinutes
+            : prev.maxMinutes,
+      };
+    });
   },
 });
 
+
+const doctorName = sessionStorage.getItem("doctorName");
+
+
+// Booking Props
+const bookingProps = {
+  departments,
+  departmentId,
+  setDepartmentId,
+  appointmentDate,
+  setAppointmentDate,
+  expectedTokenNumber,
+  previewLoading,
+  MAX_ADVANCE_DAYS,
+  today,
+  formatDate,
+  priority,
+  setPriority,
+  creating,
+  createToken,
+};
+
+const itemVariants = {
+    hidden: { opacity: 0, x: -10 },
+    visible: { opacity: 1, x: 0 }
+};
 
   // --- 4. Loading State ---
   if (loading) {
@@ -405,8 +470,6 @@ useTokenSocket({
                 {isConnected ? "Live System Connected" : "System Disconnected"}
               </p>
             </div>
-
-
           </header>
 
           {/* ================= DYNAMIC HERO CARD (TOKEN vs NO-TOKEN) ================= */}
@@ -458,9 +521,13 @@ useTokenSocket({
                         {isCalled ? <Bell size={22} /> : <Timer size={22} />}
                       </div>
                       <p className="text-xl font-semibold italic">
-                        {isCalled
-                          ? "It’s your turn. Please proceed now."
-                          : `About ${token.waitingCount * 5} minutes remaining`}
+                        {isCalled ? (
+                          "It’s your turn. Please proceed now."
+                        ) : token?.minMinutes === undefined || token?.maxMinutes === undefined ? (
+                          "Please Wait Some Time.You Will Get The Updates"
+                        ) : (
+                          `About ${token.minMinutes}–${token.maxMinutes} minutes remaining`
+                        )}
                       </p>
                     </div>
                   </div>
@@ -593,46 +660,53 @@ useTokenSocket({
 
               <section className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm flex items-center gap-5">
                   <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-teal-400 to-emerald-400 flex items-center justify-center text-white font-bold text-xl">
-                      {token ? "VR" : "?"}
+                      {token ? "DR" : "?"}
                   </div>
                   <div>
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Your Specialist</p>
                       <p className="text-xl font-black text-gray-800 dark:text-white">
-                        {token ? "Dr. Vikram Rao" : "Not Assigned"}
+                        {token ? token?.doctorName?.toUpperCase()||doctorName?.toUpperCase(): "Not Assigned"}
                       </p>
                   </div>
               </section>
           </div>
 
           {/* MOTIVATIONAL QUOTE */}
-          <section className="relative w-full py-12 px-4 overflow-hidden flex justify-center items-center">
-            {/* Moving Ambient Background Orbs */}
-            <div className="absolute inset-0 pointer-events-none">
-              <motion.div 
-                animate={{ 
-                  scale: [1, 1.2, 1],
-                  x: [0, 40, 0],
-                  y: [0, -30, 0] 
-                }}
-                transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                className="absolute -top-24 -left-24 w-96 h-96 bg-teal-300/20 dark:bg-teal-500/10 rounded-full blur-[120px]" 
-              />
-              <motion.div 
-                animate={{ 
-                  scale: [1, 1.3, 1],
-                  x: [0, -50, 0],
-                  y: [0, 40, 0] 
-                }}
-                transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-                className="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-300/20 dark:bg-emerald-500/10 rounded-full blur-[120px]" 
-              />
-            </div>
+          <AnimatePresence mode="wait">
+            {token && (
+              <motion.section
+                key="animated-quote-section"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -24 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="relative w-full py-12 px-4 overflow-hidden flex justify-center items-center"
+              >
+                {/* Ambient Background Orbs */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1], x: [0, 40, 0], y: [0, -30, 0] }}
+                    transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                    className="absolute -top-24 -left-24 w-96 h-96 
+                              bg-teal-300/20 dark:bg-teal-500/10 
+                              rounded-full blur-[120px]"
+                  />
+                  <motion.div
+                    animate={{ scale: [1, 1.3, 1], x: [0, -50, 0], y: [0, 40, 0] }}
+                    transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+                    className="absolute -bottom-24 -right-24 w-96 h-96 
+                              bg-emerald-300/20 dark:bg-emerald-500/10 
+                              rounded-full blur-[120px]"
+                  />
+                </div>
 
-            {/* The Unified Quote Card */}
-            <div className="relative z-10 w-full max-w-3xl">
-              <AnimatedQuote />
-            </div>
-          </section>
+                {/* Quote Card */}
+                <div className="relative z-10 w-full max-w-3xl">
+                  <AnimatedQuote token={token} Namedoc={doctorName} />
+                </div>
+              </motion.section>
+            )}
+          </AnimatePresence>
 
           {/* PRE-CONSULTATION CHECKLIST */}
           <section className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
@@ -682,388 +756,28 @@ useTokenSocket({
             </motion.div>
           </section>
 
-          {/* VISIT HISTORY RECORDS */}
-          <section className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-slide-up">
-              <div className="p-6 border-b border-gray-50 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/30">
-                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Medical Visit History</h3>
-                  <button className="text-xs font-bold text-teal-600 hover:underline">View All</button>
-              </div>
-              <div className="divide-y divide-gray-50 dark:divide-gray-800">
-                  {[
-                    { date: "12 Dec 2025", dept: "Cardiology", status: "Report Ready", doc: "Dr. Sarah Chen" },
-                    { date: "24 Nov 2025", dept: "Orthopedic", status: "Completed", doc: "Dr. Vikram Rao" }
-                  ].map((record, idx) => (
-                    <div key={idx} className="p-5 flex items-center justify-between hover:bg-teal-50/30 dark:hover:bg-teal-900/10 transition-colors group">
-                        <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-teal-500 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-800 dark:text-white text-sm">{record.dept}</p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{record.doc} • {record.date}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`hidden sm:block text-[10px] font-black px-3 py-1 rounded-full ${
-                            record.status === 'Report Ready' ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-                          }`}>
-                            {record.status}
-                          </span>
-                          <button className="p-2 text-teal-600 hover:bg-teal-100 dark:hover:bg-teal-900/40 rounded-lg transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                          </button>
-                        </div>
-                    </div>
-                  ))}
-              </div>
-          </section>
+          {/* DEPARTMENT ANNOUNCEMENTS (Bulletin) */}
+          <motion.div variants={itemVariants}  >
+            <Bulletins departmentId={token?.departmentId}/>
+          </motion.div>
           
           {/* Create Modal Handler*/}
-          <AnimatePresence>
-            {showCreateTokenModal && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[60] overflow-y-auto bg-black/50 backdrop-blur-sm no-scrollbar"
-              >
-                {/* Wrapper allows vertical movement */}
-                <div className="min-h-screen flex items-start justify-center px-4 py-16">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 40 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 40 }}
-                    transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                    className="w-full max-w-lg overflow-hidden rounded-[3rem] 
-                    bg-white dark:bg-gray-950 
-                    border border-gray-200 dark:border-gray-800 
-                    shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)]"
-                  >
-                    {/* Top Gradient Bar */}
-                    <div className="h-2 bg-gradient-to-r from-teal-400 via-emerald-500 to-cyan-500" />
-
-                    {/* Header */}
-                    <div className="px-10 pt-10 pb-6 text-center">
-                      <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center 
-                      rounded-[2rem] bg-gradient-to-br from-teal-500 to-emerald-600 
-                      text-white shadow-lg">
-                        <CalendarIcon size={32} />
-                      </div>
-
-                      <h2 className="text-3xl font-black text-gray-900 dark:text-white">
-                        Quick <span className="text-teal-600">Booking</span>
-                      </h2>
-                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 font-medium">
-                        Secure your spot in the queue instantly
-                      </p>
-                    </div>
-
-                    {/* Content */}
-                    <motion.div
-                      initial="hidden"
-                      animate="visible"
-                      variants={{
-                        visible: { transition: { staggerChildren: 0.08 } },
-                      }}
-                      className="px-10 space-y-8"
-                    >
-                      {/* Department Selector (backend-ready UI) */}
-                      <motion.div
-                        variants={{
-                          hidden: { opacity: 0, y: 12 },
-                          visible: { opacity: 1, y: 0 },
-                        }}
-                        className="space-y-3"
-                      >
-                        <label className="ml-2 text-[10px] font-black uppercase tracking-[0.2em] 
-                        text-teal-600 dark:text-teal-400">
-                          Select Department
-                        </label>
-
-                        <div className="grid gap-2">
-                          {departments.map((dept) => (
-                            <button
-                              key={dept._id}
-                              onClick={() => setDepartmentId(dept._id)}
-                              className={`flex items-center gap-4 rounded-2xl border-2 p-4 
-                                transition-all active:scale-[0.97]
-                                ${
-                                  departmentId === dept._id
-                                    ? "border-teal-500 bg-teal-50 dark:bg-teal-950/20 text-teal-700 dark:text-teal-300"
-                                    : "border-transparent bg-gray-50 dark:bg-gray-900 text-gray-500"
-                                }`}
-                            >
-                              <span className="h-2 w-2 rounded-full bg-current opacity-70" />
-                              <span className="text-sm font-bold">{dept.name.toUpperCase()}</span>
-                            </button>
-                          ))}
-
-                        </div>
-                      </motion.div>
-
-                      {/* Appointment Date (ONLY allowed days) */}
-                      <motion.div
-                        variants={{
-                          hidden: { opacity: 0, y: 12 },
-                          visible: { opacity: 1, y: 0 },
-                        }}
-                        className="space-y-3"
-                      >
-                        <label className="ml-2 text-[10px] font-black uppercase tracking-[0.2em] 
-                        text-teal-600 dark:text-teal-400">
-                          Appointment Date
-                        </label>
-
-                        <div className="grid grid-cols-3 gap-3">
-                          {Array.from({ length: MAX_ADVANCE_DAYS + 1 }).map((_, i) => {
-                            const date = new Date(today);
-                            date.setDate(today.getDate() + i);
-                            const value = formatDate(date);
-                            const selected = appointmentDate === value;
-
-                            return (
-                              <button
-                                key={i}
-                                onClick={() => setAppointmentDate(value)}
-                                className={`rounded-2xl border p-4 text-center transition-all
-                                ${
-                                  selected
-                                    ? "bg-teal-500 border-teal-500 text-white shadow-lg scale-[1.03]"
-                                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                                }`}
-                              >
-                                <p className="text-[10px] font-black uppercase opacity-70">
-                                  {i === 0
-                                    ? "Today"
-                                    : i === 1
-                                    ? "Tomorrow"
-                                    : date.toLocaleDateString("en-US", { weekday: "short" })}
-                                </p>
-                                <p className="text-xl font-black">
-                                  {date.getDate()}
-                                </p>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* 🔹 Expected Token Preview (ADD HERE) */}
-                        {departmentId && appointmentDate && (
-                          <div
-                            className="
-                              mt-2
-                              rounded-2xl border border-teal-200 dark:border-teal-900/40
-                              bg-teal-50 dark:bg-teal-900/20
-                              px-5 py-4
-                              flex items-center justify-between
-                            "
-                          >
-                            <div>
-                              <p className="text-[10px] font-black uppercase tracking-widest text-teal-600 dark:text-teal-400">
-                                Estimated Token : {appointmentDate}
-                              </p>
-                              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mt-1">
-                                If You Book Now, Your Token May Be
-                              </p>
-                            </div>
-
-                            <span className="text-3xl font-black text-teal-600 dark:text-teal-400">
-                              #{previewLoading ? "…" : expectedTokenNumber ?? "--"}
-                            </span>
-                          </div>
-                        )}
-                      </motion.div>
-
-                      {/* Priority */}
-                      <motion.div
-                        variants={{
-                          hidden: { opacity: 0, y: 12 },
-                          visible: { opacity: 1, y: 0 },
-                        }}
-                        className="space-y-3"
-                      >
-                        <label className="ml-2 text-[10px] font-black uppercase tracking-[0.2em] 
-                        text-teal-600 dark:text-teal-400">
-                          Visit Priority
-                        </label>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setPriority("NORMAL")}
-                            className={`flex-1 rounded-xl border-2 py-3 text-xs font-bold transition-all
-                            ${
-                              priority === "NORMAL"
-                                ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600"
-                                : "border-transparent bg-gray-50 dark:bg-gray-900 text-gray-400"
-                            }`}
-                          >
-                            Normal
-                          </button>
-
-                          <button
-                            disabled
-                            className="flex-1 rounded-xl bg-gray-100 dark:bg-gray-800 py-3 
-                            text-xs font-bold text-gray-300 cursor-not-allowed flex items-center justify-center gap-1"
-                          >
-                            <User size={12} /> Senior
-                          </button>
-
-                          <button
-                            disabled
-                            className="flex-1 rounded-xl bg-gray-100 dark:bg-gray-800 py-3 
-                            text-xs font-bold text-gray-300 cursor-not-allowed flex items-center justify-center gap-1"
-                          >
-                            <AlertTriangle size={12} /> Emergency
-                          </button>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-
-                    {/* Footer */}
-                    <div className="mt-8 flex gap-4 bg-gray-50 dark:bg-gray-900/40 px-10 py-8">
-                      <button
-                        onClick={() => setShowCreateTokenModal(false)}
-                        className="flex-1 rounded-2xl py-4 text-xs font-black uppercase tracking-widest
-                        text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800
-                        transition-all active:scale-95"
-                      >
-                        Cancel
-                      </button>
-
-                      <button
-                        disabled={creating}
-                        onClick={createToken}
-                        className="flex-[1.5] rounded-2xl py-4 text-xs font-black uppercase tracking-widest
-                        bg-gray-900 dark:bg-white text-white dark:text-gray-900
-                        shadow-xl hover:-translate-y-1 active:scale-95 transition-all disabled:opacity-50"
-                      >
-                        {creating ? "Creating..." : "Confirm Booking"}
-                      </button>
-                    </div>
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
+          <CreateTokenModal
+            open={showCreateTokenModal}
+            onClose={() => setShowCreateTokenModal(false)}
+            {...bookingProps}
+          />
           {/* Cancel Modal Handler*/}
-          {showCancelModal && (
-            <div className="fixed inset-0 z-[60] overflow-y-auto no-scrollbar bg-black/50 backdrop-blur-sm">
-              {/* Wrapper allows vertical movement */}
-              <div className="min-h-screen flex items-start justify-center px-4 py-16">
-                <div
-                  className="
-                  w-full max-w-lg overflow-hidden rounded-[2.5rem]
-                  bg-white dark:bg-gray-900
-                  border border-gray-200 dark:border-gray-800
-                  shadow-[0_40px_80px_-20px_rgba(0,0,0,0.6)]
-                  transition-all duration-300 ease-out
-                  scale-100 opacity-100
-                  "
-                >
-                  {/* Top Gradient Bar */}
-                  <div className="h-2 w-full bg-gradient-to-r from-red-500 to-orange-500" />
+          <CancelTokenModal
+            open={showCancelModal}
+            onClose={() => setShowCancelModal(false)}
 
-                  {/* Header */}
-                  <div className="px-8 py-6">
-                    <h2 className="text-2xl font-black text-gray-900 dark:text-white">
-                      Manage Appointments
-                    </h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Cancel your active or upcoming visits.
-                    </p>
-                  </div>
+            token={token}
+            upcomingTokens={upcomingTokens}
+            cancellingId={cancellingId}
+            handleCancelToken={handleCancelToken}
+          />
 
-                  {/* Content */}
-                  <div className="px-8 max-h-[420px] overflow-y-auto no-scrollbar space-y-3">
-                    {(!token && upcomingTokens.length === 0) ? (
-                      <div className="py-10 text-center bg-gray-50 dark:bg-gray-800/50 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700">
-                        <p className="text-gray-400 font-bold">
-                          No active appointments found.
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Active Token */}
-                        {token && (
-                          <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-900/30 flex justify-between items-center">
-                            <div>
-                              <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest">
-                                Active Now
-                              </span>
-                              <p className="font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                #{token.tokenNumber} – {token.departmentName}
-                                <Badge date={new Date()} />
-                              </p>
-                            </div>
-
-                            <button
-                              disabled={cancellingId === token._id || token.status === "CALLED"}
-                              onClick={() => handleCancelToken(token._id)}
-                              className="bg-red-500 hover:bg-red-600 active:bg-red-700
-                              text-white px-4 py-2 rounded-xl text-xs font-bold
-                              transition-all active:scale-95 disabled:opacity-40"
-                            >
-                              {cancellingId === token._id ? "..." : "Cancel"}
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Upcoming Tokens */}
-                        {upcomingTokens.map((t) => (
-                          <div
-                            key={t._id}
-                            className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50
-                            border border-gray-200 dark:border-gray-700
-                            flex justify-between items-center"
-                          >
-                            <div>
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                Upcoming Visit
-                              </span>
-                              <p className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                                #{t.tokenNumber} – {t.departmentName}
-                                <Badge date={t.appointmentDate} />
-                              </p>
-                            </div>
-
-                            <button
-                              disabled={cancellingId === t._id}
-                              onClick={() => handleCancelToken(t._id)}
-                              className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20
-                              px-4 py-2 rounded-xl text-xs font-black
-                              transition-all active:scale-95 disabled:opacity-40"
-                            >
-                              {cancellingId === t._id ? "Wait..." : "Cancel"}
-                            </button>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                  </div>
-
-                  {/* Footer */}
-                  <div className="px-8 py-8 bg-gray-50 dark:bg-gray-900/40">
-                    <button
-                      onClick={() => setShowCancelModal(false)}
-                      className="w-full py-4 rounded-2xl
-                      bg-gray-100 dark:bg-gray-800
-                      text-gray-600 dark:text-gray-300
-                      font-bold transition-all
-                      hover:bg-gray-200 dark:hover:bg-gray-700
-                      active:scale-95"
-                    >
-                      Close Manager
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
           
           {/* FOOTER ACTIONS */}
           <footer className="flex flex-col sm:flex-row gap-4">
@@ -1074,7 +788,7 @@ useTokenSocket({
               onClick={() => setShowCreateTokenModal(true)}
               initial={{ opacity: 0, x: -120 }}
               whileInView={{ opacity: 1, x: 0 }}
-              viewport={{  }}
+              viewport={{ once: true}}
               transition={{ duration: 1, ease: [0.25, 0.25, 0.75, 0.75] }}
               className="flex-1 py-4 rounded-2xl bg-teal-600 text-white font-bold
                         shadow-lg shadow-teal-200 dark:shadow-none
@@ -1088,7 +802,7 @@ useTokenSocket({
               onClick={() => setShowCancelModal(true)}
               initial={{ opacity: 0, x: 120 }}
               whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ }}
+              viewport={{  once: true}}
               transition={{ duration: 1, ease: [0.25, 0.25, 0.75, 0.75] }}
               className="flex-1 py-4 rounded-2xl font-bold border transition-all
                         bg-white dark:bg-gray-900 text-red-500

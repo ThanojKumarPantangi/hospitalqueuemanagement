@@ -128,6 +128,8 @@ export const getMyCurrentTokenController = async (req, res) => {
       departmentName: token.department.name,
       priority:token.priority,
       waitingCount: token.waitingCount,
+      minMinutes: token.minMinutes,
+      maxMinutes: token.maxMinutes,
     });
     
   } catch (error) {
@@ -199,14 +201,14 @@ export const previewTokenNumber = async (req, res, next) => {
 export const getDoctorQueueSummaryController = async (req, res) => {
   try {
     const  departmentId  = req.user.departments;
-
+    const  userId=req.user._id;
     if (!departmentId) {
       return res.status(400).json({
         message: "Department ID is required",
       });
     }
 
-    const summary = await getDoctorQueueSummary({ departmentId });
+    const summary = await getDoctorQueueSummary({ departmentId ,userId});
 
     res.status(200).json({
       success: true,

@@ -16,11 +16,17 @@ export const createVisit = async ({
 
   if (!token) throw new Error("Token Not Found");
 
+  // 🔒 Check if visit already exists
+  const existingVisit = await Visit.findOne({ token: tokenId });
+  if (existingVisit) {
+    throw new Error("Visit already created for this token");
+  }
+
   if (token.status !== "CALLED" && token.status !== "COMPLETED") {
     throw new Error("Token is not in the valid state for visit creation");
   }
 
-  const visit = await Visit.create({
+  return await Visit.create({
     patient: token.patient._id,
     doctor: doctorId,
     department: token.department._id,
@@ -31,8 +37,6 @@ export const createVisit = async ({
     followUpDate,
     vitals,
   });
-
-  return visit;
 };
 
 

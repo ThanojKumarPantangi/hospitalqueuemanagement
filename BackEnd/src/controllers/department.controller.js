@@ -4,13 +4,17 @@ export const getAllDepartments = async (req, res) => {
   try {
     const departments = await Department.find(
       { isOpen: true },
-      { name: 1 }
-    );
+      { name: 1, consultationFee: 1, slotDurationMinutes: 1 }
+    ).lean();
 
-    res.status(200).json(departments);
+    return res.status(200).json({
+      success: true,
+      departments,
+    });
   } catch (error) {
-    res.status(400).json({
-      message: error.message,
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch departments",
     });
   }
 };

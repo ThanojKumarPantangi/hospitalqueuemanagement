@@ -49,19 +49,7 @@ function PublicLayout() {
       </header>
 
       {/* Main Content */}
-      <main
-        className="relative flex min-h-[calc(100vh-73px)]
-                   items-center justify-center p-6"
-      >
-        {/* Background glow */}
-        <div
-          className="pointer-events-none absolute top-0 left-1/2 -z-10
-                     h-[420px] w-full max-w-3xl -translate-x-1/2
-                     bg-gradient-to-r from-teal-400/15 to-emerald-400/10
-                     blur-[140px]
-                     dark:from-teal-500/10 dark:to-emerald-500/5"
-        />
-
+      <main>
         <div className="w-full transition-all duration-500 ease-in-out">
           <Outlet />
         </div>
@@ -70,7 +58,7 @@ function PublicLayout() {
       {/* Footer */}
       <footer
         className="py-6 text-center text-xs
-                   text-slate-400 dark:text-slate-600"
+                  text-slate-400 dark:text-slate-600"
       >
         © 2025 Hospital Management System. All rights reserved.
       </footer>

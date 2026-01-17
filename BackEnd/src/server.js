@@ -9,8 +9,6 @@ connectDB();
 
 const server = http.createServer(app);
 
-// initSocket(server);
-
 const io = initSocket(server);
 global.io = io;
 

@@ -62,7 +62,7 @@ const Toast = ({ message, type = "success", duration = 4000, onClose }) => {
       exit="exit"
       layout
       className={`
-        fixed top-6 right-6 z-[100]
+        fixed top-6 right-6 z-[1000]
         w-[22rem]
         rounded-2xl
         border border-white/20 dark:border-white/10

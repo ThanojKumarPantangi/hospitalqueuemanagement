@@ -22,6 +22,16 @@ router.get(
 );
 
 /**
+ * 👨‍⚕️ PATIENT → get public doctors list
+ */
+router.get(
+  "/doctors",
+  authMiddleware,
+  roleMiddleware("PATIENT"),
+  getPublicDoctors
+);
+
+/**
  * 👨‍💼 Admin → get any doctor profile by userId
  */
 router.get(
@@ -32,9 +42,9 @@ router.get(
 );
 
 /**
- * 👨‍⚕️ Doctor → update own profile
+ * 👨‍⚕️ Doctor → save own profile (create/update)
  */
-router.patch(
+router.post(
   "/me",
   authMiddleware,
   roleMiddleware("DOCTOR"),
@@ -42,23 +52,13 @@ router.patch(
 );
 
 /**
- * 👨‍💼 Admin → update any doctor profile
+ * 👨‍💼 Admin → save any doctor profile
  */
-router.patch(
+router.post(
   "/:userId",
   authMiddleware,
   roleMiddleware("ADMIN"),
   adminUpdateDoctorProfile
-);
-
-/**
- * 👨‍⚕️ PATIENT → Doctor profile
- */
-
-router.get("/doctors",
-  authMiddleware,
-  roleMiddleware("PATIENT"),
-  getPublicDoctors
 );
 
 export default router;

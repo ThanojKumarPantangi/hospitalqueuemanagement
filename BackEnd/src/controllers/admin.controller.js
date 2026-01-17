@@ -5,36 +5,151 @@ import { createAdminService } from "../services/admin.service.js";
 
 
 
-export const createDepartment=async(req,res)=>{
-    try {
-        const {name,maxCounters}=req.body;
-        const department = await Department.create({
-            name,
-            maxCounters,
-        });
-        res.status(201).json({
-            message: "Department created successfully",
-            department,
-        });
-    } catch (error) {
-        res.status(400).json({ message: error.message });
+export const createDepartment = async (req, res) => {
+  try {
+    // 🔐 Admin-only
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin access required",
+      }); 
     }
+    const { name, maxCounters, consultationFee, slotDurationMinutes } = req.body;
+
+    // 🛑 Basic validation
+    if (!name || consultationFee == null || slotDurationMinutes == null) {
+      return res.status(400).json({
+        success: false,
+        message: "name, consultationFee, and slotDurationMinutes are required",
+      });
+    }
+
+    const exists = await Department.exists({ name: name.trim().toLowerCase() });
+    if (exists) {
+      throw new Error("Department with this name already exists");
+    }
+
+    const department = await Department.create({
+      name: name.trim().toLowerCase(),
+      isOpen: true,
+      maxCounters: maxCounters ?? 1,
+      consultationFee: Number(consultationFee),
+      slotDurationMinutes: Number(slotDurationMinutes),
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Department created successfully",
+      department,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
 
-export const closeDepartment = async (req, res) => {
+export const updateDepartmentSettings = async (req, res) => {
   try {
-    const department = await Department.findById(req.params.departmentId);
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({
+        success: false,
+        message: "Admin access required",
+      });
+    }
 
+  const ADMIN_DEPARTMENT_EDIT_FIELDS = [
+    "name",
+    "maxCounters",
+    "consultationFee",
+    "slotDurationMinutes",
+  ];
+
+    const { departmentId } = req.params;
+    const payload = req.body;
+
+    const updateData = {};
+    for (const field of ADMIN_DEPARTMENT_EDIT_FIELDS) {
+      if (payload[field] !== undefined) {
+        updateData[field] = payload[field];
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields to update",
+      });
+    }
+
+    if (updateData.name) {
+      const normalizedName = updateData.name.trim().toLowerCase();
+
+      const exists = await Department.exists({
+        name: normalizedName,
+        _id: { $ne: departmentId },
+      });
+
+      if (exists) {
+        return res.status(400).json({
+          success: false,
+          message: "Department with this name already exists",
+        });
+      }
+
+      updateData.name = normalizedName;
+    }
+
+    const department = await Department.findByIdAndUpdate(
+      departmentId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        message: "Department not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      department,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const updateDepartmentStatus = async (req, res) => {
+  try {
+    const { isOpen } = req.body;
+    if (typeof isOpen !== "boolean") {
+      return res.status(400).json({ message: "isOpen must be boolean" });
+    }
+
+    const department = await Department.findById(req.params.departmentId);
     if (!department) {
       return res.status(404).json({ message: "Department not found" });
     }
 
-    department.isOpen = false;
+    department.isOpen = isOpen;
     await department.save();
 
-    res.status(200).json({ message: "Department closed successfully" });
+    res.status(200).json({
+      message: `Department ${isOpen ? "opened" : "closed"} successfully`,
+      isOpen: department.isOpen,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error closing department", error: error.message });
+    res.status(500).json({
+      message: "Error updating department status",
+      error: error.message,
+    });
   }
 };
 
@@ -49,14 +164,14 @@ export const createDoctor = async (req, res) => {
     }
 
     const doctor = await User.create({
-      name,
+      name:name.trim().toLowerCase(),
       email,
       doctorRollNo,
       role: "DOCTOR",
       departments: departmentIds,
       isVerified: false,
       isActive: true,
-      isAvailable: false,
+      isAvailable: true,
     });
 
     res.status(201).json({
@@ -138,7 +253,6 @@ export const updateDoctorDepartments = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-
 
 export const getDoctorById = async (req, res) => {
   try {
@@ -268,21 +382,53 @@ export const markDoctorAvailable = async (req, res) => {
 };
 
 export const markDoctorInactive = async (req, res) => {
-  const { doctorId } = req.body;
+  try {
+    const { doctorId } = req.body;
 
-  const doctor = await User.findById(doctorId);
-  if (!doctor) throw new Error("Doctor not found");
+    if (!doctorId) {
+      return res.status(400).json({
+        message: "Doctor ID is required",
+      });
+    }
 
-  doctor.isAvailable = false;
-  doctor.isActive = false;
-  await doctor.save();
+    const doctor = await User.findOne({
+      _id: doctorId,
+      role: "DOCTOR",
+    });
 
-  await Token.updateMany(
-    { assignedDoctor: doctorId, status: "CALLED" },
-    { status: "WAITING", assignedDoctor: null, calledAt: null }
-  );
+    if (!doctor) {
+      return res.status(404).json({
+        message: "Doctor not found",
+      });
+    }
 
-  res.status(200).json({ message: "Doctor marked as inactive" });
+    // Mark doctor inactive
+    doctor.isAvailable = false;
+    doctor.isActive = false;
+    await doctor.save();
+
+    // Reset any active tokens assigned to this doctor
+    await Token.updateMany(
+      {
+        assignedDoctor: doctorId,
+        status: "CALLED",
+      },
+      {
+        status: "WAITING",
+        assignedDoctor: null,
+        calledAt: null,
+      }
+    );
+
+    return res.status(200).json({
+      message: "Doctor marked as inactive",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to mark doctor as inactive",
+      error: error.message,
+    });
+  }
 };
 
 export const activateDoctor = async (req, res) => {
@@ -321,26 +467,57 @@ export const getDepartmentsStatus = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const departments = await Department.find({ isOpen: true }).lean();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
 
-    const result = [];
+    // Get ALL departments
+    const departments = await Department.find({}).lean();
 
-    for (const dept of departments) {
-      const currentToken = await Token.findOne({
-        department: dept._id,
-        appointmentDate: today,
-        status: "CALLED",
+    const result = await Promise.all(
+      departments.map(async (dept) => {
+        // CLOSED department → no token queries
+        if (!dept.isOpen) {
+          return {
+            _id: dept._id,
+            name: dept.name,
+            maxCounters: dept.maxCounters,
+            slotDurationMinutes: dept.slotDurationMinutes,
+            consultationFee: dept.consultationFee,
+            isOpen: false,
+            serving: "-",
+            waiting: 0,
+          };
+        }
+
+        // OPEN department → fetch token info
+        const [currentToken, waitingCount] = await Promise.all([
+          Token.findOne({
+            department: dept._id,
+            appointmentDate: { $gte: today, $lt: tomorrow },
+            status: "CALLED",
+          })
+            .sort({ calledAt: -1 })
+            .lean(),
+
+          Token.countDocuments({
+            department: dept._id,
+            appointmentDate: { $gte: today, $lt: tomorrow },
+            status: "WAITING",
+          }),
+        ]);
+
+        return {
+          _id: dept._id,
+          name: dept.name,
+          maxCounters: dept.maxCounters,
+          slotDurationMinutes: dept.slotDurationMinutes,
+          consultationFee: dept.consultationFee,
+          isOpen: true,
+          serving: currentToken ? currentToken.tokenNumber : "-",
+          waiting: waitingCount,
+        };
       })
-        .sort({ calledAt: -1 })
-        .lean();
-
-      result.push({
-        departmentId: dept._id,
-        departmentName: dept.name,
-        currentToken: currentToken ? currentToken.tokenNumber : null,
-        status: currentToken ? "SERVING" : "WAITING",
-      });
-    }
+    );
 
     res.status(200).json(result);
   } catch (error) {
@@ -355,27 +532,41 @@ export const getAdminDashboardSummary = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
 
     const [
       totalDoctors,
-      verifiedDoctors,
+      activeDoctors,
+      availableDoctors,
       pendingDoctors,
       openDepartments,
+      closedDepartments,
       todayTokens,
+      waitingTokens,
+      completedTokens,
     ] = await Promise.all([
       User.countDocuments({ role: "DOCTOR" }),
-      User.countDocuments({ role: "DOCTOR", isVerified: true }),
+      User.countDocuments({ role: "DOCTOR", isVerified: true ,isActive:true}),
+      User.countDocuments({ role: "DOCTOR", isVerified: true ,isAvailable:true}),
       User.countDocuments({ role: "DOCTOR", isVerified: false }),
       Department.countDocuments({ isOpen: true }),
-      Token.countDocuments({ appointmentDate: { $gte: today } }), 
+      Department.countDocuments({ isOpen: false }),
+      Token.countDocuments({ appointmentDate: { $gte: today, $lt: tomorrow } }), 
+      Token.countDocuments({ appointmentDate: { $gte: today, $lt: tomorrow }, status: "WAITING"}),
+      Token.countDocuments({ appointmentDate: { $gte: today, $lt: tomorrow }, status: "COMPLETED"})
     ]);
 
     res.status(200).json({
       totalDoctors,
-      verifiedDoctors,
+      activeDoctors,
+      availableDoctors,
       pendingDoctors,
       openDepartments,
+      closedDepartments,
       todayTokens,
+      waitingTokens,
+      completedTokens,
     });
   } catch (error) {
     res.status(500).json({ message: "Error generating dashboard summary", error: error.message });

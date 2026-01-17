@@ -1,0 +1,205 @@
+Date : 2026-01-07 17:44:36
+Directory : d:\Project\Hospital Queue Management
+Total : 132 files,  11571 codes, 731 comments, 1928 blanks, all 14230 lines
+
+Languages
++----------------+------------+------------+------------+------------+------------+
+| language       | files      | code       | comment    | blank      | total      |
++----------------+------------+------------+------------+------------+------------+
+| JavaScript JSX |         44 |      7,183 |        437 |        932 |      8,552 |
+| JavaScript     |         80 |      4,025 |        290 |        939 |      5,254 |
+| Markdown       |          2 |        283 |          0 |         36 |        319 |
+| PostCSS        |          4 |         66 |          4 |         20 |         90 |
+| HTML           |          1 |         13 |          0 |          1 |         14 |
+| XML            |          1 |          1 |          0 |          0 |          1 |
++----------------+------------+------------+------------+------------+------------+
+
+Directories
++---------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                          | files      | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                             |        132 |     11,571 |        731 |      1,928 |     14,230 |
+| BackEnd                                                                                                       |         63 |      3,900 |        276 |        877 |      5,053 |
+| BackEnd (Files)                                                                                               |          1 |        195 |          0 |         33 |        228 |
+| BackEnd\src                                                                                                   |         62 |      3,705 |        276 |        844 |      4,825 |
+| BackEnd\src (Files)                                                                                           |          2 |         83 |          8 |         26 |        117 |
+| BackEnd\src\config                                                                                            |          2 |         13 |          6 |          5 |         24 |
+| BackEnd\src\controllers                                                                                       |         15 |      1,497 |         89 |        304 |      1,890 |
+| BackEnd\src\middlewares                                                                                       |          4 |        100 |          7 |         23 |        130 |
+| BackEnd\src\models                                                                                            |         10 |        488 |          4 |         85 |        577 |
+| BackEnd\src\routes                                                                                            |         15 |        435 |         27 |        107 |        569 |
+| BackEnd\src\scripts                                                                                           |          1 |         27 |          0 |          6 |         33 |
+| BackEnd\src\services                                                                                          |          9 |        904 |         77 |        228 |      1,209 |
+| BackEnd\src\sockets                                                                                           |          3 |        144 |         58 |         57 |        259 |
+| BackEnd\src\utils                                                                                             |          1 |         14 |          0 |          3 |         17 |
+| FrontEnd                                                                                                      |         69 |      7,671 |        455 |      1,051 |      9,177 |
+| FrontEnd\Hospital                                                                                             |         69 |      7,671 |        455 |      1,051 |      9,177 |
+| FrontEnd\Hospital (Files)                                                                                     |          5 |        154 |          1 |          9 |        164 |
+| FrontEnd\Hospital\public                                                                                      |          1 |          1 |          0 |          0 |          1 |
+| FrontEnd\Hospital\src                                                                                         |         63 |      7,516 |        454 |      1,042 |      9,012 |
+| FrontEnd\Hospital\src (Files)                                                                                 |          3 |         99 |          8 |         34 |        141 |
+| FrontEnd\Hospital\src\api                                                                                     |          7 |        137 |         10 |         46 |        193 |
+| FrontEnd\Hospital\src\components                                                                              |         24 |      3,089 |        186 |        345 |      3,620 |
+| FrontEnd\Hospital\src\components\Bulletins                                                                    |          2 |        354 |         17 |         47 |        418 |
+| FrontEnd\Hospital\src\components\Calendar                                                                     |          1 |        120 |         10 |         17 |        147 |
+| FrontEnd\Hospital\src\components\DeviceRestriction                                                            |          2 |        150 |         12 |         18 |        180 |
+| FrontEnd\Hospital\src\components\Navbar                                                                       |          2 |        277 |         16 |         35 |        328 |
+| FrontEnd\Hospital\src\components\animation                                                                    |          2 |        262 |         24 |         34 |        320 |
+| FrontEnd\Hospital\src\components\badge                                                                        |          1 |         40 |          0 |         10 |         50 |
+| FrontEnd\Hospital\src\components\button                                                                       |          2 |        249 |         24 |         36 |        309 |
+| FrontEnd\Hospital\src\components\buttonmotion                                                                 |          1 |         59 |          0 |          3 |         62 |
+| FrontEnd\Hospital\src\components\icon                                                                         |          2 |        176 |         20 |         19 |        215 |
+| FrontEnd\Hospital\src\components\session                                                                      |          2 |        196 |          7 |         15 |        218 |
+| FrontEnd\Hospital\src\components\token                                                                        |          1 |        126 |          6 |         13 |        145 |
+| FrontEnd\Hospital\src\components\tokenmodal                                                                   |          3 |        340 |         15 |         33 |        388 |
+| FrontEnd\Hospital\src\components\ui                                                                           |          1 |        109 |          5 |         11 |        125 |
+| FrontEnd\Hospital\src\components\visit                                                                        |          2 |        631 |         30 |         54 |        715 |
+| FrontEnd\Hospital\src\context                                                                                 |          6 |        140 |          6 |         36 |        182 |
+| FrontEnd\Hospital\src\hooks                                                                                   |          5 |        124 |          3 |         38 |        165 |
+| FrontEnd\Hospital\src\layouts                                                                                 |          2 |        125 |         14 |         21 |        160 |
+| FrontEnd\Hospital\src\pages                                                                                   |         14 |      3,776 |        227 |        510 |      4,513 |
+| FrontEnd\Hospital\src\pages\admin                                                                             |          1 |          8 |          0 |          1 |          9 |
+| FrontEnd\Hospital\src\pages\auth                                                                              |          4 |        534 |         28 |         76 |        638 |
+| FrontEnd\Hospital\src\pages\doctor                                                                            |          4 |      1,617 |         99 |        197 |      1,913 |
+| FrontEnd\Hospital\src\pages\patient                                                                           |          5 |      1,617 |        100 |        236 |      1,953 |
+| FrontEnd\Hospital\src\routes                                                                                  |          2 |         26 |          0 |         12 |         38 |
++---------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++---------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| filename                                                                                                      | language       | code       | comment    | blank      | total      |
++---------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+
+| d:\Project\Hospital Queue Management\BackEnd\Readme.md                                                        | Markdown       |        195 |          0 |         33 |        228 |
+| d:\Project\Hospital Queue Management\BackEnd\src\app.js                                                       | JavaScript     |         69 |          8 |         19 |         96 |
+| d:\Project\Hospital Queue Management\BackEnd\src\config\database.config.js                                    | JavaScript     |         13 |          0 |          2 |         15 |
+| d:\Project\Hospital Queue Management\BackEnd\src\config\razorpay.js                                           | JavaScript     |          0 |          6 |          3 |          9 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\admin.controller.js                              | JavaScript     |        316 |          0 |         67 |        383 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\analytics.controller.js                          | JavaScript     |        156 |          0 |         21 |        177 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\auth.controller.js                               | JavaScript     |        103 |          0 |         22 |        125 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\department.controller.js                         | JavaScript     |         14 |          0 |          3 |         17 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\doctorProfile.controller.js                      | JavaScript     |         89 |         12 |         14 |        115 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\message.controller.js                            | JavaScript     |        103 |         12 |         17 |        132 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\otp.controller.js                                | JavaScript     |         23 |          0 |          7 |         30 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\payment.controller.js                            | JavaScript     |        143 |         25 |         29 |        197 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\payment.webhook.controller.js                    | JavaScript     |         43 |          5 |         14 |         62 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\refund.controller.js                             | JavaScript     |         59 |         13 |         16 |         88 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\session.controller.js                            | JavaScript     |         64 |          9 |         15 |         88 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\token.controller.js                              | JavaScript     |        187 |          1 |         34 |        222 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\tv.controller.js                                 | JavaScript     |         73 |          0 |         15 |         88 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\user.controller.js                               | JavaScript     |         53 |          9 |         16 |         78 |
+| d:\Project\Hospital Queue Management\BackEnd\src\controllers\visit.controller.js                              | JavaScript     |         71 |          3 |         14 |         88 |
+| d:\Project\Hospital Queue Management\BackEnd\src\middlewares\auth.middleware.js                               | JavaScript     |         31 |          4 |         10 |         45 |
+| d:\Project\Hospital Queue Management\BackEnd\src\middlewares\otpRateLimit.middleware.js                       | JavaScript     |         31 |          0 |          8 |         39 |
+| d:\Project\Hospital Queue Management\BackEnd\src\middlewares\rateLimiter.middleware.js                        | JavaScript     |         24 |          3 |          4 |         31 |
+| d:\Project\Hospital Queue Management\BackEnd\src\middlewares\role.middleware.js                               | JavaScript     |         14 |          0 |          1 |         15 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\department.model.js                                   | JavaScript     |         21 |          0 |          4 |         25 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\doctorProfile.model.js                                | JavaScript     |         62 |          0 |          4 |         66 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\message.model.js                                      | JavaScript     |         46 |          0 |         11 |         57 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\otp.model.js                                          | JavaScript     |         30 |          0 |          6 |         36 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\payment.model.js                                      | JavaScript     |         61 |          0 |         15 |         76 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\refreshToken.model.js                                 | JavaScript     |         30 |          0 |          6 |         36 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\session.model.js                                      | JavaScript     |         28 |          1 |          7 |         36 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\token.model.js                                        | JavaScript     |         86 |          3 |         11 |        100 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\user.model.js                                         | JavaScript     |         71 |          0 |         14 |         85 |
+| d:\Project\Hospital Queue Management\BackEnd\src\models\visit.model.js                                        | JavaScript     |         53 |          0 |          7 |         60 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\admin.routes.js                                       | JavaScript     |        105 |          0 |         19 |        124 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\analytics.routes.js                                   | JavaScript     |         46 |          0 |          9 |         55 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\auth.routes.js                                        | JavaScript     |          9 |          0 |          5 |         14 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\department.route.js                                   | JavaScript     |          6 |          0 |          4 |         10 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\doctorProfile.routes.js                               | JavaScript     |         41 |         15 |          8 |         64 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\message.routes.js                                     | JavaScript     |         35 |         12 |          8 |         55 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\otp.routes.js                                         | JavaScript     |         10 |          0 |          4 |         14 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\payment.route.js                                      | JavaScript     |         18 |          0 |          6 |         24 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\payment.webhook.routes.js                             | JavaScript     |          5 |          0 |          4 |          9 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\refund.routes.js                                      | JavaScript     |         12 |          0 |          4 |         16 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\session.routes.js                                     | JavaScript     |         25 |          0 |          6 |         31 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\token.routes.js                                       | JavaScript     |         75 |          0 |         16 |         91 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\tv.routes.js                                          | JavaScript     |         15 |          0 |          4 |         19 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\user.routes.js                                        | JavaScript     |          8 |          0 |          5 |         13 |
+| d:\Project\Hospital Queue Management\BackEnd\src\routes\visit.routes.js                                       | JavaScript     |         25 |          0 |          5 |         30 |
+| d:\Project\Hospital Queue Management\BackEnd\src\scripts\seedAdmin.js                                         | JavaScript     |         27 |          0 |          6 |         33 |
+| d:\Project\Hospital Queue Management\BackEnd\src\server.js                                                    | JavaScript     |         14 |          0 |          7 |         21 |
+| d:\Project\Hospital Queue Management\BackEnd\src\services\admin.service.js                                    | JavaScript     |         16 |          0 |          4 |         20 |
+| d:\Project\Hospital Queue Management\BackEnd\src\services\auth.service.js                                     | JavaScript     |        101 |          9 |         27 |        137 |
+| d:\Project\Hospital Queue Management\BackEnd\src\services\doctorProfile.service.js                            | JavaScript     |        111 |          9 |         27 |        147 |
+| d:\Project\Hospital Queue Management\BackEnd\src\services\message.service.js                                  | JavaScript     |         97 |          5 |         17 |        119 |
+| d:\Project\Hospital Queue Management\BackEnd\src\services\otp.service.js                                      | JavaScript     |         67 |          6 |         23 |         96 |
+| d:\Project\Hospital Queue Management\BackEnd\src\services\sessionRevoke.service.js                            | JavaScript     |         15 |          3 |          4 |         22 |
+| d:\Project\Hospital Queue Management\BackEnd\src\services\token.service.js                                    | JavaScript     |        412 |         45 |        105 |        562 |
+| d:\Project\Hospital Queue Management\BackEnd\src\services\tokenRotation.service.js                            | JavaScript     |         43 |          0 |         14 |         57 |
+| d:\Project\Hospital Queue Management\BackEnd\src\services\visit.service.js                                    | JavaScript     |         42 |          0 |          7 |         49 |
+| d:\Project\Hospital Queue Management\BackEnd\src\sockets\forceLogout.js                                       | JavaScript     |         11 |          0 |          3 |         14 |
+| d:\Project\Hospital Queue Management\BackEnd\src\sockets\index.js                                             | JavaScript     |        117 |         57 |         49 |        223 |
+| d:\Project\Hospital Queue Management\BackEnd\src\sockets\sessionSocketMap.js                                  | JavaScript     |         16 |          1 |          5 |         22 |
+| d:\Project\Hospital Queue Management\BackEnd\src\utils\jwt.util.js                                            | JavaScript     |         14 |          0 |          3 |         17 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\README.md                                              | Markdown       |         88 |          0 |          3 |         91 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\eslint.config.js                                       | JavaScript     |         37 |          0 |          2 |         39 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\index.html                                             | HTML           |         13 |          0 |          1 |         14 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\public\vite.svg                                        | XML            |          1 |          0 |          0 |          1 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\App.jsx                                            | JavaScript JSX |         50 |          5 |         19 |         74 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\api\auth.api.js                                    | JavaScript     |         13 |          0 |          4 |         17 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\api\axios.js                                       | JavaScript     |         46 |         10 |         17 |         73 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\api\doctor.api.js                                  | JavaScript     |         25 |          0 |          8 |         33 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\api\message.api.js                                 | JavaScript     |          6 |          0 |          2 |          8 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\api\session.api.js                                 | JavaScript     |         10 |          0 |          3 |         13 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\api\token.api.js                                   | JavaScript     |         27 |          0 |          8 |         35 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\api\visit.api.js                                   | JavaScript     |         10 |          0 |          4 |         14 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\Bulletins\BulletinHistoryModal.jsx      | JavaScript JSX |        135 |          6 |         10 |        151 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\Bulletins\Bulletins.jsx                 | JavaScript JSX |        219 |         11 |         37 |        267 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\Calendar\CustomCalendar.jsx             | JavaScript JSX |        120 |         10 |         17 |        147 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\DeviceRestriction\DeviceRestriction.jsx | JavaScript JSX |        127 |          9 |         12 |        148 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\DeviceRestriction\RoleDeviceGuard.jsx   | JavaScript JSX |         23 |          3 |          6 |         32 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\Navbar\DoctorNavbar.jsx                 | JavaScript JSX |        142 |          9 |         16 |        167 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\Navbar\PatientNavbar.jsx                | JavaScript JSX |        135 |          7 |         19 |        161 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\animation\AnimatedQuote.jsx             | JavaScript JSX |         91 |          8 |         12 |        111 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\animation\Loader.jsx                    | JavaScript JSX |        171 |         16 |         22 |        209 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\badge\badge.jsx                         | JavaScript JSX |         40 |          0 |         10 |         50 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\button\Logoutbutton.jsx                 | JavaScript JSX |        146 |         14 |         26 |        186 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\button\ThemeToggle.jsx                  | JavaScript JSX |        103 |         10 |         10 |        123 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\buttonmotion\AsyncMotionButton.jsx      | JavaScript JSX |         59 |          0 |          3 |         62 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\icon\HospitalBuildingSVG.jsx            | JavaScript JSX |         99 |         12 |         12 |        123 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\icon\HospitalIcon.jsx                   | JavaScript JSX |         77 |          8 |          7 |         92 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\session\LogoutAllButton.jsx             | JavaScript JSX |         60 |          0 |          6 |         66 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\session\SessionCard.jsx                 | JavaScript JSX |        136 |          7 |          9 |        152 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\token\StickyMiniToken.jsx               | JavaScript JSX |        126 |          6 |         13 |        145 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\tokenmodal\BaseModal.jsx                | JavaScript JSX |         41 |          1 |          3 |         45 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\tokenmodal\CancelTokenModal.jsx         | JavaScript JSX |         94 |          6 |         11 |        111 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\tokenmodal\CreateTokenModal.jsx         | JavaScript JSX |        205 |          8 |         19 |        232 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\ui\Toast.jsx                            | JavaScript JSX |        109 |          5 |         11 |        125 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\visit\VisitDetailsModal.jsx             | JavaScript JSX |        233 |         10 |         17 |        260 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\components\visit\VisitModal.jsx                    | JavaScript JSX |        398 |         20 |         37 |        455 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\context\AuthContext.js                             | JavaScript     |          2 |          0 |          2 |          4 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\context\AuthProvider.jsx                           | JavaScript JSX |         72 |          4 |         16 |         92 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\context\SocketContext.js                           | JavaScript     |          2 |          0 |          2 |          4 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\context\SocketProvider.jsx                         | JavaScript JSX |         40 |          0 |          9 |         49 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\context\ThemeContext.js                            | JavaScript     |          2 |          0 |          2 |          4 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\context\ThemeProvider.jsx                          | JavaScript JSX |         22 |          2 |          5 |         29 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\hooks\useAuth.js                                   | JavaScript     |          9 |          0 |          4 |         13 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\hooks\useDeviceType.js                             | JavaScript     |         16 |          0 |          6 |         22 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\hooks\useSocket.js                                 | JavaScript     |         13 |          0 |          4 |         17 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\hooks\useTheme.js                                  | JavaScript     |          9 |          0 |          4 |         13 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\hooks\useTokenSocket.js                            | JavaScript     |         77 |          3 |         20 |        100 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\index.css                                          | PostCSS        |         30 |          1 |         12 |         43 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\layouts\DeviceRestrictionLayout.jsx                | JavaScript JSX |         62 |          7 |          9 |         78 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\layouts\PublicLayout.jsx                           | JavaScript JSX |         63 |          7 |         12 |         82 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\main.jsx                                           | JavaScript JSX |         19 |          2 |          3 |         24 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\admin\Dashboard.jsx                          | JavaScript JSX |          8 |          0 |          1 |          9 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\auth\Login.css                               | PostCSS        |         14 |          3 |          3 |         20 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\auth\Login.jsx                               | JavaScript JSX |        182 |          8 |         21 |        211 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\auth\OtpVerify.jsx                           | JavaScript JSX |        174 |          6 |         31 |        211 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\auth\Signup.jsx                              | JavaScript JSX |        164 |         11 |         21 |        196 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\doctor\Dashboard.jsx                         | JavaScript JSX |        672 |         52 |         71 |        795 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\doctor\DoctorProfile.jsx                     | JavaScript JSX |        335 |         11 |         41 |        387 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\doctor\Queue.jsx                             | JavaScript JSX |        602 |         36 |         83 |        721 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\doctor\queue.css                             | PostCSS        |          8 |          0 |          2 |         10 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\patient\Dashboard.jsx                        | JavaScript JSX |        630 |         46 |        100 |        776 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\patient\MyVisits.jsx                         | JavaScript JSX |        218 |          9 |         29 |        256 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\patient\SessionSecurity.jsx                  | JavaScript JSX |         92 |          1 |          9 |        102 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\patient\Token.jsx                            | JavaScript JSX |        663 |         44 |         95 |        802 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\pages\patient\patient.css                          | PostCSS        |         14 |          0 |          3 |         17 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\routes\ProtectedRoute.jsx                          | JavaScript JSX |         13 |          0 |          6 |         19 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\src\routes\RoleRoute.jsx                               | JavaScript JSX |         13 |          0 |          6 |         19 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\tailwind.config.js                                     | JavaScript     |          7 |          0 |          1 |          8 |
+| d:\Project\Hospital Queue Management\FrontEnd\Hospital\vite.config.js                                         | JavaScript     |          9 |          1 |          2 |         12 |
+| Total                                                                                                         |                |     11,571 |        731 |      1,928 |     14,230 |
++---------------------------------------------------------------------------------------------------------------+----------------+------------+------------+------------+------------+

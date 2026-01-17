@@ -76,12 +76,12 @@ const tokenSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-// tokenNumber is unique PER department PER appointmentDate
+// already present
 tokenSchema.index(
   { department: 1, appointmentDate: 1, tokenNumber: 1 },
   { unique: true }
 );
-// 🔹 Queue fetch optimization (doctor calling next patient)
+
 tokenSchema.index({
   department: 1,
   appointmentDate: 1,
@@ -90,11 +90,23 @@ tokenSchema.index({
   createdAt: 1,
 });
 
-// 🔹 Patient active token lookup
 tokenSchema.index({
   patient: 1,
   appointmentDate: 1,
   status: 1,
+});
+
+// 🔥 ADD THESE
+tokenSchema.index({
+  appointmentDate: 1,
+  status: 1,
+});
+
+tokenSchema.index({
+  department: 1,
+  appointmentDate: 1,
+  status: 1,
+  calledAt: -1,
 });
 
 export default mongoose.model("Token", tokenSchema);

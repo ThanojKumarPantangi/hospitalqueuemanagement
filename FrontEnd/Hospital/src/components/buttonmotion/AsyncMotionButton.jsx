@@ -18,7 +18,10 @@ export default function AsyncMotionButton({
   return (
     <motion.button
       type="button"
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation(); // ✅ prevents parent card triggering
+        onClick?.(e);
+      }}
       disabled={loading || disabled}
       variants={variants}
       initial="idle"

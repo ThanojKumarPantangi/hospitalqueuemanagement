@@ -5,7 +5,7 @@ export const getMyDoctorProfileApi = () => {
 };
 
 export const updateDoctorProfileApi=(payload)=>{
-    return api.patch("api/doctors/me",payload)
+    return api.post("api/doctors/me",payload)
 }
 
 export const callNextPatientApi=()=>{
@@ -31,3 +31,11 @@ export const makeDoctorOnLeaveApi=()=>{
 export const makeDoctorOnAvailableApi=()=>{
   return api.patch(`/api/admin/doctor/return-from-leave`)
 }
+
+export const patientProfileApi = (patientId) => {
+  if (!patientId || typeof patientId !== "string") {
+    throw new Error("patientProfileApi requires a patientId string");
+  }
+
+  return api.get(`/api/patient-profile/${patientId}`);
+};

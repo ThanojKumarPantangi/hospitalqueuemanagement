@@ -1,12 +1,18 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, AlertCircle, Clock, Calendar } from "lucide-react";
+import { X, AlertCircle, Clock, Calendar,Check  } from "lucide-react";
+import { useState } from "react";
+
 
 export default function BulletinHistoryModal({
   open,
   onClose,
   bulletins = [],
   title = "Announcement History",
+  onMarkRead,
+  onMarkAllRead,
 }) {
+  const [filter, setFilter] = useState("ALL"); 
+
   // Animation Variants
   const modalVariants = {
     hidden: { opacity: 0, scale: 0.9, y: 20, x: "-50%" },
@@ -28,6 +34,12 @@ export default function BulletinHistoryModal({
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0 }
   };
+  const filteredBulletins = bulletins.filter((b) => {
+  if (filter === "UNREAD") return b.readAt === null;
+  if (filter === "READ") return b.readAt !== null;
+  return true; // ALL
+});
+
 
   return (
     <AnimatePresence>
@@ -64,7 +76,7 @@ export default function BulletinHistoryModal({
             "
           >
             {/* Header: Visual Depth */}
-            <div className="relative px-6 py-5 border-b border-gray-100 dark:border-gray-800/50 flex items-center justify-between bg-white/50 dark:bg-gray-900/50">
+            <div className="relative px-6 py-5 border-b border-gray-100 dark:border-gray-800/50 flex items-center justify-between bg-white/50 dark:bg-gray-900/50">   
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-6 bg-rose-500 rounded-full" />
                 <div>
@@ -76,8 +88,25 @@ export default function BulletinHistoryModal({
                   </p>
                 </div>
               </div>
-
-              <motion.button
+              <div className="flex items-center gap-3">
+                {bulletins.some((b) => b.readAt === null) && (
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => onMarkAllRead()}
+                    className="
+                      px-3 py-1.5
+                      text-[10px] font-bold uppercase tracking-wider
+                      rounded-full
+                      bg-emerald-100 dark:bg-emerald-500/10
+                      text-emerald-700 dark:text-emerald-400
+                      hover:bg-emerald-200 dark:hover:bg-emerald-500/20
+                      transition-colors
+                    "
+                  >
+                    Mark all read
+                  </motion.button>
+                )}
+                <motion.button
                 whileHover={{ rotate: 90 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={(e) => {
@@ -87,8 +116,31 @@ export default function BulletinHistoryModal({
                 className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-rose-500 transition-colors"
               >
                 <X size={18} />
-              </motion.button>
+                </motion.button>
+              </div>
             </div>
+            <div className="flex justify-end gap-2 mt-2 mr-3">
+              {["ALL", "UNREAD", "READ"].map((key) => (
+                <button
+                  key={key}
+                  onClick={() => setFilter(key)}
+                  className={`
+                    px-3 py-1
+                    text-[10px] font-bold uppercase tracking-wider
+                    rounded-full
+                    transition-colors
+                    ${
+                      filter === key
+                        ? "bg-rose-500 text-white"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    }
+                  `}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+
 
             {/* Content: Staggered List */}
             <motion.div
@@ -98,31 +150,39 @@ export default function BulletinHistoryModal({
               className="flex-1 overflow-y-auto px-6 py-6 space-y-4 scrollbar-hide"
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
-              {bulletins.length === 0 ? (
+              {filteredBulletins.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <div className="w-16 h-16 rounded-3xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center mb-4 border border-dashed border-gray-200 dark:border-gray-700">
                     <AlertCircle className="text-gray-300" size={32} />
                   </div>
-                  <p className="text-sm text-gray-400 font-medium">History is empty</p>
+                  <p className="text-sm text-gray-400 font-medium">
+                    {filter === "UNREAD"
+                      ? "No unread announcements"
+                      : filter === "READ"
+                      ? "No read announcements"
+                      : "History is empty"}
+                  </p>
                 </div>
               ) : (
-                bulletins.map((b) => (
+                filteredBulletins.map((b) => (
                   <motion.div
-                    key={b._id}
-                    variants={itemVariants}
-                    className="group relative flex gap-4 p-4 rounded-3xl bg-gray-50/50 dark:bg-gray-800/30 border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30 hover:bg-white dark:hover:bg-gray-800/50 transition-all duration-300"
+                  key={b._id}
+                  variants={itemVariants}
+                  className="group relative flex gap-4 p-4 rounded-3xl bg-gray-50/50 dark:bg-gray-800/30 border border-transparent hover:border-rose-100 dark:hover:border-rose-900/30 hover:bg-white dark:hover:bg-gray-800/50 transition-all duration-300"
                   >
+                    {/* LEFT ICON */}
                     <div className="flex-shrink-0 mt-1">
                       <div className="p-2 rounded-2xl bg-rose-50 dark:bg-rose-500/10 text-rose-500">
                         <AlertCircle size={16} />
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2">
+                    {/* CONTENT */}
+                    <div className="flex flex-col gap-2 flex-1">
                       <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed font-medium">
                         {b.content}
                       </p>
-                      
+
                       {b.createdAt && (
                         <div className="flex items-center gap-3">
                           <span className="flex items-center gap-1 text-[10px] font-bold text-gray-400 uppercase">
@@ -131,11 +191,49 @@ export default function BulletinHistoryModal({
                           </span>
                           <span className="flex items-center gap-1 text-[10px] font-bold text-rose-400/80 uppercase">
                             <Clock size={10} />
-                            {new Date(b.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(b.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </span>
                         </div>
                       )}
                     </div>
+
+                    {b.readAt === null ? (
+                      /* ✅ UNREAD → SHOW ACTION */
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => onMarkRead([b._id])}
+                        className="
+                          absolute top-4 right-4
+                          p-2 rounded-full
+                          bg-emerald-100 dark:bg-emerald-500/10
+                          text-emerald-600 dark:text-emerald-400
+                          hover:bg-emerald-200 dark:hover:bg-emerald-500/20
+                          transition-colors
+                        "
+                        title="Mark as read"
+                      >
+                        <Check size={14} />
+                      </motion.button>
+                    ) : (
+                      /* ✅ READ → SHOW STATE */
+                      <div
+                        className="
+                          absolute top-4 right-4
+                          flex items-center gap-1
+                          text-emerald-500
+                          text-[10px] font-semibold
+                          select-none
+                        "
+                        title={`Read at ${new Date(b.readAt).toLocaleString()}`}
+                      >
+                        <Check size={12} />
+                        Read
+                      </div>
+                    )}
                   </motion.div>
                 ))
               )}

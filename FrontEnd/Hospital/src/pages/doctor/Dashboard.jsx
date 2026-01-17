@@ -24,10 +24,13 @@ const Dashboard = () => {
             nextWaiting: [],
         });
 
+    const completed = Number(queue.completed) || 0;
+    const total = Number(queue.totalToday) || 0;
     const progressPercent =
-      queue.totalToday > 0
-        ? Math.round((queue.completed / queue.totalToday) * 100)
+      total > 0
+        ? Math.min(100, Math.max(0, Math.round((completed / total) * 100)))
         : 0;
+
     const [toast, setToast] = useState(null);
     const [formData, setFormData] = useState();
 
@@ -55,59 +58,6 @@ const Dashboard = () => {
         setLoading((s) => ({ ...s, [key]: false }));
       }
     };
-
-    const departmentId = formData?.user;
-    // socket Handling
-    useTokenSocket({
-      socketRef,
-      token:departmentId,
-      /* =========================
-        TOKEN CALLED (Doctor)
-      ========================= */
-      onCalled: ({ tokenId, tokenNumber, patientName }) => {
-        if (!tokenId) return;
-        console.log();
-        setToken({
-          _id: tokenId,
-          tokenNumber,
-          patientName,
-          status: "CALLED",
-        });
-      },
-
-      /* =========================
-        TOKEN COMPLETED
-      ========================= */
-      onCompleted: ({ tokenId }) => {
-        if (!tokenId) return;
-
-        setToken(prev =>
-          prev && prev._id === tokenId ? null : prev
-        );
-      },
-
-      /* =========================
-        TOKEN SKIPPED
-      ========================= */
-      onSkipped: ({ tokenId }) => {
-        if (!tokenId) return;
-
-        setToken(prev =>
-          prev && prev._id === tokenId ? null : prev
-        );
-      },
-
-      /* =========================
-        NO SHOW
-      ========================= */
-      onNoShow: ({ tokenId }) => {
-        if (!tokenId) return;
-
-        setToken(prev =>
-          prev && prev._id === tokenId ? null : prev
-        );
-      },
-    });
 
     // Doctor Availability
   const handleDoctorAvailability = async () => {
@@ -202,19 +152,21 @@ const Dashboard = () => {
       async function fetchData() {
         try {
           const res = await getMyDoctorProfileApi();
-  
           const profile = res?.data?.profile;
           if (!profile || !isMounted) return;
   
           setFormData({
             user: profile.user ?? {},
-            specialization: profile.specialization ?? "",
-            qualifications: profile.qualifications ?? [],
-            experienceYears: profile.experienceYears ?? 0,
-            consultationFee: profile.consultationFee ?? 0,
-            slotDurationMinutes: profile.slotDurationMinutes ?? 10,
-            opdTimings: profile.opdTimings ?? [],
-            bio: profile.bio ?? "",
+            specialization: profile.profile?.specialization ?? "",
+            qualifications: profile.profile?.qualifications ?? [],
+            experienceYears: profile.profile?.experienceYears ?? 0,
+            departmentId: profile.profile?.department?._id,
+            // 🔒 READ-ONLY (from Department)
+            consultationFee: profile.profile?.department?.consultationFee ?? 0,
+            slotDurationMinutes: profile.profile?.department?.slotDurationMinutes ?? 10,
+
+            opdTimings: profile.profile?.opdTimings ?? [],
+            bio: profile.profile?.bio ?? "",
           });
   
         } catch (error) {
@@ -225,6 +177,82 @@ const Dashboard = () => {
       fetchData();
       return () => { isMounted = false; };
     }, []);
+
+
+    // socket Handling
+    useTokenSocket({
+      socketRef,
+      departmentId: formData?.departmentId,
+      /* =========================
+        TOKEN CALLED (Doctor)
+      ========================= */
+      onCalled: ({ tokenId, tokenNumber, patientName }) => {
+        if (!tokenId) return;
+        console.log();
+        setToken({
+          _id: tokenId,
+          tokenNumber,
+          patientName,
+          status: "CALLED",
+        });
+      },
+
+      /* =========================
+        TOKEN COMPLETED
+      ========================= */
+      onCompleted: ({ tokenId }) => {
+        if (!tokenId) return;
+
+        setToken(prev =>
+          prev && prev._id === tokenId ? null : prev
+        );
+      },
+
+      /* =========================
+        TOKEN SKIPPED
+      ========================= */
+      onSkipped: ({ tokenId }) => {
+        if (!tokenId) return;
+
+        setToken(prev =>
+          prev && prev._id === tokenId ? null : prev
+        );
+      },
+
+      /* =========================
+        NO SHOW
+      ========================= */
+      onNoShow: ({ tokenId }) => {
+        if (!tokenId) return;
+
+        setToken(prev =>
+          prev && prev._id === tokenId ? null : prev
+        );
+      },
+    });
+
+    // Estimated Finish
+  const [estimatedFinish, setEstimatedFinish] = useState(null);
+
+  useEffect(() => {
+    const minutesToAdd = formData?.slotDurationMinutes;
+
+    if (!minutesToAdd || isNaN(minutesToAdd)) {
+      setEstimatedFinish(null);
+      return;
+    }
+
+    const now = new Date();
+    const finish = new Date(now.getTime() + minutesToAdd * 60 * 1000);
+
+    const formattedTime = finish.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    setEstimatedFinish(formattedTime);
+  }, [formData?.slotDurationMinutes]);
 
   return (
     <>
@@ -344,7 +372,7 @@ const Dashboard = () => {
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
                     <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
-                      {isConnected? "Live Updates":"Reload"}
+                      {isConnected? "Live Updates":"Offline"}
                     </span>
                   </div>
                 </div>
@@ -383,7 +411,7 @@ const Dashboard = () => {
                               {token?.patientName||token?.patient?.name?.toUpperCase()||'No Patient'}
                             </p>
                             <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                              <Timer size={12} /> 12m waiting
+                              <Timer size={12} /> {formData?.slotDurationMinutes} min/Patient
                             </p>
                           </div>
                         </div>
@@ -407,11 +435,11 @@ const Dashboard = () => {
                             <div className="flex gap-10">
                               <div className="space-y-1">
                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Avg Consult</p>
-                                <p className="text-2xl font-black text-gray-900 dark:text-white">8<span className="text-xs text-gray-400 ml-1">min</span></p>
+                                <p className="text-2xl font-black text-gray-900 dark:text-white">{formData?.slotDurationMinutes}<span className="text-xs text-gray-400 ml-1">min</span></p>
                               </div>
                               <div className="space-y-1">
                                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Queue Size</p>
-                                <p className="text-2xl font-black text-gray-900 dark:text-white">17<span className="text-xs text-gray-400 ml-1">pts</span></p>
+                                <p className="text-2xl font-black text-gray-900 dark:text-white">{queue?.remaining}<span className="text-xs text-gray-400 ml-1">pts</span></p>
                               </div>
                             </div>
                           </div>
@@ -420,9 +448,20 @@ const Dashboard = () => {
                           <div className="bg-gray-50/50 dark:bg-gray-800/20 p-5 rounded-3xl border border-gray-100 dark:border-gray-800/50 flex flex-col justify-center">
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Estimated Finish</p>
                             <div className="flex items-baseline gap-2">
-                              <p className="text-3xl font-black text-teal-600 dark:text-teal-400">1:40</p>
-                              <p className="text-sm font-bold text-gray-500 uppercase">pm</p>
+                              {estimatedFinish && token?._id ? (
+                                <>
+                                  <p className="text-3xl font-black text-teal-600 dark:text-teal-400">
+                                    {estimatedFinish.split(" ")[0]}
+                                  </p>
+                                  <p className="text-sm font-bold text-gray-500 uppercase">
+                                    {estimatedFinish.split(" ")[1]}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-sm text-gray-400">—</p>
+                              )}
                             </div>
+
                             <div className="mt-3 w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
                               <motion.div 
                                 initial={{ width: 0 }}
@@ -436,7 +475,7 @@ const Dashboard = () => {
                         {/* Action Bar */}
                         <div className="mt-8 flex items-center justify-between pt-6 border-t border-gray-50 dark:border-gray-800">
                           <div className="hidden md:block">
-                            <p className="text-xs text-gray-400 font-medium">Session ID: <span className="font-mono text-gray-600 dark:text-gray-300">HS-9923-B</span></p>
+                            <p className="text-xs text-gray-400 font-medium"><span className="font-mono text-gray-600 dark:text-gray-300"></span></p>
                           </div>
                           
                           <motion.button
@@ -527,7 +566,7 @@ const Dashboard = () => {
                                   {item.priority}
                                 </span>
                                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-tight">
-                                  Waiting: {item.waitingTime || '5m'}
+                                  Waiting: {item?.waitingTime}
                                 </span>
                               </div>
                             </div>
@@ -604,7 +643,7 @@ const Dashboard = () => {
 
                 {/* 2. DEPARTMENT ANNOUNCEMENTS (Bulletin) */}
                 <motion.div variants={itemVariants}  >
-                  <Bulletins departmentId={formData?.user?.departments}/>
+                  <Bulletins departmentId={formData?.departmentId}/>
                 </motion.div>
 
                 {/* 3. QUICK ACTIONS / ROOM STATUS */}

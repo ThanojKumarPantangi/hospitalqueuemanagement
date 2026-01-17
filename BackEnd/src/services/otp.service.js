@@ -15,12 +15,16 @@ const hashOTP = (otp) => {
 };
 
 /* ---------- send OTP ---------- */
-export const sendOTP = async (phone, email) => {
-  const user = await User.findOne({ phone, email });
+export const sendOTP = async (email) => {
+  const user = await User.findOne({ email });
   if (!user) throw new Error("User not found");
 
+  if (!user.phone) {
+    throw new Error("Phone number not registered");
+  }
+
   const existingOTP = await OTP.findOne({
-    phone,
+    email,
     expiresAt: { $gt: new Date() },
   });
 
@@ -28,42 +32,42 @@ export const sendOTP = async (phone, email) => {
     throw new Error("OTP already sent. Please wait.");
   }
 
-
   const otp = generateOTP();
-  console.log(otp);
+  console.log("OTP generated:",otp)
+  console.log(user.phone,email)
   const hashedOtp = hashOTP(otp);
 
-  // 🗄️ Store ONCE
   await OTP.create({
-    phone,
     email,
+    phone: user.phone, // derived, not trusted
     otp: hashedOtp,
     expiresAt: new Date(Date.now() + OTP_EXPIRY_MINUTES * 60000),
     attempts: 0,
     lockedUntil: null,
   });
 
-  // 📤 Send SAME OTP to multiple channels
-  // sendSms(phone, otp);    // SMS
-  //sendEmail(email, otp); // Email
+  // sendSms(user.phone, otp);
+  // sendEmail(email, otp);
 
   return true;
 };
 
 
+
+
 /* ---------- verify OTP ---------- */
-export const verifyOTP = async (phone, otp) => {
-  const otpRecord = await OTP.findOne({ phone });
+export const verifyOTP = async (email, otp) => {
+  const otpRecord = await OTP.findOne({ email });
 
   if (!otpRecord) {
-    throw new Error("Invalid OTP");
+    throw new Error("Invalid or expired OTP");
   }
 
   if (
     otpRecord.lockedUntil &&
     otpRecord.lockedUntil > new Date()
   ) {
-    throw new Error("Too many wrong attempts. Try again later.");
+    throw new Error("Too many attempts. Try again later.");
   }
 
   if (otpRecord.expiresAt < new Date()) {
@@ -71,6 +75,7 @@ export const verifyOTP = async (phone, otp) => {
   }
 
   const hashedOtp = hashOTP(otp);
+
   if (otpRecord.otp !== hashedOtp) {
     otpRecord.attempts += 1;
 
@@ -84,12 +89,14 @@ export const verifyOTP = async (phone, otp) => {
     throw new Error("Invalid OTP");
   }
 
+  // ✅ Mark phone verified using EMAIL lookup
   await User.findOneAndUpdate(
-    { phone },
+    { email },
     { isPhoneVerified: true }
   );
 
-  await OTP.deleteMany({ phone });
+  // ✅ Clean up OTPs for this user
+  await OTP.deleteMany({ email });
 
   return true;
 };

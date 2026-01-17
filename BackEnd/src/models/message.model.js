@@ -25,6 +25,7 @@ const messageSchema = new mongoose.Schema(
       type: String,
       enum: ["ANNOUNCEMENT", "QUEUE", "PAYMENT", "GENERAL"],
       default: "GENERAL",
+      index: true,
     },
 
     title: {
@@ -38,6 +39,14 @@ const messageSchema = new mongoose.Schema(
       trim: true,
     },
 
+    /** 🔥 NEW FIELD */
+    deliveredAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
+    /** ✅ USER ACTION ONLY */
     readAt: {
       type: Date,
       default: null,
@@ -45,13 +54,11 @@ const messageSchema = new mongoose.Schema(
     },
 
     metadata: {
-      type: Object, // optional: tokenId, departmentId, etc.
+      type: Object,
       default: {},
     },
   },
   { timestamps: true }
 );
-
-
 
 export default mongoose.model("Message", messageSchema);

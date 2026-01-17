@@ -8,6 +8,7 @@ import {
 import Toast from "../../components/ui/Toast";
 import Navbar from "../../components/Navbar/DoctorNavbar";
 import {getMyDoctorProfileApi,updateDoctorProfileApi} from "../../api/doctor.api";
+import Tooltip from "../../components/tooltip/Tooltip"
 
 const DoctorProfile = () => {
 
@@ -23,20 +24,23 @@ const DoctorProfile = () => {
     async function fetchData() {
       try {
         const res = await getMyDoctorProfileApi();
-
         const profile = res?.data?.profile;
         if (!profile || !isMounted) return;
 
         setFormData({
           user: profile.user ?? {},
-          specialization: profile.specialization ?? "",
-          qualifications: profile.qualifications ?? [],
-          experienceYears: profile.experienceYears ?? 0,
-          consultationFee: profile.consultationFee ?? 0,
-          slotDurationMinutes: profile.slotDurationMinutes ?? 10,
-          opdTimings: profile.opdTimings ?? [],
-          bio: profile.bio ?? "",
+          specialization: profile.profile?.specialization ?? "",
+          qualifications: profile.profile?.qualifications ?? [],
+          experienceYears: profile.profile?.experienceYears ?? 0,
+
+          // 🔒 READ-ONLY (from Department)
+          consultationFee: profile.profile?.department?.consultationFee ?? 0,
+          slotDurationMinutes: profile.profile?.department?.slotDurationMinutes ?? 10,
+
+          opdTimings: profile.profile?.opdTimings ?? [],
+          bio: profile.profile?.bio ?? "",
         });
+
 
       } catch (error) {
         console.error("Failed to fetch doctor profile:", error);
@@ -99,15 +103,12 @@ const DoctorProfile = () => {
 
     const payload = {
       bio,
-      consultationFee: Number(formData.consultationFee),
-      slotDurationMinutes: Number(formData.slotDurationMinutes),
       opdTimings: (formData.opdTimings ?? []).map(t => ({
         day: t.day,
         startTime: t.startTime,
         endTime: t.endTime,
       })),
     };
-
 
     const res=await updateDoctorProfileApi(payload);
     setToast({
@@ -205,7 +206,7 @@ const DoctorProfile = () => {
                     <div className="mt-6 p-4 rounded-3xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 flex gap-3">
                         <AlertCircle className="text-amber-600 shrink-0" size={20} />
                         <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">
-                        Read-only fields are verified by the hospital administration. Contact HR to request changes.
+                        Read-only fields are verified by the hospital administration. Contact ADMIN to request changes.
                         </p>
                     </div>
                     </div>
@@ -260,41 +261,46 @@ const DoctorProfile = () => {
 
                         {/* FEE & SLOT ROW */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-4">
+                          <div className="space-y-4">
                             <div className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-[0.2em]">
-                            <IndianRupee size={16} className="text-teal-500" />
-                            Consultation Fee
-                            </div>
-                            <div className="relative group">
-                            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none text-gray-400 group-focus-within:text-teal-500 transition-colors">
-                                <IndianRupee size={16} />
-                            </div>
-                            <input 
-                                type="number"
-                                name="consultationFee"
-                                value={formData?.consultationFee ?? ""}
-                                onChange={handleChange}
-                                className="w-full bg-gray-50 dark:bg-gray-800/50 border-2 border-transparent focus:border-teal-500/30 rounded-2xl py-4 pl-12 pr-6 text-base font-black outline-none transition-all dark:text-white"
-                            />
-                            </div>
-                        </div>
+                              <IndianRupee size={16} className="text-teal-500" />
+                              Consultation Fee
 
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-[0.2em]">
-                            <Clock size={16} className="text-teal-500" />
-                            Slot Duration
+                              <Tooltip text="This fee is set by hospital administration and cannot be edited">
+                                <AlertCircle size={14} className="text-gray-400 cursor-help" />
+                              </Tooltip>
                             </div>
-                            <select 
-                            name="slotDurationMinutes"
-                            value={formData?.slotDurationMinutes}
-                            onChange={handleChange}
-                            className="w-full bg-gray-50 dark:bg-gray-800/50 border-2 border-transparent focus:border-teal-500/30 rounded-2xl p-4 text-base font-black outline-none transition-all dark:text-white appearance-none cursor-pointer"
+
+                            <input
+                              type="number"
+                              value={formData?.consultationFee ?? ""}
+                              disabled
+                              className="w-full bg-gray-100 dark:bg-gray-800/40 border-2 border-dashed border-gray-300 rounded-2xl py-4 pl-12 pr-6 text-base font-black outline-none cursor-not-allowed dark:text-gray-400"
+                            />
+                          </div>
+
+
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-[0.2em]">
+                              <Clock size={16} className="text-teal-500" />
+                              Slot Duration
+
+                              <Tooltip text="Slot duration is defined by the department for queue consistency">
+                                <AlertCircle size={14} className="text-gray-400 cursor-help" />
+                              </Tooltip>
+                            </div>
+
+                            <select
+                              value={formData?.slotDurationMinutes}
+                              disabled
+                              className="w-full bg-gray-100 dark:bg-gray-800/40 border-2 border-dashed border-gray-300 rounded-2xl p-4 text-base font-black outline-none cursor-not-allowed dark:text-gray-400"
                             >
-                            {[5, 10, 15, 20, 30].map(m => <option key={m} value={m}
-                                    className="bg-white text-gray-900 dark:bg-gray-900 dark:text-white"
-                            >{m} Minutes / Patient</option>)}
+                              {[5, 10, 15, 20, 30].map(m => (
+                                <option key={m} value={m}>{m} Minutes / Patient</option>
+                              ))}
                             </select>
-                        </div>
+                          </div>
+
                         </div>
 
                         {/* OPD TIMINGS SECTION */}

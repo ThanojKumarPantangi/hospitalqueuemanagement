@@ -4,6 +4,7 @@ import PublicLayout from "./layouts/PublicLayout";
 
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
+import DoctorSignup from "./pages/auth/DoctorSignup";
 import OtpVerify from "./pages/auth/OtpVerify";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -14,13 +15,17 @@ import PatientDashboard from "./pages/patient/Dashboard";
 import Token from "./pages/patient/Token.jsx";
 import MyVisits from "./pages/patient/MyVisits.jsx";
 import SessionSecurity from "./pages/patient/SessionSecurity.jsx";
+import PatientProfile from "./pages/patient/PatientProfile.jsx";
 
 import DoctorDashboard from "./pages/doctor/Dashboard";
 import DoctorProfile from "./pages/doctor/DoctorProfile.jsx";
 import DoctorQueue from "./pages/doctor/Queue.jsx";
 
-
+import AdminLayout from "./layouts/AdminNavbarLayout.jsx";
 import AdminDashboard from "./pages/admin/Dashboard";
+import DoctorManagement from "./pages/admin/Doctors";
+import DepartmentManagement from "./pages/admin/Departments";
+import QueueMonitor from "./pages/admin/QueueMonitor";
 
 import Loader from "./components/animation/Loader";
 import Logout from "./components/button/Logoutbutton.jsx";
@@ -34,6 +39,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-otp" element={<OtpVerify />} />
+        <Route path="/doctor-signup" element={<DoctorSignup />} />
       </Route>
 
       <Route path="/loader" element={<Loader />} />
@@ -49,6 +55,7 @@ function App() {
             <Route path="/patient/tokens" element={<Token />} />
             <Route path="/patient/history" element={<MyVisits />} />
             <Route path="/patient/session" element={<SessionSecurity />} />
+            <Route path="/patient/profile" element={<PatientProfile />} />
           </Route>
 
           {/* DOCTOR */}
@@ -60,9 +67,13 @@ function App() {
 
           {/* ADMIN */}
           <Route element={<RoleRoute allowedRoles={["ADMIN"]} />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="doctors" element={<DoctorManagement />} />
+              <Route path="departments" element={<DepartmentManagement />} />
+              <Route path="queue-monitor" element={<QueueMonitor />} />
+            </Route>
           </Route>
-
         </Route>
       </Route>
 
