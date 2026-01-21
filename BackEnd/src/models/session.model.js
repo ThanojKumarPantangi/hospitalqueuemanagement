@@ -6,15 +6,36 @@ const sessionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
-    role: String,
-    device: String,
-    ipAddress: String,
+    role: {
+      type: String,
+      required: true,
+      enum: ["PATIENT", "DOCTOR", "ADMIN"],
+    },
+
+    device: {
+      type: String,
+      default: null,
+    },
+
+    ipAddress: {
+      type: String,
+      default: null,
+    },
+
+    location: {
+      city: { type: String, default: null },
+      region: { type: String, default: null },
+      country: { type: String, default: null },
+      timezone: { type: String, default: null },
+    },
 
     isActive: {
       type: Boolean,
       default: true,
+      index: true,
     },
 
     lastSeenAt: {
@@ -25,11 +46,11 @@ const sessionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🧹 AUTO DELETE after 10 days of inactivity
+sessionSchema.index({ user: 1, isActive: 1 });
+
 sessionSchema.index(
   { lastSeenAt: 1 },
   { expireAfterSeconds: 10 * 24 * 60 * 60 }
 );
-
 
 export default mongoose.model("Session", sessionSchema);

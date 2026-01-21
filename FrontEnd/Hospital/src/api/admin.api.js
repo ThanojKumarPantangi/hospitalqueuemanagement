@@ -69,3 +69,7 @@ export const getAllDepartmentsApi=()=>{
 export const createDoctorApi=(payload)=>{
   return api.post("/api/admin/doctor",payload)
 }
+
+export const updateDoctorDepartmentsApi=(doctorId,payload)=>{
+  return api.patch(`/api/admin/departments/${doctorId}`,payload)
+}

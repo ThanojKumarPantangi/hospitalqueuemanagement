@@ -155,7 +155,7 @@ export const updateDepartmentStatus = async (req, res) => {
 
 export const createDoctor = async (req, res) => {
   try {
-    const { name, email, doctorRollNo, departmentIds = [] } = req.body;
+    const { name, email, doctorRollNo, departmentIds} = req.body;
 
     if (!Array.isArray(departmentIds) || departmentIds.length === 0) {
       return res.status(400).json({
@@ -226,11 +226,11 @@ export const getNotVerifiedDoctors = async (req, res) => {
 export const updateDoctorDepartments = async (req, res) => {
   try {
     const { doctorId } = req.params;
-    const { departmentIds } = req.body;
+    const { departmentId } = req.body;
 
-    if (!Array.isArray(departmentIds) || departmentIds.length === 0) {
+    if (!departmentId) {
       return res.status(400).json({
-        message: "At least one department is required",
+        message: "Department is required",
       });
     }
 
@@ -239,15 +239,23 @@ export const updateDoctorDepartments = async (req, res) => {
       role: "DOCTOR",
     });
 
+    const token=await Token.findOne({assignedDoctor:doctorId,status:"CALLED"})
+    if(token){
+      return res.status(400).json({
+        message: "Doctor is currently serving a patient",
+      });
+    }
+
     if (!doctor) {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    doctor.departments = departmentIds;
+    // ✅ store as single department
+    doctor.departments = departmentId;
     await doctor.save();
 
     res.status(200).json({
-      message: "Doctor departments updated successfully",
+      message: "Doctor department updated successfully",
     });
   } catch (error) {
     res.status(400).json({ message: error.message });

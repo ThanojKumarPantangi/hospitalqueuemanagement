@@ -6,6 +6,7 @@ import LogoutAllButton from "../../components/session/LogoutAllButton";
 import Loader from "../../components/animation/Loader";
 import Toast from "../../components/ui/Toast";
 import Navbar from '../../components/Navbar/PatientNavbar';
+import { Link } from "react-router-dom";
 
 import {getMySessionApi} from "../../api/session.api";
 
@@ -58,18 +59,39 @@ export default function SessionSecurity() {
       <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 p-4 md:p-6 space-y-8 pb-24">
         <Navbar activePage="Security" />
         <main className="max-w-5xl mx-auto space-y-8">
-          <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center gap-3 mb-2">
-            <ShieldCheck className="text-emerald-500 w-8 h-8" />
-            <h2 className="text-2xl font-bold text-white">Security & Sessions</h2>
-          </div>
-          <p className="text-gray-400">
-            Manage your active sessions and log out of devices you dont recognize.
-          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            {/* Left side */}
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <ShieldCheck className="text-emerald-500 w-8 h-8" />
+                <h2 className="text-2xl font-bold text-white">Security & Sessions</h2>
+              </div>
+
+              <p className="text-gray-400">
+                Manage your active sessions and log out of devices you dont recognize.
+              </p>
+            </div>
+
+            {/* Right side button */}
+            <Link
+              to="/patient/change-password"
+              className="
+                inline-flex items-center justify-center gap-2
+                px-4 py-2 rounded-xl
+                bg-gray-900/60 border border-gray-700
+                text-sm font-semibold text-teal-300
+                hover:bg-gray-900 hover:border-teal-400/40 hover:text-teal-200
+                transition duration-200
+                shadow-sm
+                w-full sm:w-auto
+              "
+            >
+              🔒 Change Password
+            </Link>
           </motion.div>
 
           <div className="space-y-4">

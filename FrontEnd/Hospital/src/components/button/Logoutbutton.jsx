@@ -1,73 +1,112 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useSocket } from "../../hooks/useSocket";
 
-
 const Logout = ({
-  brandName = "NEURAL",
-  brandAccent = "CARE",
+  brandName = "KUMAR",
+  brandAccent = "HOSPITAL",
   duration = 3000,
-  onCancel = () => console.log(),
+  onCancel = () => console.log("Logout cancelled"),
 }) => {
   const [progress, setProgress] = useState(0);
-  const { user,logout } = useAuth();
-  const cancelledRef = useRef(false);
-  const completedRef = useRef(false);
-  const { disconnectSocket } = useSocket();
 
+  const { user, logout } = useAuth();
+  const { disconnectSocket } = useSocket();
   const navigate = useNavigate();
 
+  const cancelledRef = useRef(false);
+  const completedRef = useRef(false);
+
+  const timerRef = useRef(null);
+  const redirectTimeoutRef = useRef(null);
+
+  const clearTimers = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (redirectTimeoutRef.current) {
+      clearTimeout(redirectTimeoutRef.current);
+      redirectTimeoutRef.current = null;
+    }
+  }, []);
+
+  const completeLogout = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+
+    clearTimers();
+
+    try {
+      // 🔌 Step 1: close socket
+      disconnectSocket?.();
+    } catch (e) {
+      console.log("disconnectSocket error:", e);
+    }
+
+    try {
+      // 🔐 Step 2: clear auth state / token
+      logout?.();
+    } catch (e) {
+      console.log("logout error:", e);
+    }
+
+    // ➡️ Step 3: redirect
+    redirectTimeoutRef.current = setTimeout(() => {
+      navigate("/login");
+    }, 500);
+  }, [clearTimers, disconnectSocket, logout, navigate]);
+
   useEffect(() => {
-    const intervalTime = 50; // Update every 50ms
+    cancelledRef.current = false;
+    completedRef.current = false;
+
+    const intervalTime = 50;
     const step = (intervalTime / duration) * 100;
 
-    const timer = setInterval(() => {
-      setProgress((oldProgress) => {
-        // ❌ stop if cancelled BEFORE completion
-        if (cancelledRef.current) {
-          clearInterval(timer);
-          return oldProgress;
+    timerRef.current = setInterval(() => {
+      if (cancelledRef.current || completedRef.current) return;
+
+      setProgress((old) => {
+        const next = Math.min(old + step, 100);
+
+        if (next >= 100 && !completedRef.current) {
+          queueMicrotask(() => completeLogout());
         }
 
-        // ✅ logout completes ONLY ONCE
-        if (oldProgress >= 100 && !completedRef.current) {
-          completedRef.current = true;
-          clearInterval(timer);
-
-          // 🔐 remove token ONLY when logout is confirmed
-          logout();
-          
-
-          // ➡️ redirect automatically after short delay
-          setTimeout(() => {
-             navigate("/login");
-          }, 500);
-
-          return 100;
-        }
-
-        // clamp progress safely
-        return Math.min(oldProgress + step, 100);
+        return next;
       });
     }, intervalTime);
 
-    return () => clearInterval(timer);
-  }, [duration, navigate,logout,disconnectSocket]);
+    return () => {
+      clearTimers();
+    };
+  }, [duration, clearTimers, completeLogout]);
 
   const handleCancel = () => {
-  if (completedRef.current) return;
+    if (completedRef.current) return;
 
-  cancelledRef.current = true;
-  onCancel();
+    cancelledRef.current = true;
+    clearTimers();
 
-  if (user?.role === "ADMIN") navigate("/admin/dashboard");
-  else if (user?.role === "DOCTOR") navigate("/doctor/dashboard");
-  else navigate("/patient/dashboard");
-};
+    onCancel?.();
 
+    if (user?.role === "ADMIN") navigate("/admin/dashboard");
+    else if (user?.role === "DOCTOR") navigate("/doctor/dashboard");
+    else navigate("/patient/dashboard");
+  };
 
-  /* ---------------- UI BELOW IS UNCHANGED ---------------- */
+  // ✅ Status helper for checklist
+  const getStatus = (value, start, end) => {
+    if (value < start) return { text: "Pending", className: "text-slate-600" };
+    if (value >= end) return { text: "Done", className: "text-emerald-500" };
+    return { text: "In progress", className: "text-rose-500 animate-pulse" };
+  };
+
+  const step1 = getStatus(progress, 0, 35);
+  const step2 = getStatus(progress, 35, 75);
+  const step3 = getStatus(progress, 75, 100);
 
   return (
     <div className="relative min-h-screen w-full bg-[#050a15] flex items-center justify-center font-sans overflow-hidden p-6">
@@ -120,35 +159,25 @@ const Logout = ({
             <span className="text-rose-500">{brandAccent}</span>
           </h1>
           <p className="text-slate-400 text-sm mt-3 font-medium px-4 leading-relaxed">
-            Terminating secure session and protecting patient data...
+            Ending your session safely and signing you out...
           </p>
         </div>
 
-        {/* Security Checklist */}
+        {/* Security Checklist (UPDATED NAMES) */}
         <div className="w-full space-y-4 bg-black/30 p-6 rounded-3xl border border-white/5 mb-8">
           <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em]">
-            <span className="text-slate-500">Database Sync</span>
-            <span className={progress > 30 ? "text-emerald-500" : "text-slate-600"}>
-              {progress > 30 ? "Complete" : "Wait..."}
-            </span>
+            <span className="text-slate-500">Closing Socket Session</span>
+            <span className={step1.className}>{step1.text}</span>
           </div>
+
           <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em]">
-            <span className="text-slate-500">Encryption Lock</span>
-            <span className={progress > 60 ? "text-emerald-500" : "text-slate-600"}>
-              {progress > 60 ? "Active" : "Wait..."}
-            </span>
+            <span className="text-slate-500">Clearing Local Session</span>
+            <span className={step2.className}>{step2.text}</span>
           </div>
+
           <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em]">
-            <span className="text-slate-500">Auth Token</span>
-            <span
-              className={
-                progress > 90
-                  ? "text-emerald-500"
-                  : "text-rose-500 animate-pulse"
-              }
-            >
-              {progress > 90 ? "Revoked" : "Revoking..."}
-            </span>
+            <span className="text-slate-500">Redirecting Securely</span>
+            <span className={step3.className}>{step3.text}</span>
           </div>
         </div>
 
@@ -162,6 +191,7 @@ const Logout = ({
               {Math.round(progress)}%
             </span>
           </div>
+
           <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden p-[2px] border border-white/5">
             <div
               className="h-full bg-gradient-to-r from-blue-600 via-rose-500 to-rose-400 rounded-full transition-all duration-75 ease-linear"

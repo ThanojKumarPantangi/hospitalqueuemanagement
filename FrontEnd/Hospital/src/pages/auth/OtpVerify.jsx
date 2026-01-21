@@ -11,6 +11,9 @@ import {
   RefreshCcw,
   Loader2,
   Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 
 /* =========================
@@ -18,11 +21,11 @@ import {
 ========================= */
 const overlayVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.18 } },
+  visible: { opacity: 1, transition: { duration: 0.2, ease: "easeOut" } },
 };
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 26, scale: 0.98 },
+  hidden: { opacity: 0, y: 28, scale: 0.985 },
   visible: {
     opacity: 1,
     y: 0,
@@ -33,7 +36,7 @@ const cardVariants = {
 
 const contentVariants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.06, delayChildren: 0.03 } },
+  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
 };
 
 const itemVariants = {
@@ -51,6 +54,28 @@ const shakeVariants = {
     x: [0, -5, 5, -4, 4, -3, 3, 0],
     transition: { duration: 0.22 },
   },
+};
+
+const floatSlow = {
+  animate: {
+    y: [0, -12, 0],
+    x: [0, 8, 0],
+    transition: { duration: 8, repeat: Infinity, ease: "easeInOut" },
+  },
+};
+
+const floatSlower = {
+  animate: {
+    y: [0, 14, 0],
+    x: [0, -10, 0],
+    transition: { duration: 10, repeat: Infinity, ease: "easeInOut" },
+  },
+};
+
+const buttonVariants = {
+  idle: { scale: 1 },
+  hover: { scale: 1.02 },
+  tap: { scale: 0.985 },
 };
 
 /* =========================
@@ -76,7 +101,9 @@ function OtpVerify() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [timer, setTimer] = useState(300);
+  // ✅ FIX: timer should NOT start until OTP is successfully sent
+  const [timer, setTimer] = useState(0);
+
   const [sending, setSending] = useState(false);
 
   const [toast, setToast] = useState({
@@ -91,6 +118,7 @@ function OtpVerify() {
   const didSendOnce = useRef(false);
   const sendingRef = useRef(false);
 
+  // ✅ canResend only when timer is 0 AND not sending
   const canResend = timer === 0 && !sending;
 
   const finalOtp = useMemo(() => otp.join(""), [otp]);
@@ -101,12 +129,20 @@ function OtpVerify() {
 
   const resendProgress = useMemo(() => {
     // 0% when timer=300, 100% when timer=0
-    const pct = Math.round(((300 - timer) / 300) * 100);
+    const total = 300;
+    if (timer <= 0) return 100;
+    const pct = Math.round(((total - timer) / total) * 100);
     return Math.min(100, Math.max(0, pct));
+  }, [timer]);
+
+  const timerLabel = useMemo(() => {
+    if (timer <= 0) return "Ready";
+    return `${timer}s`;
   }, [timer]);
 
   /* ---------------- TIMER ---------------- */
   useEffect(() => {
+    // ✅ only run countdown when timer is > 0
     if (timer <= 0) return;
 
     const interval = setInterval(() => {
@@ -133,11 +169,15 @@ function OtpVerify() {
         type: "success",
       });
 
+      // ✅ FIX: start timer ONLY after successful send
       setTimer(300);
     } catch (err) {
       const msg = err.response?.data?.message || "Try again after some time";
       setError(msg);
       setToast({ show: true, message: msg, type: "error" });
+
+      // optional: keep timer 0 so resend stays available if send failed
+      setTimer(0);
     } finally {
       sendingRef.current = false;
       setSending(false);
@@ -256,20 +296,20 @@ function OtpVerify() {
         animate="visible"
         className="min-h-screen relative overflow-hidden bg-[#060B16]"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(20,184,166,0.18),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(99,102,241,0.14),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.12),transparent_55%)]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/70" />
+        {/* Aurora layers */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(20,184,166,0.20),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(99,102,241,0.16),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.14),transparent_55%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-black/75" />
 
+        {/* Floating blobs */}
         <motion.div
-          animate={{ y: [0, -12, 0], x: [0, 8, 0] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -top-24 -left-24 w-[380px] h-[380px] rounded-full bg-teal-500/10 blur-3xl"
+          {...floatSlow}
+          className="absolute -top-24 -left-24 w-[380px] h-[380px] rounded-full bg-teal-500/12 blur-3xl"
         />
         <motion.div
-          animate={{ y: [0, 14, 0], x: [0, -10, 0] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -bottom-28 -right-28 w-[420px] h-[420px] rounded-full bg-indigo-500/10 blur-3xl"
+          {...floatSlower}
+          className="absolute -bottom-28 -right-28 w-[420px] h-[420px] rounded-full bg-indigo-500/12 blur-3xl"
         />
 
         {/* Content */}
@@ -286,8 +326,19 @@ function OtpVerify() {
               backdrop-blur-2xl
               shadow-[0_30px_90px_rgba(0,0,0,0.70)]
               overflow-hidden
+              relative
             "
           >
+            {/* subtle card glow */}
+            <motion.div
+              animate={{ opacity: [0.2, 0.35, 0.2] }}
+              transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
+              className="
+                absolute inset-0 pointer-events-none
+                bg-[radial-gradient(circle_at_top,rgba(45,212,191,0.16),transparent_55%)]
+              "
+            />
+
             {/* Header */}
             <div className="relative px-7 pt-8 pb-6 border-b border-white/10">
               <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-indigo-500/10 to-purple-500/10" />
@@ -309,11 +360,27 @@ function OtpVerify() {
                       {maskEmail(email)}
                     </span>
                   </p>
+
+                  <div
+                    className="
+                      mt-3 inline-flex items-center gap-2
+                      px-3 py-1.5 rounded-2xl
+                      bg-white/5 border border-white/10
+                      text-xs font-bold text-white/70
+                    "
+                  >
+                    <Sparkles className="w-4 h-4 text-teal-300" />
+                    Enter the 6-digit OTP to verify
+                  </div>
                 </div>
 
-                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <motion.div
+                  whileHover={{ rotate: 2, scale: 1.03 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 18 }}
+                  className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center"
+                >
                   <ShieldCheck className="w-6 h-6 text-teal-300" />
-                </div>
+                </motion.div>
               </div>
 
               {/* Mini progress */}
@@ -323,9 +390,8 @@ function OtpVerify() {
                     <Clock className="w-4 h-4 text-white/50" />
                     {canResend ? "You can resend now" : "Resend cooldown"}
                   </div>
-                  <span className="text-white/70 font-bold">
-                    {canResend ? "Ready" : `${timer}s`}
-                  </span>
+
+                  <span className="text-white/70 font-bold">{timerLabel}</span>
                 </div>
 
                 <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden border border-white/10">
@@ -335,6 +401,11 @@ function OtpVerify() {
                     transition={{ duration: 0.35 }}
                     className="h-full bg-gradient-to-r from-teal-400 via-indigo-400 to-purple-400"
                   />
+                </div>
+
+                <div className="mt-2 text-[11px] text-white/50 flex items-center gap-2">
+                  <Info className="w-3.5 h-3.5" />
+                  Timer starts only after OTP is successfully sent.
                 </div>
               </div>
             </div>
@@ -348,7 +419,7 @@ function OtpVerify() {
               variants={contentVariants}
               initial="hidden"
               animate="visible"
-              className="px-7 py-7 space-y-5"
+              className="px-7 py-7 space-y-5 relative"
             >
               {/* OTP inputs */}
               <motion.div variants={itemVariants}>
@@ -361,7 +432,7 @@ function OtpVerify() {
                   {otp.map((data, index) => (
                     <motion.input
                       key={index}
-                      whileFocus={{ scale: 1.03 }}
+                      whileFocus={{ scale: 1.04 }}
                       transition={{ type: "spring", stiffness: 300, damping: 22 }}
                       type="text"
                       inputMode="numeric"
@@ -406,9 +477,15 @@ function OtpVerify() {
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
-                    className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-200"
+                    className="
+                      rounded-2xl border border-rose-500/20
+                      bg-rose-500/10 px-4 py-3
+                      text-xs font-semibold text-rose-200
+                      flex items-start gap-2
+                    "
                   >
-                    {error}
+                    <AlertTriangle className="w-4 h-4 mt-0.5 text-rose-300" />
+                    <span>{error}</span>
                   </motion.div>
                 ) : null}
               </AnimatePresence>
@@ -416,8 +493,10 @@ function OtpVerify() {
               {/* Verify button */}
               <motion.div variants={itemVariants} className="pt-1">
                 <motion.button
-                  whileHover={{ scale: loading ? 1 : 1.02 }}
-                  whileTap={{ scale: loading ? 1 : 0.98 }}
+                  variants={buttonVariants}
+                  initial="idle"
+                  whileHover={!loading ? "hover" : "idle"}
+                  whileTap={!loading ? "tap" : "idle"}
                   disabled={loading}
                   className="
                     w-full rounded-2xl py-3.5
@@ -425,19 +504,54 @@ function OtpVerify() {
                     text-sm font-black text-[#041018]
                     shadow-[0_18px_50px_rgba(20,184,166,0.25)]
                     disabled:opacity-70 disabled:cursor-not-allowed
-                    transition
+                    transition relative overflow-hidden
                   "
                 >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Verifying...
-                    </span>
-                  ) : (
-                    <span className="flex items-center justify-center gap-2">
-                      VERIFY ACCOUNT <ArrowRight className="w-4 h-4" />
-                    </span>
-                  )}
+                  {/* shine */}
+                  <motion.span
+                    aria-hidden="true"
+                    className="
+                      absolute inset-0
+                      bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.35),transparent)]
+                      opacity-0
+                    "
+                    animate={{
+                      opacity: loading ? 0 : 1,
+                      x: loading ? 0 : ["-120%", "120%"],
+                    }}
+                    transition={{
+                      duration: 1.8,
+                      repeat: loading ? 0 : Infinity,
+                      ease: "linear",
+                    }}
+                  />
+
+                  <AnimatePresence mode="wait">
+                    {loading ? (
+                      <motion.span
+                        key="loading"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex items-center justify-center gap-2 relative"
+                      >
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Verifying...
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="verify"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex items-center justify-center gap-2 relative"
+                      >
+                        VERIFY ACCOUNT <ArrowRight className="w-4 h-4" />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </motion.button>
               </motion.div>
 
@@ -449,10 +563,12 @@ function OtpVerify() {
                   </p>
 
                   <div className="mt-3 flex items-center justify-between gap-3">
-                    <button
+                    <motion.button
                       type="button"
                       onClick={triggerOtp}
                       disabled={!canResend}
+                      whileHover={{ scale: canResend ? 1.02 : 1 }}
+                      whileTap={{ scale: canResend ? 0.98 : 1 }}
                       className={`
                         inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl
                         text-xs font-black
@@ -475,11 +591,16 @@ function OtpVerify() {
                           Resend Code
                         </>
                       )}
-                    </button>
+                    </motion.button>
 
                     <span className="text-xs font-bold text-white/50">
                       {canResend ? "Ready now" : `Resend in ${timer}s`}
                     </span>
+                  </div>
+
+                  <div className="mt-3 text-[11px] text-white/45 flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-300" />
+                    Resend button unlocks only after cooldown ends.
                   </div>
                 </div>
               </motion.div>

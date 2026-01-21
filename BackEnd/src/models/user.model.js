@@ -66,13 +66,11 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
 
-    departments: [
+    departments: 
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Department",
       },
-    ],
-
     isAvailable: {
       type: Boolean,
       default: true,

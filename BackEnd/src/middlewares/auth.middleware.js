@@ -15,6 +15,10 @@ const authMiddleware = async (req, res, next) => {
     /**
      * 🔐 SESSION VALIDATION (NEW)
      */
+
+    if (!decoded?.id || !decoded?.sessionId) {
+      return res.status(401).json({ message: "Invalid token payload" });
+    }
     const session = await Session.findById(decoded.sessionId);
     if (!session || !session.isActive) {
       return res.status(401).json({
@@ -28,8 +32,11 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // Update activity timestamp (non-blocking)
-    session.lastSeenAt = new Date();
-    session.save();
+    Session.updateOne(
+      { _id: session._id },
+      { lastSeenAt: new Date() }
+    ).catch(() => {});
+
 
     req.user = user;
     req.sessionId = decoded.sessionId;
@@ -39,6 +46,5 @@ const authMiddleware = async (req, res, next) => {
     res.status(401).json({ message: "Invalid or expired token" });
   }
 };
-
 
 export default authMiddleware;

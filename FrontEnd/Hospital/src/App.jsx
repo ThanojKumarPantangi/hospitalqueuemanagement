@@ -5,6 +5,8 @@ import PublicLayout from "./layouts/PublicLayout";
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
 import DoctorSignup from "./pages/auth/DoctorSignup";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import OtpVerify from "./pages/auth/OtpVerify";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -26,9 +28,12 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import DoctorManagement from "./pages/admin/Doctors";
 import DepartmentManagement from "./pages/admin/Departments";
 import QueueMonitor from "./pages/admin/QueueMonitor";
+import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
+import AdminMessagingPanel from "./pages/admin/AdminMessagingPanel.jsx";
 
 import Loader from "./components/animation/Loader";
 import Logout from "./components/button/Logoutbutton.jsx";
+import ChangePasswordUI from "./components/changePassword/ChangePasswordForm.jsx";
 
 function App() {
   return (
@@ -40,6 +45,8 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-otp" element={<OtpVerify />} />
         <Route path="/doctor-signup" element={<DoctorSignup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
 
       <Route path="/loader" element={<Loader />} />
@@ -56,6 +63,7 @@ function App() {
             <Route path="/patient/history" element={<MyVisits />} />
             <Route path="/patient/session" element={<SessionSecurity />} />
             <Route path="/patient/profile" element={<PatientProfile />} />
+            <Route path="/patient/change-password" element={<ChangePasswordUI />} />
           </Route>
 
           {/* DOCTOR */}
@@ -63,6 +71,7 @@ function App() {
             <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
             <Route path="/doctor/profile" element={<DoctorProfile />} />
             <Route path="/doctor/queue" element={<DoctorQueue />} />
+            <Route path="/doctor/change-password" element={<ChangePasswordUI />} />
           </Route>
 
           {/* ADMIN */}
@@ -72,6 +81,9 @@ function App() {
               <Route path="doctors" element={<DoctorManagement />} />
               <Route path="departments" element={<DepartmentManagement />} />
               <Route path="queue-monitor" element={<QueueMonitor />} />
+              <Route path="analytics" element={<AnalyticsDashboard />} />
+              <Route path="settings" element={<ChangePasswordUI />} />
+              <Route path="messaging" element={<AdminMessagingPanel />} />
             </Route>
           </Route>
         </Route>

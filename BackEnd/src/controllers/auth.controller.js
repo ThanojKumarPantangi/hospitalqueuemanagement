@@ -1,5 +1,5 @@
 import { loginService,signupService,doctorSignupService } from "../services/auth.service.js";
-
+import {verifyRefreshToken} from "../utils/jwt.util.js";
 import { rotateRefreshToken } from "../services/tokenRotation.service.js";
 import RefreshToken from "../models/refreshToken.model.js";
 
@@ -7,19 +7,24 @@ import RefreshToken from "../models/refreshToken.model.js";
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const { accessToken, refreshToken, user } =
-      await loginService(email, password, req);
+
+    const { accessToken, refreshToken, user } = await loginService(
+      email,
+      password,
+      req
+    );
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ accessToken, role: user.role });
+    return res.json({ accessToken, role: user.role });
   } catch (err) {
-    res.status(401).json({ message: err.message });
+    return res.status(401).json({ message: err.message });
   }
 };
 
@@ -70,6 +75,7 @@ export const doctorSignupController = async (req, res) => {
 export const refreshTokenController = async (req, res) => {
   try {
     const token = req.cookies.refreshToken;
+
     if (!token) {
       return res.status(401).json({ message: "No refresh token" });
     }
@@ -80,45 +86,83 @@ export const refreshTokenController = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.json({ accessToken: tokens.accessToken });
+
+    return res.json({ accessToken: tokens.accessToken });
   } catch (error) {
-    res.status(403).json({ message: error.message });
+    // 🔥 Refresh token reuse / stolen token detected
+    if (error.message === "Refresh token reuse detected") {
+      return res.status(401).json({
+        message:
+          "Security alert: your session may have been compromised. Please login again.",
+        code: "REFRESH_TOKEN_REUSE",
+      });
+    }
+
+    // Session inactive / expired
+    if (error.message === "Session expired") {
+      return res.status(401).json({
+        message: "Session expired. Please login again.",
+        code: "SESSION_EXPIRED",
+      });
+    }
+
+    // Any other refresh failure
+    return res.status(401).json({
+      message: "Unauthorized. Please login again.",
+      code: "UNAUTHORIZED",
+    });
   }
+
 };
 
 export const logoutController = async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const incomingToken = req.cookies.refreshToken;
 
-    if (!refreshToken) {
-      return res.status(400).json({ message: "No refresh token provided" });
+    if (incomingToken) {
+      const decoded = verifyRefreshToken(incomingToken);
+
+      // revoke refresh token
+      if (decoded?.id && decoded?.jti && decoded?.sessionId) {
+        await RefreshToken.findOneAndUpdate(
+          {
+            user: decoded.id,
+            session: decoded.sessionId,
+            jti: decoded.jti,
+            revoked: false,
+          },
+          { revoked: true }
+        );
+      }
+
+      // deactivate session
+      if (decoded?.sessionId) {
+        await Session.findByIdAndUpdate(decoded.sessionId, { isActive: false });
+      }
     }
-
-    await RefreshToken.findOneAndUpdate(
-      { token: refreshToken },
-      { revoked: true }
-    );
-
-    await Session.findOneAndUpdate(
-      { user: req.user._id, isActive: true },
-      { isActive: false }
-    );
 
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
+      path: "/",
     });
 
-    return res.status(200).json({
-      message: "Logged out successfully",
-    });
+
+    return res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-    return res.status(500).json({
-      message: "Logout failed",
+    // even if token invalid, still clear cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
     });
+
+    return res.status(200).json({ message: "Logged out" });
   }
 };

@@ -34,6 +34,7 @@ import {
   getDoctorProfileApi,
   updateDoctorProfileApi,
   getAllDepartmentsApi,
+  updateDoctorDepartmentsApi,
 } from "../../api/admin.api";
 
 /* =======================
@@ -452,7 +453,7 @@ const DoctorGridCard = ({
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 mb-4">
             <span className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
               <Stethoscope className="w-3 h-3" />
-              {doc.departments.map((d) => d.name).join(", ")}
+              {doc?.departments?.name}
             </span>
           </div>
 
@@ -705,6 +706,9 @@ const AdminDoctors = () => {
         onSave={async (payload) => {
           try {
             const res=await updateDoctorProfileApi(selectedDoctor._id,payload);
+            await updateDoctorDepartmentsApi(selectedDoctor._id, {
+              departmentId: payload?.department,
+            });
             setToast({
               type: "success",
               message: res?.data?.message||"Doctor profile updated successfully!",

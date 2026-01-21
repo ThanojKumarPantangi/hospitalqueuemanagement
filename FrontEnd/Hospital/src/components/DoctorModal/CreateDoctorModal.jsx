@@ -143,7 +143,7 @@ const CreateDoctorModal = ({
     if (!form.doctorRollNo.trim()) next.doctorRollNo = "Doctor Roll No is required";
 
     if (!Array.isArray(form.departmentIds) || form.departmentIds.length === 0)
-      next.departmentIds = "Select at least one department";
+      next.departmentIds = "Select one department";
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -154,9 +154,7 @@ const CreateDoctorModal = ({
       const exists = prev.departmentIds.includes(id);
       return {
         ...prev,
-        departmentIds: exists
-          ? prev.departmentIds.filter((x) => x !== id)
-          : [...prev.departmentIds, id],
+        departmentIds: exists ? [] : [id],
       };
     });
   };
@@ -335,7 +333,7 @@ const CreateDoctorModal = ({
                     </span>
                   ) : (
                     <span className="text-xs font-bold text-slate-400">
-                      Select one or more
+                      Select one
                     </span>
                   )}
                 </div>

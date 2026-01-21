@@ -19,3 +19,7 @@ export const sendotp = (data) => {
 export const verifyotp = (data) => {
   return api.post("/api/otp/verify", data);
 };
+
+export const changePasswordControllerApi = (data) => {
+  return api.patch("/api/users/change-password", data);
+};

@@ -88,7 +88,7 @@ const DoctorProfile = () => {
   const removeTiming = (index) => {
     setFormData(prev => ({
       ...prev,
-      opdTimings: prev.opdTimings.filter((_, i) => i !== index)
+      opdTimings: prev?.opdTimings.filter((_, i) => i !== index)
     }));
   };
 

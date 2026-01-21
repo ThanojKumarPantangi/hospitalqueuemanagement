@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "cleanup:security": "node src/cron/runSecurityCleanupOnce.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
@@ -22,8 +24,11 @@
     "jsonwebtoken": "^9.0.3",
     "mongo-sanitize": "^1.1.0",
     "mongoose": "^9.0.1",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.12",
     "razorpay": "^2.9.6",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

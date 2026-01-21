@@ -1,11 +1,11 @@
 import api from "./axios";
 
 export const getMyDoctorProfileApi = () => {
-  return api.get("/api/doctors/me");
+  return api.get("/api/doctorProfile/me");
 };
 
 export const updateDoctorProfileApi=(payload)=>{
-    return api.post("api/doctors/me",payload)
+    return api.post("api/doctorProfile/me",payload)
 }
 
 export const callNextPatientApi=()=>{

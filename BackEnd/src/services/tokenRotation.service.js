@@ -1,57 +1,75 @@
+import { v4 as uuidv4 } from "uuid";
 import RefreshToken from "../models/refreshToken.model.js";
-import bcrypt from "bcrypt";
-import {  verifyRefreshToken,
+import Session from "../models/session.model.js";
+import {
+  verifyRefreshToken,
   generateAccessToken,
-  generateRefreshToken, } from "../utils/jwt.util.js";
+  generateRefreshToken,
+} from "../utils/jwt.util.js";
 
 export const rotateRefreshToken = async (incomingToken) => {
   const decoded = verifyRefreshToken(incomingToken);
 
-  const storedTokens = await RefreshToken.find({
-    user: decoded.id,
-    revoked: false,
-  });
-
-  let matchedToken = null;
-
-  for (const t of storedTokens) {
-    const isMatch = await bcrypt.compare(incomingToken, t.token);
-    if (isMatch) {
-      matchedToken = t;
-      break;
-    }
+  if (!decoded?.id || !decoded?.jti || !decoded?.sessionId) {
+    throw new Error("Invalid refresh token");
   }
 
-  if (!matchedToken) {
+  const session = await Session.findById(decoded.sessionId);
+  if (!session || !session.isActive) {
+    await RefreshToken.updateMany({ user: decoded.id }, { revoked: true });
+    throw new Error("Session expired");
+  }
 
-    await RefreshToken.updateMany(
-      { user: decoded.id },
-      { revoked: true }
-    );
+  const newJti = uuidv4();
+
+  const stored = await RefreshToken.findOneAndUpdate(
+    {
+      user: decoded.id,
+      session: decoded.sessionId,
+      jti: decoded.jti,
+      revoked: false,
+    },
+    {
+      revoked: true,
+      replacedByJti: newJti,
+    },
+    { new: true }
+  );
+
+  if (!stored) {
+    await RefreshToken.updateMany({ user: decoded.id }, { revoked: true });
     throw new Error("Refresh token reuse detected");
   }
 
+  // ✅ DB expiry safety check
+  if (stored.expiresAt < new Date()) {
+    await RefreshToken.updateMany({ user: decoded.id }, { revoked: true });
+    throw new Error("Session expired");
+  }
 
-  matchedToken.revoked = true;
+  // ✅ Use session.role (not decoded.role)
+  const newAccessPayload = {
+    id: decoded.id,
+    role: session.role,
+    sessionId: decoded.sessionId,
+  };
 
-  const payload = { id: decoded.id, role: decoded.role };
+  const newRefreshPayload = {
+    id: decoded.id,
+    role: session.role,
+    sessionId: decoded.sessionId,
+    jti: newJti,
+  };
 
-  const newAccessToken = generateAccessToken(payload);
-  const newRefreshToken = generateRefreshToken(payload);
-
-  const hashedNewToken = await bcrypt.hash(newRefreshToken, 10);
-
-  matchedToken.replacedByToken = hashedNewToken;
-  await matchedToken.save();
+  const newAccessToken = generateAccessToken(newAccessPayload);
+  const newRefreshToken = generateRefreshToken(newRefreshPayload);
 
   await RefreshToken.create({
     user: decoded.id,
-    token: hashedNewToken,
+    session: decoded.sessionId,
+    jti: newJti,
     expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
 
-  return {
-    accessToken: newAccessToken,
-    refreshToken: newRefreshToken,
-  };
+  return { accessToken: newAccessToken, refreshToken: newRefreshToken };
 };

@@ -1,54 +1,42 @@
 import express from "express";
 import authMiddleware from "../middlewares/auth.middleware.js";
 import roleMiddleware from "../middlewares/role.middleware.js";
+
 import {
   getDailyPatientCount,
   getDepartmentLoad,
   getDoctorWorkload,
-  getTodayRevenue,
-  getRevenueByDepartment,
-  getPaymentStats,
+  getTodayAvgWaitingTime,
+  getConsultationTime,
+  getDepartmentPeakHours,
+  getThroughput,
+  getCancelRate,
+  getDoctorUtilization,
+  getLiveQueueSnapshot,
+  getPatientTrend,
 } from "../controllers/analytics.controller.js";
 
 const router = express.Router();
 
-router.get(
-  "/daily-patients",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getDailyPatientCount
-);
+/**
+ * Only ADMIN can access analytics (recommended)
+ * If you want DOCTOR also, add it.
+ */
+router.use(authMiddleware, roleMiddleware("ADMIN"));
 
-router.get(
-  "/department-load",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getDepartmentLoad
-);
+router.get("/daily-patient-count", getDailyPatientCount);
+router.get("/department-load", getDepartmentLoad);
+router.get("/doctor-workload", getDoctorWorkload);
 
-router.get(
-  "/doctor-workload",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getDoctorWorkload
-);
+router.get("/waiting-time/today", getTodayAvgWaitingTime);
+router.get("/consultation-time", getConsultationTime);
 
-router.get("/payments/revenue/today", 
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getTodayRevenue
-);
+router.get("/department-peak-hours", getDepartmentPeakHours);
+router.get("/throughput", getThroughput);
+router.get("/cancel-rate", getCancelRate);
 
-router.get("/payments/revenue/department",
-  authMiddleware,
-  roleMiddleware("ADMIN"), 
-  getRevenueByDepartment
-);
-
-router.get("/payments/stats",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getPaymentStats
-);
+router.get("/doctor-utilization", getDoctorUtilization);
+router.get("/live-queue", getLiveQueueSnapshot);
+router.get("/patient-trend", getPatientTrend);
 
 export default router;

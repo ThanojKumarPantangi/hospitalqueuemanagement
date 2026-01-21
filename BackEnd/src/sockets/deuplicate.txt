@@ -209,3 +209,33 @@ export const getIO = () => {
 export const getOnlineUserSocket = (userId) => {
   return onlineUsers.get(userId);
 };
+
+
+
+import express from "express";
+import { transporter } from "../utils/mailTransporter.js";
+
+const router = express.Router();
+
+router.get("/test-mail", async (req, res) => {
+  try {
+    await transporter.sendMail({
+      from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM}>`,
+      to: process.env.MAIL_FROM, // send to your own email for testing
+      subject: "Brevo SMTP Test Email",
+      html: `
+        <h2>Email working ✅</h2>
+        <p>Your Brevo + Nodemailer setup is successful.</p>
+      `,
+    });
+
+    return res.json({ message: "Test email sent successfully ✅" });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to send test email ❌",
+      error: error.message,
+    });
+  }
+});
+
+export default router;

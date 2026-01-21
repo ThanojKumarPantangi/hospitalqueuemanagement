@@ -49,7 +49,6 @@ const ADMIN_ALLOWED_FIELDS = [
   "qualifications",
 ];
 
-
 export const updateDoctorProfileByRole = async ({
   actor,
   targetUserId,
@@ -111,6 +110,21 @@ export const updateDoctorProfileByRole = async ({
 
   if (Object.keys(updateData).length === 0) {
     throw new Error("No permitted fields to update");
+  }
+
+  // ✅ 5.1 Department change validation ONLY when department is changing
+  if (
+    updateData.department !== undefined &&
+    updateData.department?.toString() !== profile.department?.toString()
+  ) {
+    const token = await Token.findOne({
+      assignedDoctor: targetUserId,
+      status: "CALLED",
+    });
+
+    if (token) {
+      throw new Error("Doctor is currently serving a patient");
+    }
   }
 
   // 6️⃣ Validate OPD timings

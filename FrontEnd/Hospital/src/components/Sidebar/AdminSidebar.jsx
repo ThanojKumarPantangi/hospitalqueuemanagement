@@ -9,7 +9,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  BarChart3 ,
   Menu,
+  Mail,
   X
 } from "lucide-react";
 import HospitalIcon from "../icon/HospitalIcon"; // Assuming you have this
@@ -25,10 +27,11 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     { name: "Doctors", path: "/admin/doctors", icon: Stethoscope },
     { name: "Departments", path: "/admin/departments", icon: Building2 },
     { name: "Queue Monitor", path: "/admin/queue-monitor", icon: MonitorCheck },
+    { name: "Messsage", path: "/admin/messaging", icon:Mail },
+    { name: "Analytics", path: "/admin/analytics", icon:BarChart3 },
     { type: "divider" },
     { name: "Settings", path: "/admin/settings", icon: Settings },
   ];
-
   // --- Animation Variants ---
   const sidebarVariants = {
     expanded: { width: "16rem" }, // 256px

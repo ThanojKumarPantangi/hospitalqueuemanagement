@@ -1,5 +1,12 @@
 import { motion } from "framer-motion";
-import { Monitor, Smartphone, LogOut, MapPin, Clock, ShieldCheck } from "lucide-react";
+import {
+  Monitor,
+  Smartphone,
+  LogOut,
+  MapPin,
+  Clock,
+  ShieldCheck,
+} from "lucide-react";
 import { useState } from "react";
 import { logoutSessionApi } from "../../api/session.api";
 
@@ -21,27 +28,39 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
 
   const isMobile = /mobile|iphone|android/i.test(session.device || "");
 
+  const locationText = [
+    session?.location?.city,
+    session?.location?.region,
+    session?.location?.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const timezoneText = session?.location?.timezone || "";
+
+  const showLocation = Boolean(locationText || timezoneText);
+
   return (
     <motion.div
-    layout
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, scale: 0.95 }}
-    whileHover={{ y: -2 }}
-    className={`
-      relative
-      flex flex-col sm:flex-row
-      items-start sm:items-center
-      gap-4
-      p-5
-      rounded-2xl
-      border
-      overflow-hidden
-      transition-all duration-300
-      bg-white border-slate-200 shadow-sm
-      dark:bg-[#1a1a1a] dark:border-white/5 dark:shadow-2xl
-      ${isCurrent ? "ring-2 ring-emerald-500/50 dark:ring-emerald-500/30" : ""}
-    `}
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ y: -2 }}
+      className={`
+        relative
+        flex flex-col sm:flex-row
+        items-start sm:items-center
+        gap-4
+        p-5
+        rounded-2xl
+        border
+        overflow-hidden
+        transition-all duration-300
+        bg-white border-slate-200 shadow-sm
+        dark:bg-[#1a1a1a] dark:border-white/5 dark:shadow-2xl
+        ${isCurrent ? "ring-2 ring-emerald-500/50 dark:ring-emerald-500/30" : ""}
+      `}
     >
       {/* ================= LEFT ================= */}
       <div className="flex items-start gap-4 flex-1 min-w-0">
@@ -99,13 +118,24 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
 
           {/* Meta */}
           <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-1">
-            <div className="flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400">
+            {/* IP + Location + Timezone */}
+            <div className="flex items-center gap-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 min-w-0">
               <MapPin size={14} />
-              <span className="font-mono truncate">
-                {session.ipAddress || "0.0.0.0"}
-              </span>
+              <div className="min-w-0">
+                <span className="font-mono truncate block">
+                  {session.ipAddress || "0.0.0.0"}
+                </span>
+
+                {showLocation && (
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate block">
+                    {locationText}
+                    {timezoneText ? ` • ${timezoneText}` : ""}
+                  </span>
+                )}
+              </div>
             </div>
 
+            {/* Last Seen */}
             <div className="flex items-center gap-1.5 text-sm font-medium text-slate-400 dark:text-slate-500">
               <Clock size={14} />
               <span>

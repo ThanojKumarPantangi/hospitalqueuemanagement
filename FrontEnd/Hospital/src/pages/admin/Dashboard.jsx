@@ -78,6 +78,7 @@ const Dashboard = () => {
           getDepartmentsStatusApi(),
         ]);
 
+
         setDashboardData(summary?.data);
         setDepartmentsSummary(departments?.data ?? []);
         setLastUpdatedAt(new Date());
@@ -183,7 +184,7 @@ const Dashboard = () => {
     {
       id: 2,
       text: "Departments without doctors",
-      count: 1,
+      count: 0,
       type: "warning",
     },
     {

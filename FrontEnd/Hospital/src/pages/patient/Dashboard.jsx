@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import {Bell,Timer,UserCheck,QrCode,Ticket,ChevronRight,RefreshCcw,
-        BellRing, MapPin, Sparkles, ArrowRightCircle,Clock } from 'lucide-react';
+        MapPin,} from 'lucide-react';
 import { useEffect, useState,useRef } from 'react';
 import Navbar from '../../components/Navbar/PatientNavbar';
 import AnimatedQuote from '../../components/animation/AnimatedQuote';
@@ -8,10 +8,9 @@ import { useSocket} from "../../hooks/useSocket";
 import { useTokenSocket } from "../../hooks/useTokenSocket";
 import StickyMiniToken from "../../components/token/StickyMiniToken";
 import { getMyTokenApi,getMyUpcomingTokensApi,cancelTokenApi,createTokenApi,getAllDepartmentsApi,previewTokenNumberApi } from "../../api/token.api";
-import Toast from "../../components/ui/Toast";
+import { showToast } from "../../utils/toastBus.js";
 import Loader from "../../components/animation/Loader";
 import Bulletins from "../../components/Bulletins/Bulletins";
-
 import CreateTokenModal from '../../components/tokenmodal/CreateTokenModal.jsx';
 import CancelTokenModal from '../../components/tokenmodal/CancelTokenModal.jsx';
 import "./patient.css";
@@ -24,7 +23,6 @@ function PatientDashboard() {
   const [token, setToken] = useState(null);
   const [upcomingTokens, setUpcomingTokens] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
   const [showSticky, setShowSticky] = useState(false);
   const MIN_LOADER_TIME = 2500; 
 
@@ -163,7 +161,7 @@ function PatientDashboard() {
 //create Token
 const createToken = async () => {
   if (!departmentId || !appointmentDate || !priority) {
-    setToast({
+    showToast({
       type: "error",
       message: "Please fill all the fields",
     });
@@ -175,7 +173,7 @@ const createToken = async () => {
   try {
     const res =await createTokenApi({ departmentId, appointmentDate, priority});
     setShowCreateTokenModal(false);
-    setToast({
+    showToast({
       type: "success",
       message: "Token created successfully",
     });
@@ -186,7 +184,7 @@ const createToken = async () => {
       setToken(res.data.token ?? res.data);
     }
   } catch (err) {
-    setToast({
+    showToast({
       type: "error",
       message:
         err?.response?.data?.message ||
@@ -216,13 +214,13 @@ const handleCancelToken = async (tokenId) => {
       prev.filter(t => t._id !== tokenId)
     );
 
-    setToast({
+    showToast({
       type: "success",
       message: "Appointment cancelled successfully",
     });
 
   } catch (err) {
-    setToast({
+    showToast({
       type: "error",
       message:
         err?.response?.data?.message ||
@@ -295,7 +293,7 @@ useTokenSocket({
   setToken(prev => {
     if (!prev || prev._id !== tokenId) return prev;
 
-    setToast({
+    showToast({
       type: "success",
       message: `Your token #${prev.tokenNumber} is being called by Dr. ${doctorName}.`,
     });
@@ -316,7 +314,7 @@ useTokenSocket({
     setToken(prev => {
       if (!prev || prev._id !== tokenId) return prev;
 
-      setToast({
+      showToast({
         type: "error",
         message: `Your token #${prev.tokenNumber} was skipped.`,
       });
@@ -333,7 +331,7 @@ useTokenSocket({
     setToken(prev => {
       if (!prev || prev._id !== tokenId) return prev;
 
-      setToast({
+      showToast({
         type: "success",
         message: `Your token #${prev.tokenNumber} is completed.`,
       });
@@ -432,15 +430,6 @@ const itemVariants = {
         token={token}
         show={showSticky}
       />
-
-      {/* Notifications */}
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
 
 
       <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 p-4 md:p-6 space-y-8 pb-24">

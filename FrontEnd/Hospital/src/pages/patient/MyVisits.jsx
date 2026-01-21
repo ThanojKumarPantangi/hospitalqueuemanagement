@@ -18,7 +18,7 @@ import {
 import CustomCalendar from "../../components/Calendar/CustomCalendar";
 import Navbar from "../../components/Navbar/PatientNavbar";
 import Loader from "../../components/animation/Loader";
-import Toast from "../../components/ui/Toast";
+import { showToast } from "../../utils/toastBus.js";
 import { getPatientVisitsApi } from "../../api/visit.api";
 import VisitDetailsModal from "../../components/visit/VisitDetailsModal";
 
@@ -71,7 +71,6 @@ const shimmer = {
 const MyVisits = () => {
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState(null);
   const [selectedVisit, setSelectedVisit] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -91,7 +90,7 @@ const MyVisits = () => {
       } catch (error) {
         console.error(error);
         if (isMounted) {
-          setToast({
+          showToast({
             type: "error",
             message: error?.response?.data?.message || "Failed to load visit history",
           });
@@ -157,10 +156,6 @@ const MyVisits = () => {
   return (
     <div className="min-h-screen bg-[#FDFDFF] dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <Navbar activePage="Visit History" />
-
-      {toast && (
-        <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />
-      )}
 
       <motion.main
         variants={pageVars}

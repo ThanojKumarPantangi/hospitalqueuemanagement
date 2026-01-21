@@ -3,6 +3,10 @@ import sanitize from "mongo-sanitize";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
+import dotenv from "dotenv";
+dotenv.config({ path: "./src/.env" });
+
+
 import authRoutes from "./routes/auth.routes.js";
 import tokenRoutes from "./routes/token.routes.js";
 import visitRoutes from "./routes/visit.routes.js";
@@ -17,9 +21,8 @@ import sessionRoutes from "./routes/session.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import patientProfileRoutes from "./routes/patientProfile.routes.js";
 
-import paymentRoutes from "./routes/payment.route.js";
-import paymentWebhookRoutes from "./routes/payment.webhook.routes.js";
-import refundRoutes from "./routes/refund.routes.js";
+
+
 
 
 import {
@@ -29,14 +32,13 @@ import {
 } from "./middlewares/rateLimiter.middleware.js";
 
 const app = express();
-app.set("trust proxy", true);
+app.set("trust proxy", false);
 /* ------------------ Core middleware ------------------ */
 app.use(express.json());
 app.use(cookieParser());
-
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
@@ -75,19 +77,8 @@ app.use("/api/departments", departmentRoutes);
 app.use("/api/doctorProfile", doctorRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/sessions", sessionRoutes);
-app.use("/api/users", userRoutes);
+app.use("/api/users",tokenLimiter,userRoutes);
 app.use("/api/patient-profile", patientProfileRoutes)
-
-
-// payments
-app.use("/api/payments", paymentRoutes);
-app.use(
-  "/api/payments/webhook",
-  express.raw({ type: "application/json" }),
-  paymentWebhookRoutes
-);
-app.use("/api/refunds", refundRoutes);
-
 
 /* ------------------ Health check ------------------ */
 app.get("/health", (req, res) => {

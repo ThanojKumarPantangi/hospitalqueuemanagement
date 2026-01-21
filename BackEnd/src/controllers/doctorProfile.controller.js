@@ -101,7 +101,6 @@ export const adminUpdateDoctorProfile = async (req, res) => {
     }
 
     const { userId } = req.params;
-
     const profile = await updateDoctorProfileByRole({
       actor: req.user,
       targetUserId: userId,
