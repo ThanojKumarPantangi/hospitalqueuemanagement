@@ -3,7 +3,7 @@ import axios from "axios";
 import { showToast } from "../utils/toastBus";
 
 const api = axios.create({
-  baseURL:"*",
+  baseURL:"https://hospitalqueuemanagement.onrender.com",
   withCredentials: true,
 });
 
