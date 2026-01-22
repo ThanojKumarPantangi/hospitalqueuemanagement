@@ -8,6 +8,7 @@ import DoctorSignup from "./pages/auth/DoctorSignup";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import OtpVerify from "./pages/auth/OtpVerify";
+import Home from "./pages/main/HospitalRolesLanding.jsx";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleRoute from "./routes/RoleRoute";
@@ -49,6 +50,8 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
 
+      <Route path="/" element={<Home />} />
+      
       <Route path="/loader" element={<Loader />} />
       <Route path="/logout" element={<Logout />} />
 
