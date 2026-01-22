@@ -21,7 +21,7 @@ const onlineUsers = new Map(); // userId -> Set(socketId)
 export const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin:"*",
+      origin:"https://hospitalqueuemanagement.vercel.app",
       credentials: true,
     },
   });
