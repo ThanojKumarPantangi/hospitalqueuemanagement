@@ -30,10 +30,18 @@ const PRIORITY_ORDER = {
 
 /* ===================== UTILS ===================== */
 
-const getStartOfDay = (date = new Date()) => {
+const getStartOfISTDay = (date = new Date()) => {
   const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+
+  // Convert to IST by adding 5:30
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(d.getTime() + istOffsetMs);
+
+  // Start of IST day
+  istDate.setHours(0, 0, 0, 0);
+
+  // Convert back to UTC Date object for DB match
+  return new Date(istDate.getTime() - istOffsetMs);
 };
 
 const isTransitionAllowed = (from, to) =>
@@ -71,8 +79,8 @@ export const createToken = async ({
     throw new Error("No doctors available in this department");
   }
 
-  const today = getStartOfDay();
-  const selectedDate = getStartOfDay(appointmentDate);
+  const today = getStartOfISTDay();
+  const selectedDate = getStartOfISTDay(appointmentDate);
 
   const diffDays =
     (selectedDate - today) / (1000 * 60 * 60 * 24);
@@ -143,7 +151,7 @@ export const createToken = async ({
 /* ===================== CALL NEXT TOKEN (ATOMIC) ===================== */
 
 export const getNextToken = async (departmentId, doctorId) => {
-  const today = getStartOfDay();
+  const today = getStartOfISTDay();
 
   const doctor = await User.findById(doctorId);
   if (!doctor || !doctor.isActive || !doctor.isAvailable) {
@@ -209,7 +217,7 @@ export const getNextToken = async (departmentId, doctorId) => {
 /* ===================== COMPLETE TOKEN ===================== */
 
 export const completeToken = async (tokenId) => {
-  const today = getStartOfDay();
+  const today = getStartOfISTDay();
 
   // 1️⃣ Load token (single source of truth)
   const token = await Token.findById(tokenId);
@@ -293,9 +301,7 @@ export const skipCurrentTokenByDoctor = async (doctorId) => {
   return skipToken(token._id);
 };
 
-
 /* ===================== MARK NO SHOW ===================== */
-
 export const markNoShow = async (tokenId) => {
   const token = await Token.findById(tokenId);
   if (!token) throw new Error("Token not found");
@@ -313,7 +319,6 @@ export const markNoShow = async (tokenId) => {
 };
 
 /* ===================== CANCEL TOKEN (WAITING ONLY) ===================== */
-
 export const cancelToken = async (tokenId, userId) => {
   const token = await Token.findById(tokenId);
   if (!token) throw new Error("Token not found");
@@ -339,7 +344,7 @@ export const cancelToken = async (tokenId, userId) => {
 
 /* ===================== PATIENT ACTIVE TOKEN ===================== */
 export const getPatientActiveToken = async (patientId) => {
-  const today = getStartOfDay();
+  const today = getStartOfISTDay();
 
   const token = await Token.findOne({
     patient: patientId,
@@ -394,10 +399,9 @@ export const getPatientActiveToken = async (patientId) => {
   };
 };
 
-
 /* ===================== PATIENT Upcoming TOKEN ===================== */
 export const getUpcomingTokensForPatient = async (patientId) => {
-  const today = getStartOfDay();
+  const today = getStartOfISTDay();
 
   const tokens = await Token.find({
     patient: patientId,
@@ -416,7 +420,6 @@ export const getUpcomingTokensForPatient = async (patientId) => {
     departmentName: token.department.name,
   }));
 };
-
 
 /* ===================== PATIENT TOKEN HISTORY===================== */
 export const getPatientTokenHistory = async (patientId) => {
@@ -442,15 +445,13 @@ export const getPatientTokenHistory = async (patientId) => {
   }));
 };
 
-
 /* ===================== Expected Token Number ===================== */
 export const getExpectedTokenNumber = async ({
   departmentId,
   appointmentDate,
 }) => {
   // Normalize date (start of day)
-  const date = new Date(appointmentDate);
-  date.setHours(0, 0, 0, 0);
+  const date = getStartOfISTDay(appointmentDate);
 
   // Find the highest token number for that department & date
   const lastToken = await Token.findOne({
@@ -469,11 +470,10 @@ export const getExpectedTokenNumber = async ({
   return expectedTokenNumber;
 };
 
-
 /* ===================== Recalculate Queue Positions ===================== */
 export const recalculateQueuePositions = async (departmentId) => {
   const io = getIO();
-  const today = getStartOfDay();
+  const today = getStartOfISTDay();
 
   
 
@@ -512,37 +512,29 @@ export const recalculateQueuePositions = async (departmentId) => {
   });
 };
 
-
-
 const formatTime = (date) =>
   date.toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
   });
 
 /* ===================== DASHBOARD QUEUE SUMMARY ===================== */
-export const getDoctorQueueSummary = async ({ departmentId,userId}) => {
-  const today = getStartOfDay();
+export const getDoctorQueueSummary = async ({ departmentId, userId }) => {
+  const today = getStartOfISTDay(); // IST day start stored as UTC date
 
-  // 1️⃣ Load department (for OPD start time)
   const department = await Department.findById(departmentId).lean();
   if (!department) throw new Error("Department not found");
 
-  const doctorProfile = await DoctorProfile.findOne({ user:userId })
+  const doctorProfile = await DoctorProfile.findOne({ user: userId }).lean();
 
-  const opdStartTime = doctorProfile?.opdTimings?.[0]?.startTime|| "09:00"; // fallback
+  const opdStartTime = doctorProfile?.opdTimings?.[0]?.startTime || "09:00";
   const slotMinutes = department.slotDurationMinutes || 10;
 
   const [startHour, startMinute] = opdStartTime.split(":").map(Number);
 
-  // 2️⃣ Counts
-  const [
-    totalToday,
-    completed,
-    remaining,
-    waitingTokens,
-  ] = await Promise.all([
+  const [totalToday, completed, remaining, waitingTokens] = await Promise.all([
     Token.countDocuments({
       department: departmentId,
       appointmentDate: today,
@@ -569,18 +561,19 @@ export const getDoctorQueueSummary = async ({ departmentId,userId}) => {
       .lean(),
   ]);
 
-  // 3️⃣ Calculate expected time
+  // OPD start time (in IST) -> convert to correct UTC Date object
+  const opdStart = new Date(today);
+  opdStart.setUTCHours(startHour - 5, startMinute - 30, 0, 0);
+
   const nextWaiting = waitingTokens.map((t, index) => {
-    const time = new Date();
-    time.setHours(startHour);
-    time.setMinutes(startMinute + index * slotMinutes);
-    time.setSeconds(0);
+    const expected = new Date(opdStart);
+    expected.setUTCMinutes(expected.getUTCMinutes() + index * slotMinutes);
 
     return {
       token: t.tokenNumber,
       name: t.patient?.name || "Unknown",
       priority: t.priority,
-      time: formatTime(time),
+      time: formatTime(expected),
     };
   });
 

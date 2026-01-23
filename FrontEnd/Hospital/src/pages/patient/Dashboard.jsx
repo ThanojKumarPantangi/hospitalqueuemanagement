@@ -55,33 +55,37 @@ function PatientDashboard() {
   maxDate.setDate(today.getDate() + MAX_ADVANCE_DAYS);
 
   // --- 1. Fetch Initial Token Data ---
-  useEffect(() => {
-  let isMounted = true;
-  const startTime = Date.now();
+  const fetchToken = async ({ withLoader = false } = {}) => {
+  let startTime = 0;
 
-  const fetchToken = async () => {
-    try {
-      const res = await getMyTokenApi();
-      setToken(res.data);
-    } catch (err) {
-      console.error("Error fetching token:", err);
-      
-    } finally {
+  if (withLoader) {
+    setLoading(true);
+    startTime = Date.now();
+  }
+
+  try {
+    const res = await getMyTokenApi();
+    setToken(res.data);
+  } catch (err) {
+    console.error("Error fetching token:", err);
+  } finally {
+    if (withLoader) {
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(MIN_LOADER_TIME - elapsed, 0);
 
       setTimeout(() => {
-        if (isMounted) setLoading(false);
+        setLoading(false);
       }, remaining);
     }
-  };
+  }
+};
 
-  fetchToken();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+// -----------------------------
+// INITIAL FETCH ON PAGE LOAD
+// -----------------------------
+useEffect(() => {
+  fetchToken({ withLoader: true });
+}, []);
 
   // --- 2. Scroll Listener for Sticky Mini-Token ---
   useEffect(() => {
@@ -175,14 +179,11 @@ const createToken = async () => {
     setShowCreateTokenModal(false);
     showToast({
       type: "success",
-      message: "Token created successfully",
+      message: res?.data?.message ||"Token created successfully",
     });
     setAppointmentDate('');
     setDepartmentId('');
-    const todayStr = formatDate(new Date());
-    if (appointmentDate === todayStr) {
-      setToken(res.data.token ?? res.data);
-    }
+    await fetchToken();
   } catch (err) {
     showToast({
       type: "error",
