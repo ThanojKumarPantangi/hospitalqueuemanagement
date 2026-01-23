@@ -1,21 +1,13 @@
-export const tokenBookedTemplate = ({
+export const tokenCancelledTemplate = ({
   name = "Patient",
   hospitalName = "Kumar Hospitals",
   tokenNumber = "-",
   departmentName = "-",
   appointmentDate = "-",
-  priority = "NORMAL",
-  queuePosition = null,
+  cancelledBy = "You",
   supportEmail = "support@kumarhospitals.com",
 }) => {
   const year = new Date().getFullYear();
-
-  const priorityBadge =
-    priority === "EMERGENCY"
-      ? `<span style="background:#FEE2E2;color:#991B1B;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;">🚨 EMERGENCY</span>`
-      : priority === "SENIOR"
-      ? `<span style="background:#FEF3C7;color:#92400E;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;">⭐ SENIOR</span>`
-      : `<span style="background:#E0F2FE;color:#075985;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;">🟦 NORMAL</span>`;
 
   return `
 <!DOCTYPE html>
@@ -23,27 +15,26 @@ export const tokenBookedTemplate = ({
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Token Confirmed</title>
+  <title>Token Cancelled</title>
 </head>
 
 <body style="margin:0;padding:0;background:#F1F5F9;font-family:Arial,Helvetica,sans-serif;">
   <center style="width:100%;background:#F1F5F9;padding:28px 12px;">
-    
-    <!-- Container -->
+
     <table role="presentation" cellpadding="0" cellspacing="0" border="0"
       style="width:100%;max-width:640px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.10);">
 
-      <!-- Header Gradient -->
+      <!-- Header -->
       <tr>
-        <td style="background:linear-gradient(90deg,#0284C7,#6366F1);padding:22px 22px;">
+        <td style="background:linear-gradient(90deg,#EF4444,#F97316);padding:22px 22px;">
           <div style="color:#ffffff;font-size:14px;font-weight:800;letter-spacing:1px;text-transform:uppercase;">
             ${hospitalName}
           </div>
           <div style="color:#ffffff;font-size:22px;font-weight:900;margin-top:6px;">
-            Token Confirmed ✅
+            Token Cancelled ❌
           </div>
           <div style="color:rgba(255,255,255,0.92);font-size:13px;margin-top:6px;">
-            Your visit has been scheduled successfully.
+            Your token has been cancelled successfully.
           </div>
         </td>
       </tr>
@@ -57,75 +48,59 @@ export const tokenBookedTemplate = ({
           </div>
 
           <div style="margin-top:10px;font-size:14px;line-height:22px;color:#334155;">
-            Your token has been booked successfully. Please arrive <b>10–15 minutes early</b>.
+            Your token booking has been cancelled by <b>${cancelledBy}</b>.
+            If this was not you, please contact support immediately.
           </div>
 
-          <!-- Token Card -->
+          <!-- Cancel Card -->
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"
-            style="width:100%;margin-top:18px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:16px;">
+            style="width:100%;margin-top:18px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:16px;">
             <tr>
               <td style="padding:18px;">
-                
-                <div style="display:flex;align-items:center;justify-content:space-between;">
-                  <div style="font-size:12px;color:#64748B;font-weight:900;letter-spacing:1px;text-transform:uppercase;">
-                    Booking Details
-                  </div>
-                  ${priorityBadge}
+
+                <div style="font-size:12px;color:#9A3412;font-weight:900;letter-spacing:1px;text-transform:uppercase;">
+                  Cancelled Booking Details
                 </div>
 
-                <div style="margin-top:14px;display:block;">
-                  
-                  <div style="font-size:12px;color:#94A3B8;font-weight:700;">
+                <div style="margin-top:14px;">
+                  <div style="font-size:12px;color:#FB923C;font-weight:700;">
                     Token Number
                   </div>
-                  <div style="font-size:30px;color:#0F172A;font-weight:900;letter-spacing:1px;margin-top:4px;">
+                  <div style="font-size:28px;color:#9A3412;font-weight:900;margin-top:4px;">
                     ${tokenNumber}
                   </div>
 
-                  <div style="margin-top:14px;height:1px;background:#E2E8F0;"></div>
+                  <div style="margin-top:14px;height:1px;background:#FED7AA;"></div>
 
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-top:14px;">
                     <tr>
                       <td style="width:50%;padding-right:8px;vertical-align:top;">
-                        <div style="font-size:12px;color:#94A3B8;font-weight:700;">Department</div>
+                        <div style="font-size:12px;color:#FB923C;font-weight:700;">Department</div>
                         <div style="margin-top:4px;font-size:14px;color:#0F172A;font-weight:800;">
                           ${departmentName}
                         </div>
                       </td>
                       <td style="width:50%;padding-left:8px;vertical-align:top;">
-                        <div style="font-size:12px;color:#94A3B8;font-weight:700;">Appointment Date</div>
+                        <div style="font-size:12px;color:#FB923C;font-weight:700;">Appointment Date</div>
                         <div style="margin-top:4px;font-size:14px;color:#0F172A;font-weight:800;">
                           ${appointmentDate}
                         </div>
                       </td>
                     </tr>
                   </table>
-
-                  ${
-                    queuePosition !== null
-                      ? `
-                      <div style="margin-top:14px;">
-                        <div style="font-size:12px;color:#94A3B8;font-weight:700;">Current Queue Position</div>
-                        <div style="margin-top:4px;font-size:14px;color:#0F172A;font-weight:800;">
-                          ${queuePosition}
-                        </div>
-                      </div>
-                      `
-                      : ""
-                  }
-
                 </div>
+
               </td>
             </tr>
           </table>
 
-          <!-- Info Box -->
+          <!-- Rebook Tip -->
           <table role="presentation" cellpadding="0" cellspacing="0" border="0"
-            style="width:100%;margin-top:16px;background:#ECFEFF;border:1px solid #A5F3FC;border-radius:14px;">
+            style="width:100%;margin-top:16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;">
             <tr>
               <td style="padding:14px;">
-                <div style="font-size:13px;color:#155E75;line-height:20px;">
-                  🏥 <b>Tip:</b> Carry your previous prescriptions and reports for faster consultation.
+                <div style="font-size:13px;color:#334155;line-height:20px;">
+                  📌 You can book a new token anytime from the app.
                 </div>
               </td>
             </tr>
@@ -146,7 +121,7 @@ export const tokenBookedTemplate = ({
       <tr>
         <td style="padding:16px 22px;background:#F8FAFC;border-top:1px solid #E2E8F0;">
           <div style="font-size:11px;color:#94A3B8;line-height:16px;text-align:center;">
-            © ${year} ${hospitalName}. This is an automated confirmation email. Please do not reply.
+            © ${year} ${hospitalName}. This is an automated email. Please do not reply.
           </div>
         </td>
       </tr>

@@ -15,73 +15,54 @@ import {createToken,
 import { sendEmail } from "../utils/sendEmail.js";
 import { tokenBookedTemplate } from "../emailTemplates/tokenBookedTemplate.js";
 
-export const createTokenController=async(req,res)=>{
-    try{
-        const {departmentId,priority,appointmentDate}=req.body;
-        if (!req.user.isPhoneVerified) {
-          return res.status(403).json({
-            message: "Phone number not verified",
-          });
-        }
-        const token=await createToken({
-            patientId: req.user._id,
-            departmentId,
-            requestedPriority: priority,
-            createdByRole: req.user.role,
-            appointmentDate,
-        });
-        res.status(201).json({
-            message:"Token created successfully",
-            token,
-        });
+export const createTokenController = async (req, res) => {
+  try {
+    const { departmentId, priority, appointmentDate } = req.body;
 
-        try {
-          const dept = await Department.findById(departmentId).lean();
-          if (req.user?.email) {
-            await sendEmail({
-              to: req.user.email,
-              subject: `Token Confirmed - ${dept?.name || "Department"} | Kumar Hospitals`,
-              html: tokenBookedTemplate({
-                name: req.user.name,
-                tokenNumber: token.tokenNumber,
-                departmentName: dept?.name || "Unknown Department",
-                appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),
-              }),
-            });
-          }
-        }catch (emailErr) {
-          console.log("Token confirmation email failed:", emailErr.message);
-      }
-    }catch(error){
-        res.status(400).json({
-            message:error.message,
-        })
+    if (!req.user.isPhoneVerified) {
+      return res.status(403).json({
+        message: "Phone number not verified",
+      });
     }
-};
 
-export const callNextTokenController=async(req,res)=>{
+    const token = await createToken({
+      patientId: req.user._id,
+      departmentId,
+      requestedPriority: priority,
+      createdByRole: req.user.role,
+      appointmentDate,
+    });
+
+    // ✅ Send response immediately (fast booking)
+    res.status(201).json({
+      message: "Token created successfully",
+      token,
+    });
+
+    // ✅ Send confirmation email (does NOT affect booking)
     try {
-        const doctor = await User.findOne({ _id: req.user._id });
-        if (!doctor) {
-        return res.status(400).json({
-          message: "Doctor profile not found",
+      const dept = await Department.findById(departmentId).lean();
+
+      if (req.user?.email) {
+        await sendEmail({
+          to: req.user.email,
+          subject: `Token Confirmed - ${dept?.name || "Department"} | Kumar Hospitals`,
+          html: tokenBookedTemplate({
+            name: req.user.name,
+            tokenNumber: token.tokenNumber,
+            departmentName: dept?.name || "Unknown Department",
+            appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),
+          }),
         });
       }
-        const departmentId = doctor.departments;
-        const token =await getNextToken(departmentId,req.user._id);
-        if(!token){
-            return res.status(200).json({
-                message:"No Patient Waiting",
-            });
-        }
-
-        res.status(200).json({
-            message: "Next token called",
-            token,
-        });
-    } catch (error) {
-        res.status(400).json({ message: error.message });
+    } catch (emailErr) {
+      console.log("Token confirmation email failed:", emailErr.message);
     }
+  } catch (error) {
+    return res.status(400).json({
+      message: error.message,
+    });
+  }
 };
 
 export const completeCurrentTokenController = async (req, res) => {
@@ -124,6 +105,28 @@ export const cancelTokenController = async (req, res) => {
       message: "Token cancelled successfully",
       token,
     });
+
+    try {
+      const patient = await User.findById(token.patient).lean();
+      const dept = await Department.findById(token.department).lean();
+
+      if (patient?.email) {
+        await sendEmail({
+          to: patient.email,
+          subject: `Token Cancelled - ${dept?.name || "Department"} | Kumar Hospitals`,
+          html: tokenCancelledTemplate({
+            name: patient.name,
+            tokenNumber: token.tokenNumber,
+            departmentName: dept?.name || "Department",
+            appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),
+            cancelledBy: req.user.role || "User",
+          }),
+        });
+      }
+    } catch (emailErr) {
+      console.log("Cancel token email failed:", emailErr.message);
+    }
+
   } catch (error) {
     res.status(400).json({
       message: error.message,
