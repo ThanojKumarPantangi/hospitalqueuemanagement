@@ -21,8 +21,6 @@ import sessionRoutes from "./routes/session.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import patientProfileRoutes from "./routes/patientProfile.routes.js";
 
-import emailRoutes from "./routes/email.routes.js";
-
 
 
 import {
@@ -81,7 +79,6 @@ app.use("/api/users",tokenLimiter,userRoutes);
 app.use("/api/patient-profile", patientProfileRoutes)
 
 
-app.use("/api", emailRoutes);
 
 
 /* ------------------ Health check ------------------ */
