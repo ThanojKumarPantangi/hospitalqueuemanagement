@@ -35,7 +35,7 @@ export const sendEmail = async ({ to, subject, html }) => {
       }
     );
 
-    return response.data; // { messageId: "..." }
+    return response.data; 
   } catch (err) {
     console.log("Brevo email error:", err?.response?.data || err.message);
     throw new Error(err?.response?.data?.message || "Failed to send email");

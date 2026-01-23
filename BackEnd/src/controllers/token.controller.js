@@ -1,4 +1,5 @@
 import User from "../models/user.model.js";
+import Department from "../models/department.model.js";
 import {createToken,
   getNextToken,
   skipCurrentTokenByDoctor,
@@ -10,6 +11,9 @@ import {createToken,
   getPatientTokenHistory,
   getDoctorQueueSummary,
 } from "../services/token.service.js";
+
+import { sendEmail } from "../utils/sendEmail.js";
+import { tokenBookedTemplate } from "../emailTemplates/tokenBookedTemplate.js";
 
 export const createTokenController=async(req,res)=>{
     try{
@@ -30,8 +34,25 @@ export const createTokenController=async(req,res)=>{
             message:"Token created successfully",
             token,
         });
-    }
-    catch(error){
+
+        try {
+          const dept = await Department.findById(departmentId).lean();
+          if (req.user?.email) {
+            await sendEmail({
+              to: req.user.email,
+              subject: `Token Confirmed - ${dept?.name || "Department"} | Kumar Hospitals`,
+              html: tokenBookedTemplate({
+                name: req.user.name,
+                tokenNumber: token.tokenNumber,
+                departmentName: dept?.name || "Unknown Department",
+                appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),
+              }),
+            });
+          }
+        }catch (emailErr) {
+          console.log("Token confirmation email failed:", emailErr.message);
+      }
+    }catch(error){
         res.status(400).json({
             message:error.message,
         })

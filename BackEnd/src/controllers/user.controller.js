@@ -4,7 +4,7 @@ import User from "../models/user.model.js";
 import PasswordReset from "../models/passwordReset.model.js";
 import { revokeAllUserSessions } from "../services/sessionRevoke.service.js";
 import { sendEmail } from "../utils/sendEmail.js";
-import { resetPasswordTemplate } from "../utils/emailTemplates/resetPassword.template.js";
+import { resetPasswordTemplate } from "../emailTemplates/resetPassword.template.js";
 /**
  * Change Password
  * Requires old password
