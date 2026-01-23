@@ -137,7 +137,7 @@ export const cancelTokenController = async (req, res) => {
 
       if (patient?.email) {
         await sendEmail({
-          to: patient.email,
+          to: req.user.email||patient.email,
           subject: `Token Cancelled - ${dept?.name || "Department"} | Kumar Hospitals`,
           html: tokenCancelledTemplate({
             name: patient.name,
