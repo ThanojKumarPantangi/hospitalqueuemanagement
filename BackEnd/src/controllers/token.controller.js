@@ -14,6 +14,7 @@ import {createToken,
 
 import { sendEmail } from "../utils/sendEmail.js";
 import { tokenBookedTemplate } from "../emailTemplates/tokenBookedTemplate.js";
+import {tokenCancelledTemplate} from "../emailTemplates/tokenCancelledTemplate.js"
 
 export const createTokenController = async (req, res) => {
   try {
