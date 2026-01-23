@@ -65,6 +65,31 @@ export const createTokenController = async (req, res) => {
   }
 };
 
+export const callNextTokenController=async(req,res)=>{
+    try {
+        const doctor = await User.findOne({ _id: req.user._id });
+        if (!doctor) {
+        return res.status(400).json({
+          message: "Doctor profile not found",
+        });
+      }
+        const departmentId = doctor.departments;
+        const token =await getNextToken(departmentId,req.user._id);
+        if(!token){
+            return res.status(200).json({
+                message:"No Patient Waiting",
+            });
+        }
+
+        res.status(200).json({
+            message: "Next token called",
+            token,
+        });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 export const completeCurrentTokenController = async (req, res) => {
   try {
     const doctorId = req.user.id; 
