@@ -1,4 +1,6 @@
 import { getPatientProfileByUserId,getPatientProfileForDoctor,updatePatientProfile} from "../services/patientProfile.service.js";
+import QRCode from "qrcode";
+import { generatePatientQrToken } from "../utils/patientQr.util.js";
 
 export const getMyPatientProfileController = async (req, res) => {
   try {
@@ -62,5 +64,24 @@ export const updateMyPatientProfileController = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+export const getPatientQrController = async (req, res) => {
+  try {
+    const token = generatePatientQrToken(req.user._id);
+
+    // QR content (token only)
+    const qrText = `PATIENT_QR:${token}`;
+
+    // Generate QR image as base64
+    const qrImage = await QRCode.toDataURL(qrText);
+
+    res.json({
+      qrImage, // frontend shows this in <img src="..." />
+      expiresIn: "5 minutes",
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to generate QR" });
   }
 };

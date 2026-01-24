@@ -2,8 +2,7 @@ import Department from "../models/department.model.js";
 import User from "../models/user.model.js";
 import Token from "../models/token.model.js";
 import { createAdminService } from "../services/admin.service.js";
-
-
+import { verifyPatientQrToken } from "../utils/patientQr.util.js";
 
 export const createDepartment = async (req, res) => {
   try {
@@ -578,5 +577,44 @@ export const getAdminDashboardSummary = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Error generating dashboard summary", error: error.message });
+  }
+};
+
+export const verifyPatientQrController = async (req, res) => {
+  try {
+    if (req.user.role !== "ADMIN") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const { qrText } = req.body;
+    if (!qrText) {
+      return res.status(400).json({ message: "QR text required" });
+    }
+
+    // expected format: PATIENT_QR:<token>
+    const parts = qrText.split("PATIENT_QR:");
+    if (parts.length !== 2) {
+      return res.status(400).json({ message: "Invalid QR format" });
+    }
+
+    const token = parts[1].trim();
+
+    const decoded = verifyPatientQrToken(token);
+
+    const patient = await User.findById(decoded.patientId).select(
+      "_id name phone role isActive"
+    );
+
+    if (!patient || patient.role !== "PATIENT" || !patient.isActive) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    res.json({
+      patientId: patient._id,
+      name: patient.name,
+      phone: patient.phone,
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message || "QR verification failed" });
   }
 };

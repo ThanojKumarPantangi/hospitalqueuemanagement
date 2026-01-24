@@ -19,6 +19,7 @@ import {
   getDepartmentsStatus,
   getAdminDashboardSummary,
   updateDoctorDepartments,
+  verifyPatientQrController,
 } from "../controllers/admin.controller.js";
 
 const router = express.Router();
@@ -127,5 +128,10 @@ router.get("/doctors",
   roleMiddleware("ADMIN"),
   getDoctors
 );
+
+router.post("/verify-patient-qr", 
+  authMiddleware, 
+  roleMiddleware("ADMIN"),
+  verifyPatientQrController);
 
 export default router;

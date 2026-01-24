@@ -1,5 +1,5 @@
 import express from "express";
-import { getMyPatientProfileController,getPatientProfileForDoctorController,updateMyPatientProfileController } from "../controllers/patientProfile.controller.js";
+import { getMyPatientProfileController,getPatientQrController,getPatientProfileForDoctorController,updateMyPatientProfileController } from "../controllers/patientProfile.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
 import roleMiddleware from "../middlewares/role.middleware.js";
 
@@ -9,6 +9,12 @@ router.get("/me",
     authMiddleware,
     roleMiddleware("PATIENT"),
     getMyPatientProfileController
+);
+
+router.get("/my-qr",
+  authMiddleware,
+  roleMiddleware("PATIENT"),
+  getPatientQrController
 );
 
 router.get(
@@ -24,6 +30,5 @@ router.post(
   roleMiddleware("PATIENT"),
   updateMyPatientProfileController
 );
-
 
 export default router;
