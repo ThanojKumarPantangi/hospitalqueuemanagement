@@ -1,5 +1,9 @@
 import api from "./axios";
 
+export const verifyPatientQrApi = (qrText) => {
+return api.post("/api/admin/verify-patient-qr", { qrText });
+};
+
 export const getAdminDashboardSummaryApi=()=>{
   return api.get("/api/admin/dashboard/summary")
 }

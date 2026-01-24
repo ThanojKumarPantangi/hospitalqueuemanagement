@@ -7,3 +7,7 @@ export const getMyPatientProfileApi = () => {
 export const updatePatientProfileApi = (payload) => {
   return api.post("/api/patient-profile/me", payload);
 };
+
+export const getPatientQrApi = () => {
+return api.get("/api/patient-profile/my-qr");
+};

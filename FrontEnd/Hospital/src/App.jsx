@@ -29,6 +29,7 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import DoctorManagement from "./pages/admin/Doctors";
 import DepartmentManagement from "./pages/admin/Departments";
 import QueueMonitor from "./pages/admin/QueueMonitor";
+import AdminPatientQrScanner from "./pages/admin/AdminPatientQrScanner.jsx";
 import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
 import AdminMessagingPanel from "./pages/admin/AdminMessagingPanel.jsx";
 
@@ -84,6 +85,7 @@ function App() {
               <Route path="doctors" element={<DoctorManagement />} />
               <Route path="departments" element={<DepartmentManagement />} />
               <Route path="queue-monitor" element={<QueueMonitor />} />
+              <Route path="qr-scanner" element={<AdminPatientQrScanner />} />
               <Route path="analytics" element={<AnalyticsDashboard />} />
               <Route path="settings" element={<ChangePasswordUI />} />
               <Route path="messaging" element={<AdminMessagingPanel />} />
