@@ -16,40 +16,107 @@ import { sendEmail } from "../utils/sendEmail.js";
 import { tokenBookedTemplate } from "../emailTemplates/tokenBookedTemplate.js";
 import {tokenCancelledTemplate} from "../emailTemplates/tokenCancelledTemplate.js"
 
+// export const createTokenController = async (req, res) => {
+//   try {
+//     const { departmentId, priority, appointmentDate } = req.body;
+
+//     if (!req.user.isPhoneVerified) {
+//       return res.status(403).json({
+//         message: "Phone number not verified",
+//       });
+//     }
+
+//     const token = await createToken({
+//       patientId: req.user._id,
+//       departmentId,
+//       requestedPriority: priority,
+//       createdByRole: req.user.role,
+//       appointmentDate,
+//     });
+
+//     // ✅ Send response immediately (fast booking)
+//     res.status(201).json({
+//       message: "Token created successfully",
+//       token,
+//     });
+
+//     // ✅ Send confirmation email (does NOT affect booking)
+//     try {
+//       const dept = await Department.findById(departmentId).lean();
+
+//       if (req.user?.email) {
+//         await sendEmail({
+//           to: req.user.email,
+//           subject: `Token Confirmed - ${dept?.name || "Department"} | Kumar Hospitals`,
+//           html: tokenBookedTemplate({
+//             name: req.user.name,
+//             tokenNumber: token.tokenNumber,
+//             departmentName: dept?.name || "Unknown Department",
+//             appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),
+//           }),
+//         });
+//       }
+//     } catch (emailErr) {
+//       console.log("Token confirmation email failed:", emailErr.message);
+//     }
+//   } catch (error) {
+//     return res.status(400).json({
+//       message: error.message,
+//     });
+//   }
+// };
+
 export const createTokenController = async (req, res) => {
   try {
-    const { departmentId, priority, appointmentDate } = req.body;
+    const { departmentId, priority, appointmentDate, patientId } = req.body;
 
-    if (!req.user.isPhoneVerified) {
-      return res.status(403).json({
-        message: "Phone number not verified",
-      });
+    let finalPatientId = req.user._id;
+
+    // ✅ Admin can book for any patient
+    if (req.user.role === "ADMIN") {
+      if (!patientId) {
+        return res.status(400).json({ message: "patientId is required for admin booking" });
+      }
+      finalPatientId = patientId;
+    }
+
+    // ✅ Patient must be phone verified (admin booking also checks patient)
+    const patient = await User.findById(finalPatientId).select(
+      "_id name email phone role isActive isPhoneVerified"
+    );
+
+    if (!patient || patient.role !== "PATIENT" || !patient.isActive) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+
+    if (!patient.isPhoneVerified) {
+      return res.status(403).json({ message: "Patient phone number not verified" });
     }
 
     const token = await createToken({
-      patientId: req.user._id,
+      patientId: finalPatientId,
       departmentId,
       requestedPriority: priority,
       createdByRole: req.user.role,
       appointmentDate,
     });
 
-    // ✅ Send response immediately (fast booking)
+    // ✅ Fast response
     res.status(201).json({
       message: "Token created successfully",
       token,
     });
 
-    // ✅ Send confirmation email (does NOT affect booking)
+    // ✅ Email after response (non-blocking)
     try {
       const dept = await Department.findById(departmentId).lean();
 
-      if (req.user?.email) {
+      if (patient?.email) {
         await sendEmail({
-          to: req.user.email,
+          to: patient.email,
           subject: `Token Confirmed - ${dept?.name || "Department"} | Kumar Hospitals`,
           html: tokenBookedTemplate({
-            name: req.user.name,
+            name: patient.name,
             tokenNumber: token.tokenNumber,
             departmentName: dept?.name || "Unknown Department",
             appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),

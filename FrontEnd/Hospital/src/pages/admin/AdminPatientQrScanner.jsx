@@ -1,15 +1,24 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
+import {
+  Camera,
+  CheckCircle2,
+  XCircle,
+  ArrowLeft,
+  Flashlight,
+  FlashlightOff,
+  SwitchCamera,
+} from "lucide-react";
 import QrScanner from "qr-scanner";
 
 import { verifyPatientQrApi } from "../../api/admin.api";
 import Toast from "../../components/ui/Toast";
-import Loader from "../../components/animation/Loader";
 
 export default function AdminPatientQrScanner({ onFound, onClose }) {
   const videoRef = useRef(null);
   const scannerRef = useRef(null);
+
+  const beepRef = useRef(null);
 
   const [loadingCamera, setLoadingCamera] = useState(true);
   const [verifying, setVerifying] = useState(false);
@@ -17,10 +26,38 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
   const [toast, setToast] = useState(null);
   const [result, setResult] = useState(null);
 
-  const stopScanner = () => {
+  // 🔥 camera states
+  const [cameraFacing, setCameraFacing] = useState("environment"); // "environment" | "user"
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
+
+  // -------------------------
+  // 🔊 Beep sound init
+  // -------------------------
+  useEffect(() => {
+    // You can replace this URL with your own beep mp3 in /public folder
+    // Example: "/sounds/beep.mp3"
+    beepRef.current = new Audio("/beep.mp3");
+    beepRef.current.volume = 0.8;
+  }, []);
+
+  const playBeep = async () => {
+    try {
+      if (!beepRef.current) return;
+      beepRef.current.currentTime = 0;
+      await beepRef.current.play();
+    } catch (e) {
+      // browser may block autoplay until user interacts
+    }
+  };
+
+  // -------------------------
+  // Helpers: stop scanner
+  // -------------------------
+  const stopScanner = async () => {
     try {
       if (scannerRef.current) {
-        scannerRef.current.stop();
+        await scannerRef.current.stop();
         scannerRef.current.destroy();
         scannerRef.current = null;
       }
@@ -29,16 +66,85 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
     }
   };
 
+  // -------------------------
+  // Torch support check
+  // -------------------------
+  const checkTorchSupport = async () => {
+    try {
+      const videoEl = videoRef.current;
+      if (!videoEl) return;
+
+      const stream = videoEl.srcObject;
+      if (!stream) return;
+
+      const track = stream.getVideoTracks?.()?.[0];
+      if (!track) return;
+
+      const caps = track.getCapabilities?.();
+      const supported = Boolean(caps?.torch);
+
+      setTorchSupported(supported);
+      if (!supported) setTorchOn(false);
+    } catch (e) {
+      setTorchSupported(false);
+      setTorchOn(false);
+    }
+  };
+
+  // -------------------------
+  // Toggle Torch
+  // -------------------------
+  const toggleTorch = async () => {
+    try {
+      const videoEl = videoRef.current;
+      if (!videoEl) return;
+
+      const stream = videoEl.srcObject;
+      if (!stream) return;
+
+      const track = stream.getVideoTracks?.()?.[0];
+      if (!track) return;
+
+      const caps = track.getCapabilities?.();
+      if (!caps?.torch) {
+        setToast({
+          type: "error",
+          message: "Torch not supported on this device/browser",
+        });
+        setTorchSupported(false);
+        setTorchOn(false);
+        return;
+      }
+
+      const nextTorch = !torchOn;
+
+      await track.applyConstraints({
+        advanced: [{ torch: nextTorch }],
+      });
+
+      setTorchOn(nextTorch);
+    } catch (e) {
+      setToast({
+        type: "error",
+        message: "Unable to toggle torch. Try another camera.",
+      });
+    }
+  };
+
+  // -------------------------
+  // Verify QR
+  // -------------------------
   const handleVerifyQr = async (qrText) => {
     if (!qrText) return;
     if (verifying) return;
+    if (result) return;
 
     try {
       setVerifying(true);
 
       const res = await verifyPatientQrApi(qrText);
-
       const data = res?.data;
+
       setResult(data);
 
       setToast({
@@ -46,13 +152,20 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
         message: `Patient Found: ${data?.name || "Unknown"}`,
       });
 
-      // Stop camera once verified
-      stopScanner();
+      // ✅ stop camera once verified
+      await stopScanner();
 
-      // If you want auto-fill booking form
+      // ✅ send data back to modal
       if (typeof onFound === "function") {
         onFound(data);
       }
+
+      // ✅ auto close scanner after success
+      setTimeout(() => {
+        if (typeof onClose === "function") {
+          onClose();
+        }
+      }, 400);
     } catch (err) {
       setToast({
         type: "error",
@@ -63,56 +176,82 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
     }
   };
 
+  // -------------------------
+  // Start scanner
+  // -------------------------
+  const startScanner = async () => {
+    try {
+      setLoadingCamera(true);
+      setResult(null);
+
+      if (!videoRef.current) return;
+
+      await stopScanner();
+
+      const scanner = new QrScanner(
+        videoRef.current,
+        async (scanResult) => {
+          if (verifying || result) return;
+
+          const qrText = scanResult?.data;
+          if (!qrText) return;
+
+          // 🔊 beep when QR detected
+          await playBeep();
+
+          handleVerifyQr(qrText);
+        },
+        {
+          highlightScanRegion: false, // we will use our own animation frame
+          highlightCodeOutline: false,
+          maxScansPerSecond: 5,
+          preferredCamera: cameraFacing,
+        }
+      );
+
+      scannerRef.current = scanner;
+      await scanner.start();
+
+      setTimeout(async () => {
+        await checkTorchSupport();
+      }, 250);
+
+      setLoadingCamera(false);
+    } catch (err) {
+      setToast({
+        type: "error",
+        message:
+          "Camera permission denied or camera not available. Please allow camera access.",
+      });
+      setLoadingCamera(false);
+    }
+  };
+
+  // -------------------------
+  // Mount + camera switch re-init
+  // -------------------------
   useEffect(() => {
-    let mounted = true;
-
-    const start = async () => {
-      try {
-        setLoadingCamera(true);
-
-        if (!videoRef.current) return;
-
-        // QR scanner init
-        const scanner = new QrScanner(
-          videoRef.current,
-          (scanResult) => {
-            const qrText = scanResult?.data;
-            if (!qrText) return;
-
-            // Verify only once
-            handleVerifyQr(qrText);
-          },
-          {
-            highlightScanRegion: true,
-            highlightCodeOutline: true,
-            maxScansPerSecond: 5,
-          }
-        );
-
-        scannerRef.current = scanner;
-
-        await scanner.start();
-
-        if (!mounted) return;
-        setLoadingCamera(false);
-      } catch (err) {
-        setToast({
-          type: "error",
-          message:
-            "Camera permission denied or camera not available. Please allow camera access.",
-        });
-        setLoadingCamera(false);
-      }
-    };
-
-    start();
+    startScanner();
 
     return () => {
-      mounted = false;
       stopScanner();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cameraFacing]);
+
+  // -------------------------
+  // UI Actions
+  // -------------------------
+  const handleSwitchCamera = async () => {
+    setTorchOn(false);
+    setCameraFacing((prev) => (prev === "environment" ? "user" : "environment"));
+  };
+
+  const handleScanAgain = async () => {
+    setToast(null);
+    setTorchOn(false);
+    await startScanner();
+  };
 
   return (
     <>
@@ -158,22 +297,66 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg"
           >
-            <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+            {/* Top Controls */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm font-bold text-gray-900 dark:text-white">
                 Camera Preview
               </p>
 
-              {verifying && (
-                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                  Verifying...
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Switch Camera */}
+                <button
+                  type="button"
+                  onClick={handleSwitchCamera}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                >
+                  <SwitchCamera size={16} />
+                  <span className="text-xs font-bold">
+                    {cameraFacing === "environment" ? "Back Cam" : "Front Cam"}
+                  </span>
+                </button>
+
+                {/* Torch */}
+                <button
+                  type="button"
+                  disabled={!torchSupported}
+                  onClick={toggleTorch}
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border transition-all
+                    ${
+                      torchSupported
+                        ? "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        : "bg-gray-100 dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-400 cursor-not-allowed"
+                    }`}
+                >
+                  {torchOn ? (
+                    <FlashlightOff size={16} />
+                  ) : (
+                    <Flashlight size={16} />
+                  )}
+                  <span className="text-xs font-bold">
+                    {torchSupported
+                      ? torchOn
+                        ? "Torch Off"
+                        : "Torch On"
+                      : "No Torch"}
+                  </span>
+                </button>
+
+                {/* Verifying badge */}
+                {verifying && (
+                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    Verifying...
+                  </span>
+                )}
+              </div>
             </div>
 
+            {/* Video */}
             <div className="relative bg-black">
+              {/* ✅ Normal spinner instead of Loader component */}
               {loadingCamera && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/60">
-                  <Loader />
+                  <div className="h-10 w-10 rounded-full border-4 border-white/30 border-t-white animate-spin" />
                 </div>
               )}
 
@@ -183,11 +366,35 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
                 muted
                 playsInline
               />
+
+              {/* ✅ QR Box Animation Overlay */}
+              {!loadingCamera && !result && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="relative w-[70%] max-w-[360px] aspect-square border-2 border-white/40 rounded-2xl">
+                    {/* Corner glow */}
+                    <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-indigo-400 rounded-tl-xl" />
+                    <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-indigo-400 rounded-tr-xl" />
+                    <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-indigo-400 rounded-bl-xl" />
+                    <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-indigo-400 rounded-br-xl" />
+
+                    {/* scanning line */}
+                    <motion.div
+                      initial={{ y: 0, opacity: 0.8 }}
+                      animate={{ y: ["0%", "90%", "0%"] }}
+                      transition={{
+                        duration: 1.8,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="absolute left-2 right-2 top-2 h-1 rounded-full bg-indigo-400/80 blur-[1px]"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="p-4 text-sm text-gray-500 dark:text-gray-400">
-              Keep the QR inside the camera box. Verification will happen
-              automatically.
+              Keep the QR inside the box. Scan beep will play once detected.
             </div>
           </motion.div>
 
@@ -200,7 +407,7 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
                 exit={{ opacity: 0, y: 10 }}
                 className="rounded-2xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-900/10 p-5"
               >
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex items-start gap-3">
                     <CheckCircle2
                       className="text-emerald-600 dark:text-emerald-400 mt-1"
@@ -227,13 +434,7 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setResult(null);
-                      setToast(null);
-                      setLoadingCamera(true);
-                      // restart scanner
-                      window.location.reload();
-                    }}
+                    onClick={handleScanAgain}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
                   >
                     <XCircle size={16} />

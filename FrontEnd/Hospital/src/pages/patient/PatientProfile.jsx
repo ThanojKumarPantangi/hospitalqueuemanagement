@@ -164,7 +164,6 @@ const PatientProfile = () => {
         setQrImage("");
 
         const res = await getPatientQrApi();
-        console.log(res)
         setQrImage(res?.data?.qrImage || "");
       } catch (err) {
         setQrError(err?.response?.data?.message || "Failed to load QR");

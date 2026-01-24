@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState,useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -16,12 +16,14 @@ import {
   RefreshCcw,
   Dot,
   TrendingUp,
-  TrendingDown,
 } from "lucide-react";
+import { showToast } from "../../utils/toastBus.js";
+import AdminCreateTokenModal from "../../components/tokenmodal/AdminCreateTokenModal";
 import {
   getAdminDashboardSummaryApi,
   getDepartmentsStatusApi,
 } from "../../api/admin.api";
+import { createTokenApi,previewTokenNumberApi } from "../../api/token.api";
 
 // --- Animation Variants ---
 const containerVariants = {
@@ -68,6 +70,75 @@ const Dashboard = () => {
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [showAllAlerts, setShowAllAlerts] = useState(false);
 
+  const [open, setOpen] = useState(false);
+
+  // modal states
+    const [departmentId, setDepartmentId] = useState("");
+    const [appointmentDate, setAppointmentDate] = useState("");
+    const [priority, setPriority] = useState("NORMAL");
+
+    const [expectedTokenNumber, setExpectedTokenNumber] = useState(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const previewCacheRef = useRef(new Map());
+    const debounceTimerRef = useRef(null);
+
+    const MAX_ADVANCE_DAYS = 5;
+    const formatDate = (date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const maxDate = new Date(today);
+    maxDate.setDate(today.getDate() + MAX_ADVANCE_DAYS);
+
+
+
+    const [creating, setCreating] = useState(false);
+
+    //create Token
+    const createToken = async (payload) => {
+      const { patientId, departmentId, appointmentDate, priority } = payload || {};
+
+      if (!patientId || !departmentId || !appointmentDate || !priority) {
+        showToast({ type: "error", message: "Please fill all the fields" });
+        return;
+      }
+
+      setCreating(true);
+
+      try {
+        const res = await createTokenApi({
+          patientId,
+          departmentId,
+          appointmentDate,
+          priority,
+        });
+
+        setOpen(false);
+
+        showToast({
+          type: "success",
+          message: res?.data?.message || "Token created successfully",
+        });
+        previewCacheRef.current.clear();
+        setExpectedTokenNumber(null);
+        setAppointmentDate("");
+        setDepartmentId("");
+      } catch (err) {
+        showToast({
+          type: "error",
+          message:
+            err?.response?.data?.message ||
+            "Error creating token. Please try again later.",
+        });
+      } finally {
+        setCreating(false);
+      }
+    };
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -88,6 +159,65 @@ const Dashboard = () => {
     }
     fetchData();
   }, []);
+
+  // Preview Token Handler
+  useEffect(() => {
+    if (!departmentId || !appointmentDate) {
+      setExpectedTokenNumber(null);
+      return;
+    }
+  
+    const cacheKey = `${departmentId}|${appointmentDate}`;
+  
+    // ✅ 1. Return cached value immediately (NO API CALL)
+    if (previewCacheRef.current.has(cacheKey)) {
+      setExpectedTokenNumber(previewCacheRef.current.get(cacheKey));
+      return;
+    }
+  
+    // ❌ Clear previous debounce if user clicks fast
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+  
+    // ⏳ Debounce API call
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        setPreviewLoading(true);
+  
+        const res = await previewTokenNumberApi({
+          departmentId,
+          appointmentDate,
+        });
+  
+        const tokenNumber = res.data.expectedTokenNumber;
+        // ✅ Save in cache
+        previewCacheRef.current.set(cacheKey, tokenNumber);
+  
+        setExpectedTokenNumber(tokenNumber);
+      } catch (err) {
+        // Silent fail – preview should never block booking
+        setExpectedTokenNumber(null);
+        console.log(err)
+      } finally {
+        setPreviewLoading(false);
+      }
+    }, 400); 
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [departmentId, appointmentDate]);
+
+  useEffect(() => {
+  if (!open) {
+    setDepartmentId("");
+    setAppointmentDate("");
+    setPriority("NORMAL");
+    setExpectedTokenNumber(null);
+  }
+}, [open]);
 
   // --------------------------
   // Derived UI helpers (safe)
@@ -363,6 +493,20 @@ const Dashboard = () => {
               <Activity className="w-4 h-4 text-emerald-500" />
               Live Monitoring
             </span>
+
+            <button 
+              onClick={() => setOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+              bg-white/70 dark:bg-gray-900/60 backdrop-blur
+              border border-gray-200 dark:border-gray-800
+              text-gray-700 dark:text-gray-200
+              hover:bg-white dark:hover:bg-gray-900
+              hover:border-indigo-300 dark:hover:border-indigo-600
+              hover:text-indigo-600 dark:hover:text-indigo-400
+              shadow-sm hover:shadow-md
+              transition-all duration-200">
+              Book Appointment 
+            </button>
           </div>
         </div>
 
@@ -819,6 +963,26 @@ const Dashboard = () => {
           </div>
         </motion.section>
       </div>
+
+      <AdminCreateTokenModal
+        open={open}
+        onClose={() => setOpen(false)}
+        departments={departmentsSummary}
+        departmentId={departmentId}
+        setDepartmentId={setDepartmentId}
+        appointmentDate={appointmentDate}
+        setAppointmentDate={setAppointmentDate}
+        expectedTokenNumber={expectedTokenNumber}
+        previewLoading={previewLoading}
+        MAX_ADVANCE_DAYS={MAX_ADVANCE_DAYS}
+        today={today}
+        formatDate={formatDate}
+        priority={priority}
+        setPriority={setPriority}
+        creating={creating}
+        createToken={createToken}
+      />
+
     </motion.div>
   );
 };

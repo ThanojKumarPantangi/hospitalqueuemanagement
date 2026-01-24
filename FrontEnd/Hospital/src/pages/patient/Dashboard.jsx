@@ -136,6 +136,7 @@ useEffect(() => {
   const fetchDepartments = async () => {
     try {
       const res = await  getAllDepartmentsApi();
+      console.log(res)
       setDepartments(res.data.departments);
     } catch (err) {
       console.error("Failed to load departments", err);
