@@ -20,6 +20,10 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
 
   const beepRef = useRef(null);
 
+  // ✅ FIX: prevent multiple beeps + multiple verify calls
+  const scanLockRef = useRef(false);
+  const lastQrRef = useRef(null);
+
   const [loadingCamera, setLoadingCamera] = useState(true);
   const [verifying, setVerifying] = useState(false);
 
@@ -35,8 +39,6 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
   // 🔊 Beep sound init
   // -------------------------
   useEffect(() => {
-    // You can replace this URL with your own beep mp3 in /public folder
-    // Example: "/sounds/beep.mp3"
     beepRef.current = new Audio("/beep.mp3");
     beepRef.current.volume = 0.8;
   }, []);
@@ -167,6 +169,10 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
         }
       }, 400);
     } catch (err) {
+      // ❌ if verify failed, unlock scanning again
+      scanLockRef.current = false;
+      lastQrRef.current = null;
+
       setToast({
         type: "error",
         message: err?.response?.data?.message || "QR verification failed",
@@ -184,6 +190,10 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
       setLoadingCamera(true);
       setResult(null);
 
+      // ✅ reset scan lock whenever scanner starts
+      scanLockRef.current = false;
+      lastQrRef.current = null;
+
       if (!videoRef.current) return;
 
       await stopScanner();
@@ -191,18 +201,26 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
       const scanner = new QrScanner(
         videoRef.current,
         async (scanResult) => {
-          if (verifying || result) return;
-
           const qrText = scanResult?.data;
           if (!qrText) return;
 
-          // 🔊 beep when QR detected
+          // ✅ prevent multiple triggers instantly
+          if (scanLockRef.current) return;
+
+          // optional: avoid same QR repeating
+          if (lastQrRef.current === qrText) return;
+
+          scanLockRef.current = true;
+          lastQrRef.current = qrText;
+
+          // 🔊 beep once when QR detected
           await playBeep();
 
-          handleVerifyQr(qrText);
+          // verify once
+          await handleVerifyQr(qrText);
         },
         {
-          highlightScanRegion: false, // we will use our own animation frame
+          highlightScanRegion: false,
           highlightCodeOutline: false,
           maxScansPerSecond: 5,
           preferredCamera: cameraFacing,
@@ -250,6 +268,11 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
   const handleScanAgain = async () => {
     setToast(null);
     setTorchOn(false);
+
+    // ✅ unlock scan again
+    scanLockRef.current = false;
+    lastQrRef.current = null;
+
     await startScanner();
   };
 
@@ -353,7 +376,6 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
 
             {/* Video */}
             <div className="relative bg-black">
-              {/* ✅ Normal spinner instead of Loader component */}
               {loadingCamera && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/60">
                   <div className="h-10 w-10 rounded-full border-4 border-white/30 border-t-white animate-spin" />
@@ -367,17 +389,15 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
                 playsInline
               />
 
-              {/* ✅ QR Box Animation Overlay */}
+              {/* QR Box Animation Overlay */}
               {!loadingCamera && !result && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="relative w-[70%] max-w-[360px] aspect-square border-2 border-white/40 rounded-2xl">
-                    {/* Corner glow */}
                     <div className="absolute -top-2 -left-2 w-6 h-6 border-l-4 border-t-4 border-indigo-400 rounded-tl-xl" />
                     <div className="absolute -top-2 -right-2 w-6 h-6 border-r-4 border-t-4 border-indigo-400 rounded-tr-xl" />
                     <div className="absolute -bottom-2 -left-2 w-6 h-6 border-l-4 border-b-4 border-indigo-400 rounded-bl-xl" />
                     <div className="absolute -bottom-2 -right-2 w-6 h-6 border-r-4 border-b-4 border-indigo-400 rounded-br-xl" />
 
-                    {/* scanning line */}
                     <motion.div
                       initial={{ y: 0, opacity: 0.8 }}
                       animate={{ y: ["0%", "90%", "0%"] }}
