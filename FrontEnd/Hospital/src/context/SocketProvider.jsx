@@ -15,18 +15,8 @@ export const SocketProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const socket = io(
-      import.meta.env.VITE_SOCKET_URL || "https://hospitalqueuemanagement.onrender.com",
-      { 
-        withCredentials: true,
-        auth: {
-          token: localStorage.getItem("accessToken"),
-        },
-      }
-    );
-
     // const socket = io(
-    //   import.meta.env.VITE_SOCKET_URL || "http://localhost:5000",
+    //   import.meta.env.VITE_SOCKET_URL || "https://hospitalqueuemanagement.onrender.com",
     //   { 
     //     withCredentials: true,
     //     auth: {
@@ -34,6 +24,16 @@ export const SocketProvider = ({ children }) => {
     //     },
     //   }
     // );
+
+    const socket = io(
+      import.meta.env.VITE_SOCKET_URL || "http://localhost:5000",
+      { 
+        withCredentials: true,
+        auth: {
+          token: localStorage.getItem("accessToken"),
+        },
+      }
+    );
 
     socketRef.current = socket;
 

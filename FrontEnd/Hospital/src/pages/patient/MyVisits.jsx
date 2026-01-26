@@ -20,7 +20,11 @@ import Navbar from "../../components/Navbar/PatientNavbar";
 import Loader from "../../components/animation/Loader";
 import { showToast } from "../../utils/toastBus.js";
 import { getPatientVisitsApi } from "../../api/visit.api";
-import VisitDetailsModal from "../../components/visit/VisitDetailsModal";
+
+import PatientVisitDetailsModal from "../../components/visit/PatientVisitDetailsModal.jsx";
+
+// ✅ doctor profile api
+import { getDoctorProfileByIdApi } from "../../api/doctor.api";
 
 /* ===================== STATUS CONFIG ===================== */
 
@@ -71,12 +75,19 @@ const shimmer = {
 const MyVisits = () => {
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [selectedVisit, setSelectedVisit] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
 
-  const MIN_LOADER_TIME = 2500;
+  // ✅ Doctor Profile states (inside same modal)
+  const [doctorProfile, setDoctorProfile] = useState(null);
+  const [doctorLoading, setDoctorLoading] = useState(false);
 
+  const MIN_LOADER_TIME = 1500;
+
+  /* ===================== FETCH VISITS ===================== */
   useEffect(() => {
     let isMounted = true;
     const startTime = Date.now();
@@ -106,13 +117,70 @@ const MyVisits = () => {
     };
 
     fetchVisits();
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  /* ===================== FILTER LOGIC ===================== */
+  /* ===================== CLEAN PROFILE DATA ===================== */
+  const mapDoctorProfileForUI = (apiData) => {
+    const user = apiData?.profile?.user || {};
+    const profile = apiData?.profile?.profile || {};
+    const dept = profile?.department || {};
 
+    return {
+      userId: user?._id || "",
+      name: user?.name || "Unknown",
+      doctorRollNo: user?.doctorRollNo || "",
+      isAvailable: !!user?.isAvailable,
+
+      specialization: profile?.specialization || "General",
+      experienceYears: profile?.experienceYears ?? 0,
+      qualifications: Array.isArray(profile?.qualifications) ? profile.qualifications : [],
+
+      department: {
+        name: dept?.name || "Unknown Department",
+        consultationFee: dept?.consultationFee ?? "-",
+        slotDurationMinutes: dept?.slotDurationMinutes ?? "-",
+      },
+
+      opdTimings: Array.isArray(profile?.opdTimings) ? profile.opdTimings : [],
+      bio: profile?.bio || "",
+    };
+  };
+
+  /* ===================== FETCH DOCTOR PROFILE ===================== */
+  const fetchDoctorProfileById = async (doctorId) => {
+    if (!doctorId) {
+      showToast({ type: "error", message: "Doctor id not found" });
+      return;
+    }
+
+    try {
+      setDoctorLoading(true);
+
+      const res = await getDoctorProfileByIdApi(doctorId);
+
+      if (!res?.data?.success) {
+        throw new Error("Doctor profile not available");
+      }
+
+      const cleaned = mapDoctorProfileForUI(res.data);
+      setDoctorProfile(cleaned);
+    } catch (err) {
+      console.log(err);
+      showToast({
+        type: "error",
+        message: err?.response?.data?.message || err?.message || "Failed to load doctor profile",
+      });
+      setDoctorProfile(null);
+    } finally {
+      setDoctorLoading(false);
+    }
+  };
+
+  /* ===================== FILTER LOGIC ===================== */
   const filteredVisits = useMemo(() => {
     const q = searchQuery.toLowerCase();
 
@@ -122,15 +190,13 @@ const MyVisits = () => {
         v.department?.name?.toLowerCase().includes(q);
 
       const matchesDate =
-        !selectedDate ||
-        new Date(v.createdAt).toISOString().slice(0, 10) === selectedDate;
+        !selectedDate || new Date(v.createdAt).toISOString().slice(0, 10) === selectedDate;
 
       return matchesSearch && matchesDate;
     });
   }, [visits, searchQuery, selectedDate]);
 
-  /* ===================== SUMMARY (UI ONLY) ===================== */
-
+  /* ===================== SUMMARY ===================== */
   const summary = useMemo(() => {
     const total = visits.length;
 
@@ -144,7 +210,6 @@ const MyVisits = () => {
   }, [visits]);
 
   /* ===================== LOADER ===================== */
-
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-[#212121]/80 backdrop-blur-sm">
@@ -168,7 +233,6 @@ const MyVisits = () => {
           variants={blockVars}
           className="relative overflow-hidden rounded-[2.75rem] border border-slate-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-7 md:p-10 mb-10"
         >
-          {/* Glow / Accent */}
           <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full blur-3xl opacity-30 bg-gradient-to-br from-teal-400 via-cyan-300 to-indigo-400 dark:opacity-15" />
           <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-rose-300 via-amber-200 to-purple-300 dark:opacity-10" />
 
@@ -194,12 +258,13 @@ const MyVisits = () => {
               </p>
             </div>
 
-            {/* Right Summary Chips */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">
               <div className="rounded-2xl bg-slate-50 dark:bg-gray-800/40 border border-slate-100 dark:border-gray-800 p-4">
                 <div className="flex items-center gap-2 text-slate-400">
                   <Building2 size={14} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Total</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    Total
+                  </span>
                 </div>
                 <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
                   {summary.total}
@@ -248,7 +313,6 @@ const MyVisits = () => {
         {/* ===================== SEARCH & FILTER ===================== */}
         <motion.section variants={blockVars} className="mb-10">
           <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4">
-            {/* Search */}
             <motion.div variants={shimmer} className="relative">
               <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-teal-500/10 via-cyan-500/10 to-indigo-500/10 blur-xl opacity-40 pointer-events-none" />
               <div className="relative flex items-center gap-3 bg-white dark:bg-gray-900 border border-slate-100 dark:border-gray-800 rounded-[2rem] px-4 py-3.5 shadow-sm">
@@ -278,91 +342,16 @@ const MyVisits = () => {
               </div>
             </motion.div>
 
-            {/* Calendar */}
             <motion.div variants={shimmer} className="flex justify-start lg:justify-end">
               <div className="w-full lg:w-auto">
                 <CustomCalendar selectedDate={selectedDate} onDateSelect={setSelectedDate} />
               </div>
             </motion.div>
           </div>
-
-          {/* Active filters hint */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <AnimatePresence mode="popLayout">
-              {searchQuery.trim() && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                  className="px-3 py-1.5 rounded-2xl bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-900/30 text-teal-700 dark:text-teal-300"
-                >
-                  <span className="text-[10px] font-black uppercase tracking-widest">
-                    Search: {searchQuery}
-                  </span>
-                </motion.div>
-              )}
-
-              {selectedDate && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                  className="px-3 py-1.5 rounded-2xl bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 text-slate-700 dark:text-slate-200"
-                >
-                  <span className="text-[10px] font-black uppercase tracking-widest">
-                    Date: {selectedDate}
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </motion.section>
 
-        {/* ===================== VISIT LIST STATES ===================== */}
+        {/* ===================== VISIT LIST ===================== */}
         <motion.section variants={blockVars} className="grid gap-6">
-          {/* 🟡 No visit history */}
-          {visits.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center text-center py-20"
-            >
-              <div className="h-20 w-20 rounded-[2rem] bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 flex items-center justify-center shadow-sm mb-5">
-                <History size={34} className="text-slate-300 dark:text-slate-600" />
-              </div>
-
-              <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">
-                No visit history yet
-              </h3>
-
-              <p className="text-sm text-slate-500 mt-2 max-w-sm font-semibold leading-relaxed">
-                Once you consult a doctor, your medical visits will appear here automatically.
-              </p>
-            </motion.div>
-          )}
-
-          {/* 🟠 No results after filters */}
-          {visits.length > 0 && filteredVisits.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center text-center py-16"
-            >
-              <div className="h-16 w-16 rounded-[1.75rem] bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 flex items-center justify-center shadow-sm mb-4">
-                <Search size={26} className="text-slate-300 dark:text-slate-600" />
-              </div>
-
-              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">
-                No matching visits found
-              </h3>
-
-              <p className="text-sm text-slate-500 mt-1 font-semibold">
-                Try adjusting your search or date filter.
-              </p>
-            </motion.div>
-          )}
-
-          {/* 🟢 Normal visit list */}
           <AnimatePresence mode="popLayout">
             {filteredVisits.map((v, index) => {
               const status = statusConfig[v.status] || statusConfig.COMPLETED;
@@ -372,7 +361,6 @@ const MyVisits = () => {
                 <motion.div
                   key={v._id}
                   layout
-                  layoutId={v._id}
                   initial={{ opacity: 0, y: 12, scale: 0.99 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 12, scale: 0.99 }}
@@ -380,32 +368,20 @@ const MyVisits = () => {
                   whileHover="hover"
                   whileTap="tap"
                   variants={cardHover}
-                  onClick={() => setSelectedVisit(v)}
+                  onClick={() => {
+                    setSelectedVisit(v);
+                    setDoctorProfile(null); // reset when opening new visit
+                  }}
                   className="
-                    group
-                    cursor-pointer
-                    relative
-                    overflow-hidden
-                    bg-white dark:bg-gray-900
-                    rounded-[2.25rem]
-                    p-6
+                    group cursor-pointer relative overflow-hidden
+                    bg-white dark:bg-gray-900 rounded-[2.25rem] p-6
                     border border-slate-100 dark:border-gray-800
-                    shadow-sm
-                    hover:shadow-2xl hover:shadow-teal-500/10
-                    transition-all
+                    shadow-sm hover:shadow-2xl hover:shadow-teal-500/10 transition-all
                   "
                 >
-                  {/* hover glow */}
-                  <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full blur-3xl opacity-30 bg-gradient-to-br from-teal-400 via-cyan-300 to-indigo-400 dark:opacity-15" />
-                  </div>
-
                   <div className="relative flex flex-col md:flex-row justify-between gap-6">
-                    {/* Left */}
                     <div className="flex items-start gap-4">
-                      <div
-                        className={`p-4 rounded-2xl ${status.color} border border-white/40 dark:border-transparent shadow-sm`}
-                      >
+                      <div className={`p-4 rounded-2xl ${status.color} shadow-sm`}>
                         <StatusIcon size={24} />
                       </div>
 
@@ -429,12 +405,14 @@ const MyVisits = () => {
 
                         <div className="flex items-center gap-2 text-xs text-slate-400 mt-2 font-semibold">
                           <Calendar size={12} />
-                          {new Date(v.createdAt).toLocaleDateString(undefined, { dateStyle: "medium" })}
+                          {new Date(v.createdAt).toLocaleDateString(undefined, {
+                            dateStyle: "medium",
+                          })}
                         </div>
                       </div>
+                      
                     </div>
 
-                    {/* Right */}
                     <div className="flex items-center justify-between md:justify-end gap-4">
                       <div className="hidden md:block text-right">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -444,18 +422,15 @@ const MyVisits = () => {
                           {v.prescriptions?.length || 0} Prescribed
                         </p>
                       </div>
-
                       <motion.button
                         type="button"
                         whileHover={{ y: -1 }}
                         whileTap={{ scale: 0.98 }}
                         className="
-                          flex items-center gap-2
-                          px-6 py-3
+                          flex items-center gap-2 px-6 py-3
                           bg-slate-50 dark:bg-gray-800
                           border border-slate-100 dark:border-gray-700
-                          rounded-2xl
-                          text-xs font-black uppercase tracking-wider
+                          rounded-2xl text-xs font-black uppercase tracking-wider
                           text-slate-800 dark:text-white
                           group-hover:bg-teal-600 group-hover:text-white
                           group-hover:shadow-lg group-hover:shadow-teal-500/25
@@ -473,11 +448,19 @@ const MyVisits = () => {
         </motion.section>
       </motion.main>
 
-      <VisitDetailsModal
+      {/* ✅ SINGLE MODAL */}
+      <PatientVisitDetailsModal
         isOpen={!!selectedVisit}
-        onClose={() => setSelectedVisit(null)}
+        onClose={() => {
+          setSelectedVisit(null);
+          setDoctorProfile(null);
+          setDoctorLoading(false);
+        }}
         visit={selectedVisit}
         statusConfig={statusConfig}
+        doctorProfile={doctorProfile}
+        doctorLoading={doctorLoading}
+        fetchDoctorProfileById={fetchDoctorProfileById}
       />
     </div>
   );

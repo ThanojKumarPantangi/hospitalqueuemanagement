@@ -41,3 +41,12 @@
 nav {
   animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Hide scrollbar but keep scroll working */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE + Edge */
+  scrollbar-width: none;     /* Firefox */
+}

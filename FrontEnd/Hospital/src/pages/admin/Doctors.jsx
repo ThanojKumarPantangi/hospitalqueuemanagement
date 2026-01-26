@@ -17,7 +17,6 @@ import {
   Activity,
   Clock,
   ChevronRight,
-  MoreVertical,
   ArrowUpRight,
 } from "lucide-react";
 import Toast from "../../components/ui/Toast";
@@ -532,10 +531,10 @@ const DoctorListItem = ({
 
         <div>
           <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-            {doc.name}
+            {doc.name?.toUpperCase()}
           </h3>
           <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-            {doc.departments.map((d) => d.name).join(", ")}
+            {doc?.departments?.name}
           </p>
         </div>
       </div>
@@ -675,12 +674,23 @@ const AdminDoctors = () => {
   );
 
   const filteredDoctors = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
     return doctors.filter((doc) => {
       const uiState = getDoctorUIState(doc);
+
+      const doctorName = (doc?.name || "").toLowerCase();
+      const phone = doc?.phone || "";
+
+      const deptName = (doc?.departments?.name || "").toLowerCase();
+
       const matchesSearch =
-        doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doc.phone.includes(searchTerm);
+        doctorName.includes(term) ||
+        phone.includes(term) ||
+        deptName.includes(term);
+
       const matchesFilter = filterState === "ALL" || uiState === filterState;
+
       return matchesSearch && matchesFilter;
     });
   }, [doctors, searchTerm, filterState]);
@@ -840,7 +850,7 @@ const AdminDoctors = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                 <input
                   type="text"
-                  placeholder="Search by name, ID or phone..."
+                  placeholder="Search by Name, Department or Phone..."
                   className="w-full pl-11 pr-4 py-3 bg-transparent border-none rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-0 focus:bg-slate-50 dark:focus:bg-slate-800 transition-all text-sm font-medium"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}

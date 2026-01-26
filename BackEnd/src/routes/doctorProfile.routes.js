@@ -32,16 +32,6 @@ router.get(
 );
 
 /**
- * 👨‍💼 Admin → get any doctor profile by userId
- */
-router.get(
-  "/:userId",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  getDoctorProfileById
-);
-
-/**
  * 👨‍⚕️ Doctor → save own profile (create/update)
  */
 router.post(
@@ -59,6 +49,16 @@ router.post(
   authMiddleware,
   roleMiddleware("ADMIN"),
   adminUpdateDoctorProfile
+);
+
+/**
+ * 👨‍💼 Admin → get any doctor profile by userId
+ */
+router.get(
+  "/:userId",
+  authMiddleware,
+  roleMiddleware("ADMIN","PATIENT"),
+  getDoctorProfileById
 );
 
 export default router;

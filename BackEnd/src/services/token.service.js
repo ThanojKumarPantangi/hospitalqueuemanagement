@@ -73,27 +73,35 @@ export const createToken = async ({
     throw new Error("Department is not open");
   }
 
-  const doctors=await User.find({ departments: departmentId,isActive: true,role:"DOCTOR"});
+  const doctors = await User.find({
+    departments: departmentId,
+    isActive: true,
+    role: "DOCTOR",
+  });
 
-  if (doctors===null ||doctors.length === 0) {
+  if (!doctors || doctors.length === 0) {
     throw new Error("No doctors available in this department");
   }
 
-  const today = getStartOfISTDay();
-  const selectedDate = getStartOfISTDay(appointmentDate);
+  // ✅ Normalize to IST day start (stored in DB as UTC equivalent)
+  const today = getStartOfISTDay(new Date());
+  const dayStart = getStartOfISTDay(appointmentDate);
 
-  const diffDays =
-    (selectedDate - today) / (1000 * 60 * 60 * 24);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  // ✅ Date validation (based on IST day)
+  const diffDays = (dayStart - today) / (1000 * 60 * 60 * 24);
 
   if (diffDays < 0) throw new Error("Cannot book past dates");
   if (diffDays > MAX_ADVANCE_DAYS) {
     throw new Error(`Booking allowed only ${MAX_ADVANCE_DAYS} days ahead`);
   }
 
-  // 🔒 one active token per patient per day
+  // 🔒 one active token per patient per IST day (range match)
   const existing = await Token.findOne({
     patient: patientId,
-    appointmentDate: selectedDate,
+    appointmentDate: { $gte: dayStart, $lt: dayEnd },
     status: { $in: ["WAITING", "CALLED"] },
   });
 
@@ -101,7 +109,7 @@ export const createToken = async ({
     throw new Error("Patient already has an active token for this day");
   }
 
-  // Priority control
+  // ✅ Priority control
   let finalPriority = "NORMAL";
   if (
     createdByRole === "ADMIN" &&
@@ -113,28 +121,29 @@ export const createToken = async ({
   // 🔁 safe tokenNumber generation with retry
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
+      // ✅ Find last token for this department in the same IST day
       const lastToken = await Token.findOne({
         department: departmentId,
-        appointmentDate: selectedDate,
+        appointmentDate: { $gte: dayStart, $lt: dayEnd },
       })
         .sort({ tokenNumber: -1 })
+        .select("tokenNumber")
         .lean();
 
-      const nextTokenNumber = lastToken
-        ? lastToken.tokenNumber + 1
-        : 1;
+      const nextTokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
 
+      // ✅ Create token with appointmentDate stored as dayStart (consistent)
       const token = await Token.create({
-      tokenNumber: nextTokenNumber,
-      patient: patientId,
-      department: departmentId,
-      priority: finalPriority,
-      priorityRank: PRIORITY_ORDER[finalPriority],
-      appointmentDate: selectedDate,
-    });
+        tokenNumber: nextTokenNumber,
+        patient: patientId,
+        department: departmentId,
+        priority: finalPriority,
+        priorityRank: PRIORITY_ORDER[finalPriority],
+        appointmentDate: dayStart,
+      });
 
-
-      if (selectedDate.getTime() === today.getTime()) {
+      // ✅ Recalculate queue only if booking is for today
+      if (dayStart.getTime() === today.getTime()) {
         await recalculateQueuePositions(departmentId);
       }
 
@@ -149,7 +158,6 @@ export const createToken = async ({
 };
 
 /* ===================== CALL NEXT TOKEN (ATOMIC) ===================== */
-
 export const getNextToken = async (departmentId, doctorId) => {
   const today = getStartOfISTDay();
 
@@ -215,7 +223,6 @@ export const getNextToken = async (departmentId, doctorId) => {
 };
 
 /* ===================== COMPLETE TOKEN ===================== */
-
 export const completeToken = async (tokenId) => {
   const today = getStartOfISTDay();
 
@@ -271,7 +278,6 @@ export const completeCurrentTokenByDoctor = async (doctorId) => {
 };
 
 /* ===================== SKIP TOKEN ===================== */
-
 export const skipToken = async (tokenId) => {
   const token = await Token.findById(tokenId);
   if (!token) throw new Error("Token not found");
@@ -344,11 +350,13 @@ export const cancelToken = async (tokenId, userId) => {
 
 /* ===================== PATIENT ACTIVE TOKEN ===================== */
 export const getPatientActiveToken = async (patientId) => {
-  const today = getStartOfISTDay();
+  const dayStart = getStartOfISTDay(new Date());
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
 
   const token = await Token.findOne({
     patient: patientId,
-    appointmentDate: today,
+    appointmentDate: { $gte: dayStart, $lt: dayEnd },
     status: { $in: ["WAITING", "CALLED"] },
   })
     .populate("department", "name")
@@ -361,26 +369,25 @@ export const getPatientActiveToken = async (patientId) => {
   // Calculate waitingCount once
   const waitingTokens = await Token.find({
     department: token.department._id,
-    appointmentDate: today,
+    appointmentDate: { $gte: dayStart, $lt: dayEnd },
     status: "WAITING",
   })
     .select("_id priority tokenNumber")
     .lean();
 
   waitingTokens.sort((a, b) => {
-    const pDiff =
-      PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
+    const pDiff = PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
     if (pDiff !== 0) return pDiff;
     return a.tokenNumber - b.tokenNumber;
   });
 
   const index = waitingTokens.findIndex(
-    t => t._id.toString() === token._id.toString()
+    (t) => t._id.toString() === token._id.toString()
   );
 
   const department = await Department.findOne({ _id: token.department._id })
-  .select("slotDurationMinutes")
-  .lean();
+    .select("slotDurationMinutes")
+    .lean();
 
   const slotDurationMinutes = department?.slotDurationMinutes || 10;
 

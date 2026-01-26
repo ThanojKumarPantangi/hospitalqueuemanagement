@@ -35,13 +35,6 @@ export const getMyDoctorProfile = async (req, res) => {
  */
 export const getDoctorProfileById = async (req, res) => {
   try {
-    if (req.user.role !== "ADMIN") {
-      return res.status(403).json({
-        success: false,
-        message: "Admin access required",
-      });
-    }
-
     const { userId } = req.params;
     const profile = await fetchDoctorProfileByUserId(userId);
 

@@ -4,6 +4,20 @@ import Token from "../models/token.model.js";
 import { createAdminService } from "../services/admin.service.js";
 import { verifyPatientQrToken } from "../utils/patientQr.util.js";
 
+const getStartOfISTDay = (date = new Date()) => {
+  const d = new Date(date);
+
+  // Convert to IST by adding 5:30
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(d.getTime() + istOffsetMs);
+
+  // Start of IST day
+  istDate.setHours(0, 0, 0, 0);
+
+  // Convert back to UTC Date object for DB match
+  return new Date(istDate.getTime() - istOffsetMs);
+};
+
 export const createDepartment = async (req, res) => {
   try {
     // 🔐 Admin-only
@@ -471,11 +485,10 @@ export const createAdminController = async (req, res) => {
 
 export const getDepartmentsStatus = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    // ✅ IST day range
+    const dayStart = getStartOfISTDay(new Date());
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
 
     // Get ALL departments
     const departments = await Department.find({}).lean();
@@ -500,7 +513,7 @@ export const getDepartmentsStatus = async (req, res) => {
         const [currentToken, waitingCount] = await Promise.all([
           Token.findOne({
             department: dept._id,
-            appointmentDate: { $gte: today, $lt: tomorrow },
+            appointmentDate: { $gte: dayStart, $lt: dayEnd },
             status: "CALLED",
           })
             .sort({ calledAt: -1 })
@@ -508,7 +521,7 @@ export const getDepartmentsStatus = async (req, res) => {
 
           Token.countDocuments({
             department: dept._id,
-            appointmentDate: { $gte: today, $lt: tomorrow },
+            appointmentDate: { $gte: dayStart, $lt: dayEnd },
             status: "WAITING",
           }),
         ]);
@@ -616,5 +629,75 @@ export const verifyPatientQrController = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ message: error.message || "QR verification failed" });
+  }
+};
+
+export const lookupUserByPhoneOrEmail = async (req, res) => {
+  try {
+    const { phone, email } = req.query;
+
+    // Validate input
+    if (!phone && !email) {
+      return res.status(400).json({
+        message: "Please provide phone or email",
+      });
+    }
+
+    // Build query safely
+    const query = {};
+
+    if (phone) {
+      const cleanedPhone = String(phone).trim();
+
+      // Basic validation (India 10-digit)
+      if (!/^\d{10}$/.test(cleanedPhone)) {
+        return res.status(400).json({
+          message: "Invalid phone number format (must be 10 digits)",
+        });
+      }
+
+      query.phone = cleanedPhone;
+    }
+
+    if (email) {
+      const cleanedEmail = String(email).trim().toLowerCase();
+
+      // Basic email validation
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanedEmail)) {
+        return res.status(400).json({
+          message: "Invalid email format",
+        });
+      }
+
+      query.email = cleanedEmail;
+    }
+
+    // Find user
+    const user = await User.findOne(query).select("_id name phone email role");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Patient not found",
+      });
+    }
+
+    // Optional: only allow patient lookup
+    if (user.role !== "PATIENT") {
+      return res.status(403).json({
+        message: "Only patients can be searched using this lookup",
+      });
+    }
+
+    return res.status(200).json({
+      patientId: user._id,
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+    });
+  } catch (error) {
+    console.error("lookupUserByPhoneOrEmail error:", error);
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };

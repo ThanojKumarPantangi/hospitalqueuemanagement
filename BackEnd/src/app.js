@@ -35,19 +35,20 @@ app.set("trust proxy", 1);
 app.use(express.json());
 app.use(cookieParser());
 
+// app.use(
+//   cors({
+//     origin: "https://hospitalqueuemanagement.vercel.app",
+//     credentials: true,
+//   })
+// );
+
 app.use(
   cors({
-    origin: "https://hospitalqueuemanagement.vercel.app",
+    origin: "http://localhost:5173",
     credentials: true,
   })
 );
 
-// app.use(
-//   cors({
-//     origin: "http://localhost:5173",
-//     credentials: true,
-//   })
-// );
 // app.use(globalLimiter);
 
 /* ------------------ Security: Mongo sanitize ------------------ */

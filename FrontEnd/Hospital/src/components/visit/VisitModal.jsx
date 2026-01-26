@@ -1,12 +1,37 @@
+/* ------------------------------------------------------------- */
+/* -------------------- Create Visit Record -------------------- */
+/* ------------------------------------------------------------- */
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Toast from "../../components/ui/Toast";
-import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  motion,
+  AnimatePresence,
+  LayoutGroup,
+  useReducedMotion,
+} from "framer-motion";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Plus,
+  Activity,
+  Stethoscope,
+  Pill,
+  Thermometer,
+  Heart,
+  Scale,
+  Sparkles,
+  ClipboardCheck,
+  ShieldCheck,
+  Info,
+} from "lucide-react";
 
 /* -------------------- Helpers -------------------- */
 
 const createEmptyPrescription = () => ({
-  id: crypto.randomUUID(), 
+  id: crypto.randomUUID(),
   medicineName: "",
   dosage: "",
   duration: "",
@@ -16,52 +41,211 @@ const createEmptyPrescription = () => ({
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
+const cn = (...classes) => classes.filter(Boolean).join(" ");
+
+const formatDateGB = (date) =>
+  date
+    ? date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
+const sameDay = (a, b) => {
+  if (!a || !b) return false;
+  return a.toDateString() === b.toDateString();
+};
+
 /* -------------------- Animations -------------------- */
 
 const overlayVars = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.25 } },
-  exit: { opacity: 0, transition: { duration: 0.2 } },
+  visible: { opacity: 1, transition: { duration: 0.28 } },
+  exit: { opacity: 0, transition: { duration: 0.18 } },
 };
 
 const modalVars = {
-  hidden: { opacity: 0, scale: 0.92, y: 18, filter: "blur(6px)" },
+  hidden: { opacity: 0, scale: 0.96, y: 22, filter: "blur(8px)" },
   visible: {
     opacity: 1,
     scale: 1,
     y: 0,
     filter: "blur(0px)",
-    transition: { type: "spring", damping: 22, stiffness: 260 },
+    transition: { type: "spring", damping: 26, stiffness: 320 },
   },
-  exit: { opacity: 0, scale: 0.92, y: 18, filter: "blur(6px)" },
+  exit: {
+    opacity: 0,
+    scale: 0.96,
+    y: 18,
+    filter: "blur(8px)",
+    transition: { duration: 0.18 },
+  },
 };
 
-const contentVars = {
+const containerVars = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.06, delayChildren: 0.06 },
+    transition: { staggerChildren: 0.07, delayChildren: 0.06 },
   },
 };
 
-const blockVars = {
-  hidden: { opacity: 0, y: 10 },
+const itemVars = {
+  hidden: { opacity: 0, y: 14 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring", stiffness: 180, damping: 18 },
+    transition: { type: "spring", stiffness: 210, damping: 20 },
   },
 };
 
-const floatBtn = {
+const softPop = {
   rest: { y: 0 },
   hover: { y: -2 },
   tap: { scale: 0.98 },
 };
 
-/* -------------------- Component -------------------- */
+const glowPulse = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: [0.2, 0.35, 0.2],
+    transition: { duration: 2.6, repeat: Infinity, ease: "easeInOut" },
+  },
+};
+
+/* -------------------- Sub-Components -------------------- */
+
+// Reusable Input Wrapper for consistent style
+const InputGroup = ({
+  label,
+  icon: Icon,
+  required,
+  rightTag,
+  hint,
+  children,
+  className = "",
+}) => (
+  <div className={cn("space-y-1.5", className)}>
+    <div className="flex items-center justify-between px-1">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        {Icon && <Icon size={12} className="text-blue-500" />}
+        {label}
+        {hint ? (
+          <span className="hidden sm:inline-flex items-center gap-1 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">
+            <Info size={12} />
+            {hint}
+          </span>
+        ) : null}
+      </div>
+
+      {required ? (
+        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md dark:bg-rose-900/20 dark:text-rose-300">
+          REQUIRED
+        </span>
+      ) : rightTag ? (
+        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md dark:bg-slate-800 dark:text-slate-500">
+          {rightTag}
+        </span>
+      ) : null}
+    </div>
+    {children}
+  </div>
+);
+
+// Styled Base Input
+const BaseInput = (props) => (
+  <input
+    {...props}
+    className={cn(
+      "w-full",
+      "bg-slate-50 border border-slate-200",
+      "text-slate-900 text-sm font-medium",
+      "rounded-xl px-4 py-3",
+      "placeholder:text-slate-400",
+      "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500",
+      "hover:bg-white hover:border-slate-300",
+      "transition-all duration-200",
+      "dark:bg-slate-800/50 dark:border-slate-700 dark:text-slate-100",
+      "dark:focus:border-blue-400 dark:hover:bg-slate-800",
+      props.className
+    )}
+  />
+);
+
+// Styled Base Textarea
+const BaseTextarea = (props) => (
+  <textarea
+    {...props}
+    className={cn(
+      "w-full",
+      "bg-slate-50 border border-slate-200",
+      "text-slate-900 text-sm font-medium",
+      "rounded-xl px-4 py-3",
+      "placeholder:text-slate-400",
+      "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500",
+      "hover:bg-white hover:border-slate-300",
+      "transition-all duration-200",
+      "dark:bg-slate-800/50 dark:border-slate-700 dark:text-slate-100",
+      "dark:focus:border-blue-400 dark:hover:bg-slate-800",
+      props.className
+    )}
+  />
+);
+
+// Tiny badge for sections
+const MiniBadge = ({ icon: Icon, text }) => (
+  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700 text-[10px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+    {Icon ? <Icon size={12} className="text-blue-500" /> : null}
+    {text}
+  </span>
+);
+
+// Section container card
+const SectionCard = ({ title, icon: Icon, subtitle, right, children }) => (
+  <div className="relative rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/50 shadow-sm overflow-visible">
+    <div className="absolute inset-0 pointer-events-none">
+      <motion.div
+        variants={glowPulse}
+        initial="hidden"
+        animate="visible"
+        className="absolute -top-20 -right-20 h-56 w-56 rounded-full blur-3xl opacity-25 bg-gradient-to-br from-blue-400 via-indigo-300 to-cyan-300 dark:opacity-10"
+      />
+    </div>
+
+    <div className="relative px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40 backdrop-blur">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 flex items-center justify-center">
+              <Icon size={16} className="text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-extrabold text-slate-800 dark:text-white truncate">
+                {title}
+              </p>
+              {subtitle ? (
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  {subtitle}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {right ? <div className="shrink-0">{right}</div> : null}
+      </div>
+    </div>
+
+    <div className="relative p-5">{children}</div>
+  </div>
+);
+
+/* -------------------- Main Component -------------------- */
 
 const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
+  const prefersReducedMotion = useReducedMotion();
+
   /* ---------- Visit Fields ---------- */
   const [toast, setToast] = useState(null);
   const [symptoms, setSymptoms] = useState("");
@@ -97,7 +281,7 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
 
   const calendarRef = useRef(null);
 
-  /* ---------- UI-only computed values ---------- */
+  /* ---------- Logic ---------- */
   const validPrescriptionsCount = useMemo(() => {
     return prescriptions.filter((p) => p.medicineName && p.medicineName.trim()).length;
   }, [prescriptions]);
@@ -117,33 +301,44 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
     return clamp(raw, 0, 100);
   }, [symptoms, diagnosis, vitals, validPrescriptionsCount]);
 
-  const progressLabel = useMemo(() => {
+  const completionLabel = useMemo(() => {
     if (completionScore >= 90) return "Excellent";
     if (completionScore >= 70) return "Good";
     if (completionScore >= 45) return "In progress";
     return "Getting started";
   }, [completionScore]);
 
-  /* ---------- Close Handler (reset UI here, not inside effect) ---------- */
+  /* ---------- Calendar Memo (Fix Month Switch) ---------- */
+  const monthLabel = useMemo(() => {
+    return viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  }, [viewDate]);
+
+  const firstDayIndex = useMemo(() => {
+    return new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
+  }, [viewDate]);
+
+  const daysInMonth = useMemo(() => {
+    return new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
+  }, [viewDate]);
+
+  const daysArray = useMemo(() => {
+    return Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  }, [daysInMonth]);
+
+  const emptySlots = useMemo(() => {
+    return Array.from({ length: firstDayIndex }, (_, i) => i);
+  }, [firstDayIndex]);
+
   const handleClose = () => {
     setIsCalendarOpen(false);
     setViewDate(new Date());
     onClose?.();
   };
 
-  /* ---------- Calendar Toggle ---------- */
-  const handleCalendarToggle = () => {
-    setIsCalendarOpen((prev) => !prev);
-  };
-
-  /* ---------- Save ---------- */
   const handleSave = () => {
-    // ✅ Basic validation
+    // ⚠️ DO NOT CHANGE LOGIC
     if (!diagnosis.trim()) {
-      setToast({
-        type: "error",
-        message: "Diagnosis is required",
-      });
+      setToast({ type: "error", message: "Diagnosis is required to save record." });
       return;
     }
 
@@ -152,16 +347,13 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
     );
 
     if (!symptoms.trim() && validPrescriptions.length === 0) {
-      setToast({
-        type: "error",
-        message: "Add symptoms or at least one prescription",
-      });
+      setToast({ type: "error", message: "Please add symptoms or a prescription." });
       return;
     }
 
     setPrescriptions([createEmptyPrescription()]);
 
-    // ✅ Send clean payload
+    // ⚠️ DO NOT CHANGE PAYLOAD
     onSave({
       symptoms: symptoms.trim() || null,
       diagnosis: diagnosis.trim(),
@@ -176,7 +368,7 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
     });
   };
 
-  /* ---------- UX: close calendar on outside click ---------- */
+  // Close calendar on outside click
   useEffect(() => {
     if (!isOpen) return;
 
@@ -191,751 +383,750 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
     return () => window.removeEventListener("mousedown", handler);
   }, [isOpen, isCalendarOpen]);
 
+  // ESC close
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onKey = (e) => {
+      if (e.key === "Escape") handleClose();
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   /* -------------------- Render -------------------- */
 
   return (
     <>
-      {/* Notifications */}
       {toast && (
-        <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />
+        <Toast
+          type={toast.type}
+          message={toast.message}
+          onClose={() => setToast(null)}
+        />
       )}
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-          >
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
             {/* Backdrop */}
             <motion.div
               variants={overlayVars}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="absolute inset-0 bg-slate-900/45 backdrop-blur-md"
               onClick={handleClose}
             />
 
-            {/* Modal */}
+            {/* Modal Card */}
             <motion.div
               variants={modalVars}
-              className="
-                relative
-                w-full
-                max-w-xl
-                max-h-[88vh]
-                bg-white dark:bg-gray-900
-                rounded-[2.25rem]
-                shadow-2xl
-                border border-slate-100 dark:border-gray-800
-                overflow-hidden
-                flex flex-col
-                z-10
-              "
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className={cn(
+                "relative w-full max-w-3xl max-h-[92vh] flex flex-col",
+                "bg-white dark:bg-slate-900",
+                "rounded-[2rem] shadow-2xl",
+                "border border-white/20 dark:border-slate-700",
+                "overflow-hidden"
+              )}
             >
-              {/* Top Glows */}
-              <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full blur-3xl opacity-25 bg-gradient-to-br from-teal-400 via-cyan-300 to-indigo-400 dark:opacity-15" />
-              <div className="pointer-events-none absolute -bottom-28 -left-28 h-72 w-72 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-rose-300 via-amber-200 to-purple-300 dark:opacity-10" />
-
-              {/* Header */}
-              <div
-                className="
-                  relative
-                  px-6 py-5
-                  border-b border-slate-100 dark:border-gray-800
-                  bg-white/90 dark:bg-gray-900/90
-                  backdrop-blur
-                  sticky top-0 z-20
-                "
-              >
-                <div className="flex items-start justify-between gap-4 pr-12">
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-black tracking-[0.22em] text-teal-600 dark:text-teal-500 uppercase">
-                      Create Visit Record
-                    </p>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
-                      Consultation Notes
-                    </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">
-                      Capture diagnosis, vitals & prescriptions in one place.
-                    </p>
-                  </div>
-
-                  <div className="hidden sm:flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        Progress
-                      </span>
-                      <span className="text-[10px] font-black text-teal-600 dark:text-teal-400">
-                        {completionScore}%
-                      </span>
-                    </div>
-
-                    <div className="w-40 h-2 rounded-full bg-slate-100 dark:bg-gray-800 overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${completionScore}%` }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                        className="h-full bg-gradient-to-r from-teal-500 via-cyan-500 to-indigo-500"
-                      />
-                    </div>
-
-                    <span className="text-[10px] font-bold text-slate-400">
-                      {progressLabel}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Close button */}
-                <button
-                  onClick={handleClose}
-                  className="
-                    absolute
-                    top-4 right-4
-                    h-10 w-10
-                    rounded-full
-                    flex items-center justify-center
-                    bg-slate-100 hover:bg-slate-200
-                    dark:bg-gray-800 dark:hover:bg-gray-700
-                    text-slate-500 dark:text-slate-300
-                    transition
-                    shadow-sm
-                  "
-                  aria-label="Close"
-                >
-                  <X size={18} />
-                </button>
+              {/* Decorative background */}
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full blur-3xl opacity-25 bg-gradient-to-br from-blue-400 via-indigo-300 to-cyan-300 dark:opacity-15" />
+                <div className="absolute -bottom-28 -left-28 h-80 w-80 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-rose-300 via-amber-200 to-purple-300 dark:opacity-10" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_55%)]" />
               </div>
 
-              {/* Content */}
+              {/* --- Sticky Header --- */}
+              <div className="relative shrink-0 z-20 bg-white/75 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-blue-50/80 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40">
+                        <Sparkles
+                          size={14}
+                          className="text-blue-600 dark:text-blue-400"
+                        />
+                        <span className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-blue-700 dark:text-blue-300">
+                          New Consultation
+                        </span>
+                      </span>
+                      <MiniBadge icon={ShieldCheck} text="Secure" />
+                    </div>
+
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-3">
+                      Create Visit Record
+                    </h2>
+
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                      {new Date().toLocaleDateString(undefined, {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {/* Completion */}
+                    <div className="hidden sm:flex flex-col items-end gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                          Completeness
+                        </span>
+                        <span className="text-[10px] font-black text-blue-600 dark:text-blue-400">
+                          {completionScore}%
+                        </span>
+                      </div>
+
+                      <div className="w-44 h-2 rounded-full bg-slate-200/70 dark:bg-slate-800 overflow-hidden">
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${completionScore}%` }}
+                          transition={{
+                            type: "spring",
+                            bounce: 0,
+                            duration: prefersReducedMotion ? 0 : 0.9,
+                          }}
+                        />
+                      </div>
+
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {completionLabel}
+                      </span>
+                    </div>
+
+                    {/* Close */}
+                    <motion.button
+                      variants={softPop}
+                      initial="rest"
+                      whileHover={!prefersReducedMotion ? "hover" : "rest"}
+                      whileTap={!prefersReducedMotion ? "tap" : "rest"}
+                      onClick={handleClose}
+                      className="p-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                      aria-label="Close"
+                      type="button"
+                    >
+                      <X size={20} />
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- Scrollable Body --- */}
               <motion.div
-                variants={contentVars}
+                variants={containerVars}
                 initial="hidden"
                 animate="visible"
-                className="flex-1 overflow-y-auto px-6 py-6 space-y-6 custom-scrollbar relative"
+                className="relative flex-1 overflow-y-auto p-6 sm:p-7 space-y-6 custom-scrollbar"
               >
-                {/* Quick Stats */}
-                <motion.div variants={blockVars} className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-slate-100 dark:border-gray-800 bg-slate-50/70 dark:bg-gray-800/30 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      Prescriptions
+                {/* Quick insight strip */}
+                <motion.div
+                  variants={itemVars}
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+                >
+                  <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/50 p-4 shadow-sm">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                      Valid Rx
                     </p>
                     <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
                       {validPrescriptionsCount}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">
-                      Valid medicines added
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                      Medicines added
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-100 dark:border-gray-800 bg-slate-50/70 dark:bg-gray-800/30 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/50 p-4 shadow-sm">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
                       Follow-up
                     </p>
-                    <p className="text-sm font-black text-slate-900 dark:text-white mt-2">
-                      {selectedDate
-                        ? selectedDate.toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "Not set"}
+                    <p className="text-sm font-black text-slate-900 dark:text-white mt-2 truncate">
+                      {formatDateGB(selectedDate) || "Not scheduled"}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1">
-                      Optional next visit date
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                      Optional date
                     </p>
                   </div>
+
+                  <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/50 p-4 shadow-sm">
+                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                      Status
+                    </p>
+                    <p className="text-sm font-black text-blue-600 dark:text-blue-400 mt-2">
+                      {completionLabel}
+                    </p>
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                      {completionScore}% complete
+                    </p>
+                  </div>
                 </motion.div>
 
-                {/* Symptoms */}
-                <motion.div variants={blockVars} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">
-                      Symptoms
-                    </label>
-                    <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">
-                      Optional
-                    </span>
-                  </div>
-
-                  <textarea
-                    rows={2}
-                    value={symptoms}
-                    onChange={(e) => setSymptoms(e.target.value)}
-                    placeholder="e.g. Fever, throat pain..."
-                    className="
-                      w-full
-                      bg-slate-50 dark:bg-gray-800/50
-                      px-6 py-4
-                      rounded-2xl
-                      text-sm font-bold
-                      border-2 border-transparent
-                      focus:border-teal-500/25
-                      outline-none
-                      dark:text-white
-                      transition-all
-                      placeholder:text-slate-400
-                    "
-                  />
-                </motion.div>
-
-                {/* Diagnosis */}
-                <motion.div variants={blockVars} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">
-                      Diagnosis
-                    </label>
-                    <span className="text-[10px] font-black text-rose-500">
-                      Required
-                    </span>
-                  </div>
-
-                  <input
-                    type="text"
-                    value={diagnosis}
-                    onChange={(e) => setDiagnosis(e.target.value)}
-                    placeholder="e.g. Viral Fever"
-                    className="
-                      w-full
-                      bg-slate-50 dark:bg-gray-800/50
-                      px-6 py-4
-                      rounded-2xl
-                      text-sm font-bold
-                      border-2 border-transparent
-                      focus:border-teal-500/25
-                      outline-none
-                      dark:text-white
-                      transition-all
-                      placeholder:text-slate-400
-                    "
-                  />
-                </motion.div>
-
-                {/* Prescription */}
-                <motion.div
-                  variants={blockVars}
-                  className="
-                    space-y-4
-                    p-5
-                    bg-slate-50/80 dark:bg-gray-800/30
-                    rounded-[2rem]
-                    border border-slate-100 dark:border-gray-800
-                    relative
-                  "
-                >
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-teal-600 dark:text-teal-400 uppercase tracking-widest">
-                      Prescription
-                    </label>
-
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      {prescriptions.length} Row{prescriptions.length > 1 ? "s" : ""}
-                    </span>
-                  </div>
-
-                  <div className="space-y-4">
-                    <AnimatePresence mode="popLayout">
-                      {prescriptions.map((item, index) => (
-                        <motion.div
-                          key={item.id}
-                          layout
-                          initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                          transition={{ type: "spring", stiffness: 220, damping: 18 }}
-                          className="
-                            space-y-3
-                            p-4
-                            bg-white/70 dark:bg-gray-900/40
-                            rounded-2xl
-                            border border-slate-100 dark:border-gray-800
-                            relative
-                            overflow-hidden
-                          "
-                        >
-                          <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full blur-3xl opacity-25 bg-gradient-to-br from-teal-400 via-cyan-300 to-indigo-400 dark:opacity-10" />
-
-                          {prescriptions.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removePrescription(item.id)}
-                              className="
-                                absolute
-                                top-3 right-3
-                                h-8 w-8
-                                rounded-full
-                                flex items-center justify-center
-                                bg-slate-100 dark:bg-gray-800
-                                text-rose-500
-                                hover:bg-rose-500 hover:text-white
-                                transition
-                                shadow-sm
-                                z-10
-                              "
-                              aria-label="Remove prescription"
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 relative">
-                            <input
-                              value={item.medicineName}
-                              onChange={(e) =>
-                                updatePrescription(index, "medicineName", e.target.value)
-                              }
-                              placeholder="Medicine"
-                              className="
-                                w-full
-                                bg-white dark:bg-gray-800
-                                px-4 py-3
-                                rounded-xl
-                                text-sm font-bold
-                                border-2 border-transparent
-                                focus:border-teal-500/25
-                                outline-none
-                                dark:text-white
-                                transition
-                                placeholder:text-slate-400
-                              "
-                            />
-
-                            <input
-                              value={item.dosage}
-                              onChange={(e) =>
-                                updatePrescription(index, "dosage", e.target.value)
-                              }
-                              placeholder="Dosage"
-                              className="
-                                w-full
-                                bg-white dark:bg-gray-800
-                                px-4 py-3
-                                rounded-xl
-                                text-sm font-bold
-                                border-2 border-transparent
-                                focus:border-teal-500/25
-                                outline-none
-                                dark:text-white
-                                transition
-                                placeholder:text-slate-400
-                              "
-                            />
-
-                            <input
-                              value={item.duration}
-                              onChange={(e) =>
-                                updatePrescription(index, "duration", e.target.value)
-                              }
-                              placeholder="Duration"
-                              className="
-                                w-full
-                                bg-white dark:bg-gray-800
-                                px-4 py-3
-                                rounded-xl
-                                text-sm font-bold
-                                border-2 border-transparent
-                                focus:border-teal-500/25
-                                outline-none
-                                dark:text-white
-                                transition
-                                placeholder:text-slate-400
-                              "
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative">
-                            <input
-                              value={item.frequency}
-                              onChange={(e) =>
-                                updatePrescription(index, "frequency", e.target.value)
-                              }
-                              placeholder="Freq (1-0-1)"
-                              className="
-                                w-full
-                                bg-white dark:bg-gray-800
-                                px-4 py-3
-                                rounded-xl
-                                text-[13px] font-bold
-                                border-2 border-transparent
-                                focus:border-teal-500/25
-                                outline-none
-                                dark:text-white
-                                transition
-                                placeholder:text-slate-400
-                              "
-                            />
-
-                            <input
-                              value={item.instructions}
-                              onChange={(e) =>
-                                updatePrescription(index, "instructions", e.target.value)
-                              }
-                              placeholder="After Food / Before Food"
-                              className="
-                                w-full
-                                bg-white dark:bg-gray-800
-                                px-4 py-3
-                                rounded-xl
-                                text-[13px] font-bold
-                                border-2 border-transparent
-                                focus:border-teal-500/25
-                                outline-none
-                                dark:text-white
-                                transition
-                                placeholder:text-slate-400
-                              "
-                            />
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-
-                  <motion.button
-                    type="button"
-                    onClick={addPrescription}
-                    variants={floatBtn}
-                    initial="rest"
-                    whileHover="hover"
-                    whileTap="tap"
-                    className="
-                      w-full
-                      py-3.5
-                      rounded-2xl
-                      bg-teal-50 dark:bg-teal-900/20
-                      text-teal-700 dark:text-teal-300
-                      font-black text-xs
-                      border border-teal-100 dark:border-teal-900/40
-                      hover:bg-teal-600 hover:text-white
-                      transition
-                    "
+                {/* 1. Clinical Data */}
+                <motion.div variants={itemVars}>
+                  <SectionCard
+                    title="Clinical Summary"
+                    icon={ClipboardCheck}
+                    subtitle="Add diagnosis first, then symptoms"
+                    right={<MiniBadge icon={Stethoscope} text="Doctor Notes" />}
                   >
-                    + Add Another Medicine
-                  </motion.button>
-                </motion.div>
-
-                {/* Vitals */}
-                <motion.div variants={blockVars} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">
-                      Vitals
-                    </label>
-                    <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">
-                      Optional
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[
-                      { key: "temperature", label: "TEMP (°F)", placeholder: "Temp" },
-                      { key: "bp", label: "BP (mmHg)", placeholder: "BP" },
-                      { key: "pulse", label: "PULSE (bpm)", placeholder: "Pulse" },
-                      { key: "weight", label: "WEIGHT (kg)", placeholder: "Wt" },
-                    ].map((v) => (
-                      <div
-                        key={v.key}
-                        className="rounded-2xl border border-slate-100 dark:border-gray-800 bg-slate-50/70 dark:bg-gray-800/30 p-3"
+                    <div className="grid md:grid-cols-2 gap-5">
+                      <InputGroup
+                        label="Diagnosis"
+                        icon={Stethoscope}
+                        required
+                        hint="Required"
                       >
-                        <input
-                          type="number"
-                          value={vitals[v.key]}
-                          onChange={(e) =>
-                            setVitals({ ...vitals, [v.key]: e.target.value })
-                          }
-                          placeholder={v.placeholder}
-                          className="
-                            w-full
-                            bg-white dark:bg-gray-900
-                            px-3 py-3
-                            rounded-xl
-                            text-xs font-black
-                            border-2 border-transparent
-                            focus:border-teal-500/25
-                            outline-none
-                            dark:text-white
-                            text-center
-                            transition
-                            placeholder:text-slate-400
-                          "
+                        <BaseInput
+                          placeholder="e.g. Acute Viral Bronchitis"
+                          value={diagnosis}
+                          onChange={(e) => setDiagnosis(e.target.value)}
+                          autoFocus
                         />
-                        <p className="text-[8px] text-center font-black text-slate-400 uppercase mt-2 tracking-widest">
-                          {v.label}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                      </InputGroup>
+
+                      <InputGroup
+                        label="Symptoms"
+                        icon={Activity}
+                        rightTag="Optional"
+                        hint="Short notes"
+                      >
+                        <BaseTextarea
+                          rows={1}
+                          placeholder="e.g. Cough, high fever, sore throat"
+                          value={symptoms}
+                          onChange={(e) => setSymptoms(e.target.value)}
+                        />
+                      </InputGroup>
+                    </div>
+                  </SectionCard>
                 </motion.div>
 
-                {/* Follow-up */}
-                <motion.div variants={blockVars} className="space-y-2 pb-2 relative">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">
-                      Next Follow-up
-                    </label>
-                    <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">
-                      Optional
-                    </span>
-                  </div>
-
-                  <motion.button
-                    type="button"
-                    variants={floatBtn}
-                    initial="rest"
-                    whileHover="hover"
-                    whileTap="tap"
-                    onClick={handleCalendarToggle}
-                    className="
-                      w-full
-                      bg-slate-50 dark:bg-gray-800/50
-                      px-6 py-4
-                      rounded-2xl
-                      text-sm font-black
-                      border-2 border-transparent
-                      focus:border-teal-500/25
-                      outline-none
-                      dark:text-white
-                      flex items-center justify-between
-                      transition
-                    "
+                {/* 2. Vitals Grid */}
+                <motion.div variants={itemVars}>
+                  <SectionCard
+                    title="Vital Signs"
+                    icon={Activity}
+                    subtitle="Optional measurements"
+                    right={<MiniBadge icon={Activity} text="Vitals" />}
                   >
-                    <span className="text-slate-700 dark:text-slate-200">
-                      {selectedDate
-                        ? selectedDate.toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "Select Date"}
-                    </span>
-                    <Calendar size={18} className="text-teal-600 dark:text-teal-400" />
-                  </motion.button>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        {
+                          key: "temperature",
+                          label: "Temp",
+                          unit: "°F",
+                          icon: Thermometer,
+                        },
+                        { key: "bp", label: "BP", unit: "mmHg", icon: Activity },
+                        { key: "pulse", label: "Pulse", unit: "bpm", icon: Heart },
+                        { key: "weight", label: "Weight", unit: "kg", icon: Scale },
+                      ].map((v) => (
+                        <div key={v.key} className="relative group">
+                          <div className="absolute top-3 left-3 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                            <v.icon size={16} />
+                          </div>
 
-                  <AnimatePresence>
-                    {isCalendarOpen && (
-                      <motion.div
-                        ref={calendarRef}
-                        initial={{ opacity: 0, y: 12, scale: 0.96 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 12, scale: 0.97 }}
-                        transition={{ type: "spring", stiffness: 240, damping: 18 }}
-                        className="
-                          absolute
-                          bottom-full
-                          mb-3
-                          left-1/2 -translate-x-1/2
-                          w-full
-                          max-w-[340px]
-                          bg-white dark:bg-gray-900
-                          border border-slate-200 dark:border-gray-700
-                          rounded-2xl
-                          shadow-2xl
-                          z-50
-                          overflow-hidden
-                        "
-                      >
-                        <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-gray-800 border-b border-slate-100 dark:border-gray-700">
-                          <button
-                            type="button"
-                            className="h-9 w-9 rounded-xl hover:bg-white dark:hover:bg-gray-900 transition flex items-center justify-center"
-                            onClick={() =>
-                              setViewDate(
-                                new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1)
-                              )
+                          <input
+                            type="text"
+                            value={vitals[v.key]}
+                            onChange={(e) =>
+                              setVitals({ ...vitals, [v.key]: e.target.value })
                             }
-                            aria-label="Previous month"
-                          >
-                            <ChevronLeft size={16} className="text-slate-600 dark:text-slate-200" />
-                          </button>
+                            className={cn(
+                              "w-full",
+                              "bg-slate-50 dark:bg-slate-800/50",
+                              "border border-slate-200 dark:border-slate-700",
+                              "rounded-2xl",
+                              "py-3 pl-9 pr-3",
+                              "text-center font-extrabold",
+                              "text-slate-700 dark:text-slate-200",
+                              "focus:outline-none focus:border-blue-500 focus:bg-white",
+                              "dark:focus:bg-slate-800",
+                              "transition-all"
+                            )}
+                            placeholder="-"
+                          />
 
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-200">
-                            {viewDate.toLocaleDateString("en-GB", {
-                              month: "long",
-                              year: "numeric",
-                            })}
-                          </span>
-
-                          <button
-                            type="button"
-                            className="h-9 w-9 rounded-xl hover:bg-white dark:hover:bg-gray-900 transition flex items-center justify-center"
-                            onClick={() =>
-                              setViewDate(
-                                new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1)
-                              )
-                            }
-                            aria-label="Next month"
-                          >
-                            <ChevronRight size={16} className="text-slate-600 dark:text-slate-200" />
-                          </button>
+                          <div className="absolute bottom-1 w-full text-center">
+                            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">
+                              {v.label}{" "}
+                              <span className="opacity-50">({v.unit})</span>
+                            </span>
+                          </div>
                         </div>
+                      ))}
+                    </div>
 
-                        <div className="p-4">
-                          <div className="grid grid-cols-7 mb-3">
-                            {["SU", "MO", "TU", "WE", "TH", "FR", "SA"].map((d) => (
-                              <div
-                                key={d}
-                                className="text-[9px] font-black text-teal-600 dark:text-teal-400 text-center tracking-widest"
-                              >
-                                {d}
+                    <div className="mt-4 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-slate-50/60 dark:bg-slate-800/30 p-4">
+                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                        Note
+                      </p>
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1">
+                        Leave vitals empty if not measured. It won’t block saving.
+                      </p>
+                    </div>
+                  </SectionCard>
+                </motion.div>
+
+                {/* 3. Prescription Section */}
+                <motion.div variants={itemVars}>
+                  <SectionCard
+                    title="Prescriptions"
+                    icon={Pill}
+                    subtitle="Add medicines with dosage and schedule"
+                    right={
+                      <div className="flex items-center gap-2">
+                        <MiniBadge icon={Pill} text={`${prescriptions.length} Rows`} />
+                        <MiniBadge
+                          icon={ClipboardCheck}
+                          text={`${validPrescriptionsCount} Valid`}
+                        />
+                      </div>
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        Tip: Only rows with medicine name will be saved.
+                      </p>
+
+                      <motion.button
+                        variants={softPop}
+                        initial="rest"
+                        whileHover={!prefersReducedMotion ? "hover" : "rest"}
+                        whileTap={!prefersReducedMotion ? "tap" : "rest"}
+                        onClick={addPrescription}
+                        className="text-xs font-black text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 border border-blue-100 dark:border-blue-800/40"
+                        type="button"
+                      >
+                        <Plus size={14} /> Add Medicine
+                      </motion.button>
+                    </div>
+
+                    <div className="mt-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl p-4 border border-slate-100 dark:border-slate-700/50 space-y-3">
+                      <LayoutGroup>
+                        <AnimatePresence initial={false}>
+                          {prescriptions.map((item, index) => (
+                            <motion.div
+                              layout
+                              key={item.id}
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0, overflow: "hidden" }}
+                              transition={{
+                                duration: prefersReducedMotion ? 0 : 0.28,
+                              }}
+                              className={cn(
+                                "group relative",
+                                "bg-white dark:bg-slate-900",
+                                "border border-slate-200 dark:border-slate-700",
+                                "rounded-2xl p-4",
+                                "shadow-sm",
+                                "hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800/50",
+                                "transition-all"
+                              )}
+                            >
+                              <div className="absolute inset-0 pointer-events-none">
+                                <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full blur-3xl opacity-15 bg-gradient-to-br from-blue-400 via-indigo-300 to-cyan-300 dark:opacity-10" />
                               </div>
-                            ))}
-                          </div>
 
-                          <div className="grid grid-cols-7 gap-1.5">
-                            {(() => {
-                              const year = viewDate.getFullYear();
-                              const month = viewDate.getMonth();
-                              const firstDay = new Date(year, month, 1).getDay();
-                              const daysInMonth = new Date(year, month + 1, 0).getDate();
-                              const today = new Date();
+                              <div className="relative grid grid-cols-12 gap-3">
+                                {/* Medicine Name */}
+                                <div className="col-span-12 md:col-span-4">
+                                  <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                    Medicine
+                                  </label>
+                                  <input
+                                    className="w-full text-sm font-extrabold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 bg-transparent outline-none py-2"
+                                    placeholder="Medicine Name"
+                                    value={item.medicineName}
+                                    onChange={(e) =>
+                                      updatePrescription(
+                                        index,
+                                        "medicineName",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                  <div className="h-0.5 w-10 bg-blue-500 rounded-full mt-1 opacity-20 group-hover:opacity-100 transition-opacity" />
+                                </div>
 
-                              return (
-                                <>
-                                  {[...Array(firstDay)].map((_, i) => (
-                                    <div key={`sp-${i}`} />
-                                  ))}
+                                {/* Details */}
+                                <div className="col-span-12 md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                      Dosage
+                                    </label>
+                                    <input
+                                      className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none border border-transparent focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                                      placeholder="e.g. 500mg"
+                                      value={item.dosage}
+                                      onChange={(e) =>
+                                        updatePrescription(index, "dosage", e.target.value)
+                                      }
+                                    />
+                                  </div>
 
-                                  {[...Array(daysInMonth)].map((_, i) => {
-                                    const day = i + 1;
-                                    const dateObj = new Date(year, month, day);
+                                  <div>
+                                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                      Frequency
+                                    </label>
+                                    <input
+                                      className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none border border-transparent focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                                      placeholder="1-0-1"
+                                      value={item.frequency}
+                                      onChange={(e) =>
+                                        updatePrescription(
+                                          index,
+                                          "frequency",
+                                          e.target.value
+                                        )
+                                      }
+                                    />
+                                  </div>
 
-                                    const isSelected =
-                                      selectedDate?.toDateString() === dateObj.toDateString();
+                                  <div>
+                                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                      Duration
+                                    </label>
+                                    <input
+                                      className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none border border-transparent focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                                      placeholder="e.g. 5 days"
+                                      value={item.duration}
+                                      onChange={(e) =>
+                                        updatePrescription(
+                                          index,
+                                          "duration",
+                                          e.target.value
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                </div>
 
-                                    const isToday =
-                                      today.toDateString() === dateObj.toDateString();
+                                {/* Instructions */}
+                                <div className="col-span-12">
+                                  <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                    Instructions
+                                  </label>
+                                  <input
+                                    className="w-full text-xs text-slate-600 dark:text-slate-300 placeholder:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                                    placeholder="e.g. After food / Before food"
+                                    value={item.instructions}
+                                    onChange={(e) =>
+                                      updatePrescription(
+                                        index,
+                                        "instructions",
+                                        e.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
 
-                                    return (
-                                      <button
-                                        type="button"
-                                        key={day}
-                                        onClick={() => {
-                                          setSelectedDate(dateObj);
-                                          setIsCalendarOpen(false);
-                                        }}
-                                        className={`
-                                          w-9 h-9 rounded-xl text-[11px] font-black
-                                          transition
-                                          ${
-                                            isSelected
-                                              ? "bg-teal-500 text-white shadow-lg shadow-teal-500/20"
-                                              : "text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-900/20"
-                                          }
-                                        `}
-                                      >
-                                        {day}
-                                        {isToday && !isSelected && (
-                                          <span className="block w-1 h-1 mx-auto mt-0.5 bg-teal-500 rounded-full" />
-                                        )}
-                                      </button>
-                                    );
-                                  })}
-                                </>
-                              );
-                            })()}
-                          </div>
+                              {prescriptions.length > 1 && (
+                                <motion.button
+                                  variants={softPop}
+                                  initial="rest"
+                                  whileHover={!prefersReducedMotion ? "hover" : "rest"}
+                                  whileTap={!prefersReducedMotion ? "tap" : "rest"}
+                                  type="button"
+                                  onClick={() => removePrescription(item.id)}
+                                  className="absolute -top-2 -right-2 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 shadow-sm border border-slate-100 dark:border-slate-700 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all"
+                                  aria-label="Remove"
+                                >
+                                  <X size={14} />
+                                </motion.button>
+                              )}
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </LayoutGroup>
+                    </div>
+                  </SectionCard>
+                </motion.div>
 
-                          <div className="mt-4 flex items-center justify-between">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedDate(null);
-                                setIsCalendarOpen(false);
+                {/* 4. Follow Up */}
+                <motion.div variants={itemVars}>
+                  <SectionCard
+                    title="Next Follow-up"
+                    icon={Calendar}
+                    subtitle="Optional next visit scheduling"
+                    right={
+                      <MiniBadge
+                        icon={Calendar}
+                        text={selectedDate ? "Scheduled" : "Not set"}
+                      />
+                    }
+                  >
+                    <InputGroup
+                      label="Next Visit"
+                      icon={Calendar}
+                      rightTag="Optional"
+                      hint="Select a date"
+                    >
+                      <div className="relative overflow-visible">
+                        <motion.button
+                          type="button"
+                          variants={softPop}
+                          initial="rest"
+                          whileHover={!prefersReducedMotion ? "hover" : "rest"}
+                          whileTap={!prefersReducedMotion ? "tap" : "rest"}
+                          onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                          className={cn(
+                            "w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-sm font-semibold",
+                            selectedDate
+                              ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300"
+                              : "bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800/50 dark:border-slate-700 dark:text-slate-300"
+                          )}
+                        >
+                          <span>
+                            {selectedDate
+                              ? formatDateGB(selectedDate)
+                              : "No follow-up scheduled"}
+                          </span>
+                          <Calendar
+                            size={16}
+                            className={selectedDate ? "text-blue-500" : "text-slate-400"}
+                          />
+                        </motion.button>
+
+                        <AnimatePresence>
+                          {isCalendarOpen && (
+                            <motion.div
+                              ref={calendarRef}
+                              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 260,
+                                damping: 20,
+                                duration: prefersReducedMotion ? 0 : undefined,
                               }}
                               className="
-                                text-[10px]
-                                font-black
-                                uppercase
-                                tracking-widest
-                                text-slate-400
-                                hover:text-rose-500
-                                transition
+                                absolute
+                                top-full
+                                left-0
+                                mt-3
+                                w-full
+                                max-w-sm
+                                bg-white dark:bg-slate-900
+                                border border-slate-200 dark:border-slate-700
+                                rounded-2xl
+                                shadow-2xl
+                                z-[999]
+                                p-4
+                                overflow-hidden
                               "
                             >
-                              Clear
-                            </button>
+                              {/* Calendar Header */}
+                              <div className="flex items-center justify-between mb-4 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setViewDate(
+                                      new Date(
+                                        viewDate.getFullYear() - 1,
+                                        viewDate.getMonth(),
+                                        1
+                                      )
+                                    )
+                                  }
+                                  className="px-2 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-[10px] font-black text-slate-600 dark:text-slate-300"
+                                  aria-label="Previous year"
+                                >
+                                  -Y
+                                </button>
 
-                            <button
-                              type="button"
-                              onClick={() => setIsCalendarOpen(false)}
-                              className="
-                                text-[10px]
-                                font-black
-                                uppercase
-                                tracking-widest
-                                text-slate-500 dark:text-slate-300
-                                hover:text-teal-600 dark:hover:text-teal-400
-                                transition
-                              "
-                            >
-                              Done
-                            </button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setViewDate(
+                                      new Date(
+                                        viewDate.getFullYear(),
+                                        viewDate.getMonth() - 1,
+                                        1
+                                      )
+                                    )
+                                  }
+                                  className="p-2 rounded-xl bg-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                  aria-label="Previous month"
+                                >
+                                  <ChevronLeft size={16} />
+                                </button>
+
+                                <span className="text-sm font-black text-slate-700 dark:text-slate-200 flex-1 text-center">
+                                  {monthLabel}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setViewDate(
+                                      new Date(
+                                        viewDate.getFullYear(),
+                                        viewDate.getMonth() + 1,
+                                        1
+                                      )
+                                    )
+                                  }
+                                  className="p-2 rounded-xl bg-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                  aria-label="Next month"
+                                >
+                                  <ChevronRight size={16} />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setViewDate(
+                                      new Date(
+                                        viewDate.getFullYear() + 1,
+                                        viewDate.getMonth(),
+                                        1
+                                      )
+                                    )
+                                  }
+                                  className="px-2 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-[10px] font-black text-slate-600 dark:text-slate-300"
+                                  aria-label="Next year"
+                                >
+                                  +Y
+                                </button>
+                              </div>
+
+                              {/* Days */}
+                              <div className="grid grid-cols-7 gap-1 mb-2">
+                                {["S", "M", "T", "W", "T", "F", "S"].map((d) => (
+                                  <div
+                                    key={d}
+                                    className="text-[10px] font-extrabold text-center text-slate-400"
+                                  >
+                                    {d}
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="grid grid-cols-7 gap-1">
+                                {emptySlots.map((i) => (
+                                  <div key={`e-${i}`} />
+                                ))}
+
+                                {daysArray.map((day) => {
+                                  const dObj = new Date(
+                                    viewDate.getFullYear(),
+                                    viewDate.getMonth(),
+                                    day
+                                  );
+
+                                  const isSel = sameDay(selectedDate, dObj);
+                                  const isToday = sameDay(new Date(), dObj);
+
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={day}
+                                      onClick={() => {
+                                        setSelectedDate(dObj);
+                                        setIsCalendarOpen(false);
+                                      }}
+                                      className={cn(
+                                        "h-9 rounded-xl text-xs font-extrabold transition-all",
+                                        isSel
+                                          ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
+                                          : "hover:bg-slate-100 text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800",
+                                        isToday && !isSel
+                                          ? "ring-2 ring-blue-500/30"
+                                          : ""
+                                      )}
+                                    >
+                                      {day}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Footer */}
+                              <div className="mt-3 flex items-center justify-between gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedDate(null);
+                                    setIsCalendarOpen(false);
+                                  }}
+                                  className="flex-1 py-2 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition"
+                                >
+                                  Clear
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setIsCalendarOpen(false)}
+                                  className="flex-1 py-2 text-xs font-black text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+                                >
+                                  Done
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </InputGroup>
+                  </SectionCard>
                 </motion.div>
               </motion.div>
 
-              {/* Footer */}
-              <div className="px-6 py-5 border-t border-slate-100 dark:border-gray-800 bg-white/90 dark:bg-gray-900/90 backdrop-blur sticky bottom-0 z-20">
-                <div className="flex gap-3">
+              {/* --- Footer Actions --- */}
+              <div className="relative shrink-0 p-6 bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between gap-4">
                   <motion.button
-                    type="button"
-                    variants={floatBtn}
+                    variants={softPop}
                     initial="rest"
-                    whileHover="hover"
-                    whileTap="tap"
+                    whileHover={!prefersReducedMotion ? "hover" : "rest"}
+                    whileTap={!prefersReducedMotion ? "tap" : "rest"}
                     onClick={handleClose}
-                    className="
-                      flex-1
-                      py-4
-                      rounded-2xl
-                      text-xs font-black
-                      bg-slate-100 dark:bg-gray-800
-                      text-slate-600 dark:text-slate-300
-                      hover:bg-rose-50 hover:text-rose-600
-                      dark:hover:bg-rose-900/20 dark:hover:text-rose-300
-                      transition
-                      border border-slate-200 dark:border-gray-700
-                    "
+                    className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-700 font-black text-sm hover:bg-slate-50 hover:text-slate-900 transition-colors dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    type="button"
                   >
-                    CANCEL
+                    Cancel
                   </motion.button>
 
                   <motion.button
-                    type="button"
-                    variants={floatBtn}
+                    variants={softPop}
                     initial="rest"
-                    whileHover={!saving ? "hover" : "rest"}
-                    whileTap={!saving ? "tap" : "rest"}
-                    disabled={saving}
+                    whileHover={!saving && !prefersReducedMotion ? "hover" : "rest"}
+                    whileTap={!saving && !prefersReducedMotion ? "tap" : "rest"}
                     onClick={handleSave}
-                    className={`
-                      flex-1
-                      py-4
-                      rounded-2xl
-                      text-xs font-black
-                      uppercase tracking-widest
-                      transition
-                      shadow
-                      ${
-                        saving
-                          ? "bg-slate-300 dark:bg-gray-700 text-slate-600 dark:text-slate-300 cursor-not-allowed shadow-none"
-                          : "bg-teal-600 hover:bg-teal-700 text-white shadow-teal-500/25"
-                      }
-                    `}
+                    disabled={saving}
+                    className={cn(
+                      "flex-[2] py-3.5 rounded-xl font-black text-sm text-white transition-all",
+                      "shadow-lg",
+                      saving
+                        ? "bg-slate-400 cursor-not-allowed shadow-none"
+                        : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-600/30 hover:-translate-y-0.5"
+                    )}
+                    type="button"
                   >
-                    {saving ? "SAVING..." : "SAVE RECORD"}
+                    {saving ? "Saving Record..." : "Confirm & Save"}
                   </motion.button>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <div className="mt-3 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
                   <span>Tip</span>
-                  <span className="text-teal-600 dark:text-teal-400">Add diagnosis first</span>
+                  <span className="text-blue-600 dark:text-blue-400">
+                    Diagnosis → Prescription → Save
+                  </span>
                 </div>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </>

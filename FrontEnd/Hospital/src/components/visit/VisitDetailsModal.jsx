@@ -1,3 +1,7 @@
+/* -------------------------------------------------------------------- */
+/* -------------------- Check Patient Visit Record -------------------- */
+/* -------------------------------------------------------------------- */
+
 import React, { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {

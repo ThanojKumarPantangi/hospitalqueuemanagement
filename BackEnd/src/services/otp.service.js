@@ -1,6 +1,10 @@
 import OTP from "../models/otp.model.js";
 import User from "../models/user.model.js";
 import crypto from "crypto";
+import { sendSms2Factor } from "../utils/sendSms2factor.js";
+import { otpEmailTemplate } from "../emailTemplates/otpEmailTemplate.js";
+import { sendEmail } from "../utils/sendEmail.js";
+
 
 const OTP_EXPIRY_MINUTES = 5;
 const MAX_VERIFY_ATTEMPTS = 5;
@@ -46,14 +50,19 @@ export const sendOTP = async (email) => {
     lockedUntil: null,
   });
 
-  // sendSms(user.phone, otp);
-  // sendEmail(email, otp);
+  // sendSms2Factor(user.phone, otp);
+  
+  await sendEmail({
+    to: email,
+    subject: `${process.env.MAIL_FROM_NAME || "Kumar Hospitals"} OTP Verification`,
+    html: otpEmailTemplate({
+    otp,
+    expiryMinutes: OTP_EXPIRY_MINUTES,
+    }),
+  });
 
   return true;
 };
-
-
-
 
 /* ---------- verify OTP ---------- */
 export const verifyOTP = async (email, otp) => {

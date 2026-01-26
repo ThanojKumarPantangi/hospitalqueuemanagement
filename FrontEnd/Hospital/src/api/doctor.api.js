@@ -39,3 +39,15 @@ export const patientProfileApi = (patientId) => {
 
   return api.get(`/api/patient-profile/${patientId}`);
 };
+
+
+export const getDoctorProfileByIdApi = (doctorId) => {
+  if (!doctorId || typeof doctorId !== "string") {
+    throw new Error("getDoctorProfileByIdApi requires a doctorId string");
+  }
+  return api.get(`/api/doctorProfile/${doctorId}`);
+};
+
+export const getPublicDoctorsApi = () => {
+  return api.get("/api/doctorProfile/doctors");
+};

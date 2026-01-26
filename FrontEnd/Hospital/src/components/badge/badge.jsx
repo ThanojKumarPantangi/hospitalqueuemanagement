@@ -1,15 +1,25 @@
-const getStartOfDay = (date = new Date()) => {
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+const getStartOfISTDay = (date = new Date()) => {
   const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+
+  // Convert to IST
+  const ist = new Date(d.getTime() + IST_OFFSET_MS);
+
+  // Start of IST day
+  ist.setHours(0, 0, 0, 0);
+
+  // Convert back to UTC timestamp (for stable comparison)
+  return new Date(ist.getTime() - IST_OFFSET_MS);
 };
 
 const getBadgeConfig = (date) => {
-  const today = getStartOfDay();
-  const target = getStartOfDay(new Date(date));
+  const today = getStartOfISTDay(new Date());
+  const target = getStartOfISTDay(date);
 
-  const diffDays =
-    (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  const diffDays = Math.round(
+    (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
 
   if (diffDays === 0) {
     return {
@@ -26,7 +36,7 @@ const getBadgeConfig = (date) => {
   }
 
   return {
-    label: target.toLocaleDateString(),
+    label: new Date(date).toLocaleDateString("en-IN"),
     className:
       "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200",
   };

@@ -77,3 +77,7 @@ export const createDoctorApi=(payload)=>{
 export const updateDoctorDepartmentsApi=(doctorId,payload)=>{
   return api.patch(`/api/admin/departments/${doctorId}`,payload)
 }
+
+export const lookupUserByPhoneOrEmailApi = (payload) => {
+  return api.get("/api/admin/lookup", { params: payload });
+};

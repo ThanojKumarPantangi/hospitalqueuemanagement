@@ -49,6 +49,7 @@ const AdminDepartments = () => {
       try {
         setIsFetchingDepartments(true);
         const res = await getDepartmentsStatusApi();
+        console.log(res)
         setDepartments(res.data);
       } catch (error) {
         setToast({
