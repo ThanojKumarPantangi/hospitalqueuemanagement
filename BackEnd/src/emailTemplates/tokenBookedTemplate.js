@@ -1,12 +1,12 @@
 export const tokenBookedTemplate = ({
   name = "Patient",
-  hospitalName = "Kumar Hospitals",
+  hospitalName = "Smart Q",
   tokenNumber = "-",
   departmentName = "-",
   appointmentDate = "-",
   priority = "NORMAL",
   queuePosition = null,
-  supportEmail = "support@kumarhospitals.com",
+  supportEmail = "support@Smart Q.com",
 }) => {
   const year = new Date().getFullYear();
 

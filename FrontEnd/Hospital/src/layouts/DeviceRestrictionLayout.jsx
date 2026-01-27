@@ -43,7 +43,7 @@ export default function DeviceRestrictionLayout({ children }) {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
             >
-            Kumar Hospitals
+            Smart Q
             </motion.h1>
           </div>
 

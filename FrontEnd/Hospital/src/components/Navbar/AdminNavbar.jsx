@@ -60,7 +60,7 @@ const AdminNavbar = () => {
             </motion.div>
             <div className="hidden sm:flex flex-col">
               <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-white leading-none">
-                Kumar<span className="text-cyan-600 dark:text-cyan-400">Hospitals</span>
+                Smart<span className="text-cyan-600 dark:text-cyan-400">Q</span>
               </span>
               <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">
                 Admin Portal

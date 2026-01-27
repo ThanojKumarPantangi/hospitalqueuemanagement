@@ -4,8 +4,8 @@ import { useAuth } from "../../hooks/useAuth";
 import { useSocket } from "../../hooks/useSocket";
 
 const Logout = ({
-  brandName = "KUMAR",
-  brandAccent = "HOSPITAL",
+  brandName = "Smart",
+  brandAccent = "Q",
   duration = 3000,
   onCancel = () => console.log("Logout cancelled"),
 }) => {

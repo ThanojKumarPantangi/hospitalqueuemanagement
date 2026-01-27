@@ -79,7 +79,7 @@ export const resetPasswordTemplate = ({
 
     <!-- PREHEADER -->
     <div style="display:none; font-size:1px; line-height:1px; max-height:0px; max-width:0px; opacity:0; overflow:hidden; mso-hide:all;">
-      Secure password reset request for your Kumar Hospitals account. Expires in 15 minutes.
+      Secure password reset request for your Smart Q account. Expires in 15 minutes.
     </div>
 
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="width:600px; max-width:600px;" class="email-container">
@@ -97,7 +97,7 @@ export const resetPasswordTemplate = ({
                   src="${logoUrl}"
                   width="38"
                   height="38"
-                  alt="Kumar Hospitals"
+                  alt="Smart Q"
                   style="
                     display:block;
                     width:38px;
@@ -109,7 +109,7 @@ export const resetPasswordTemplate = ({
                 />
               </td>
               <td style="padding-left: 10px; vertical-align:middle; font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 800; color: #64748B; letter-spacing: 1.6px; text-transform: uppercase;">
-                Kumar Hospitals
+                Smart Q
               </td>
             </tr>
           </table>
@@ -149,7 +149,7 @@ export const resetPasswordTemplate = ({
                 <!-- SUBTEXT -->
                 <div class="text" style="margin-top:12px; text-align:center; font-family: Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#475569;">
                   Hi <strong style="color:#0F172A;">${name || "Valued Patient"}</strong>,<br><br>
-                  We received a request to reset your password for the Kumar Hospitals Patient Portal.
+                  We received a request to reset your password for the  Smart Q Patient Portal.
                   If you made this request, click the button below.
                 </div>
 
@@ -247,7 +247,7 @@ export const resetPasswordTemplate = ({
       <tr>
         <td style="padding: 22px 10px 40px 10px;">
           <div style="text-align:center; font-family: Arial, Helvetica, sans-serif; font-size:12px; line-height:18px; color:#94A3B8;">
-            © ${year} Kumar Hospitals. All rights reserved.<br>
+            © ${year} Smart Q. All rights reserved.<br>
             123 Health Valley, Jubilee Hills, Hyderabad, Telangana 500033
           </div>
 

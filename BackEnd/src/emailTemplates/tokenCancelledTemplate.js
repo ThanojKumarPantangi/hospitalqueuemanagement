@@ -1,11 +1,11 @@
 export const tokenCancelledTemplate = ({
   name = "Patient",
-  hospitalName = "Kumar Hospitals",
+  hospitalName = "Smart Q",
   tokenNumber = "-",
   departmentName = "-",
   appointmentDate = "-",
   cancelledBy = "You",
-  supportEmail = "support@kumarhospitals.com",
+  supportEmail = "support@Smart Q.com",
 }) => {
   const year = new Date().getFullYear();
 

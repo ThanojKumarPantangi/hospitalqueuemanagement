@@ -132,7 +132,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
                   className="flex flex-col"
                 >
                   <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">
-                    Kumar<span className="text-cyan-500">Hospitals</span>
+                    Smart<span className="text-cyan-500">Q</span>
                   </span>
                   <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">
                     Admin Portal

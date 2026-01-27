@@ -64,7 +64,7 @@ export const createTokenController = async (req, res) => {
       if (patient?.email) {
         await sendEmail({
           to: patient.email,
-          subject: `Token Confirmed - ${dept?.name || "Department"} | Kumar Hospitals`,
+          subject: `Token Confirmed - ${dept?.name || "Department"} | Smart Q`,
           html: tokenBookedTemplate({
             name: patient.name,
             priority,
@@ -157,7 +157,7 @@ export const cancelTokenController = async (req, res) => {
       if (patient?.email) {
         await sendEmail({
           to: req.user.email||patient.email,
-          subject: `Token Cancelled - ${dept?.name || "Department"} | Kumar Hospitals`,
+          subject: `Token Cancelled - ${dept?.name || "Department"} | Smart Q`,
           html: tokenCancelledTemplate({
             name: patient.name,
             tokenNumber: token.tokenNumber,

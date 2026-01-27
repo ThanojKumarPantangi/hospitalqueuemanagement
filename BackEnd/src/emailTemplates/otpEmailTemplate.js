@@ -1,6 +1,6 @@
 export const otpEmailTemplate = ({
   otp,
-  appName = process.env.MAIL_FROM_NAME || "Kumar Hospitals",
+  appName = process.env.MAIL_FROM_NAME || "Smart Q",
   expiryMinutes = 5,
   supportEmail = process.env.MAIL_FROM || "support@example.com",
 }) => {

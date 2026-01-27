@@ -52,7 +52,7 @@ export const sendOTP = async (email) => {
   
   await sendEmail({
     to: email,
-    subject: `${process.env.MAIL_FROM_NAME || "Kumar Hospitals"} OTP Verification`,
+    subject: `${process.env.MAIL_FROM_NAME || "Smart Q"} OTP Verification`,
     html: otpEmailTemplate({
     otp,
     expiryMinutes: OTP_EXPIRY_MINUTES,

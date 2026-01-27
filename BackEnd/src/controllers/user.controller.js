@@ -131,7 +131,7 @@ export const forgotPasswordController = async (req, res) => {
 
     await sendEmail({
       to: user.email,
-      subject: "Reset your password - Kumar Hospitals",
+      subject: "Reset your password - Smart Q",
       html: resetPasswordTemplate({
         name: user.name,
         resetUrl,

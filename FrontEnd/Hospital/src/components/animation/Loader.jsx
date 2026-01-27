@@ -156,7 +156,7 @@ export default function AmbulanceHospitalLoader() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
             >
-            Kumar Hospitals
+            Smart Q
             </motion.h1>
           </div>
           {/* Subtitle */}
