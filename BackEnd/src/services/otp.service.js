@@ -37,8 +37,6 @@ export const sendOTP = async (email) => {
   }
 
   const otp = generateOTP();
-  console.log("OTP generated:",otp)
-  console.log(user.phone,email)
   const hashedOtp = hashOTP(otp);
 
   await OTP.create({
