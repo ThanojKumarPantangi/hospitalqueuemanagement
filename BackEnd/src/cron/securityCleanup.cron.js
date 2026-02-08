@@ -2,7 +2,28 @@ import cron from "node-cron";
 import Session from "../models/session.model.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import PasswordReset from "../models/passwordReset.model.js";
+import Message from "../models/message.model.js";
 
+/* ============================
+   IST DAY HELPER
+============================ */
+const getStartOfISTDay = (date = new Date()) => {
+  const d = new Date(date);
+
+  // Convert to IST (+5:30)
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(d.getTime() + istOffsetMs);
+
+  // Start of IST day
+  istDate.setHours(0, 0, 0, 0);
+
+  // Convert back to UTC for DB comparison
+  return new Date(istDate.getTime() - istOffsetMs);
+};
+
+/* ============================
+   SECURITY + MESSAGE CLEANUP CRON
+============================ */
 export const startSecurityCleanupCron = () => {
   if (process.env.ENABLE_INTERNAL_CRON !== "true") {
     console.log("⏸️ Internal cron disabled (ENABLE_INTERNAL_CRON != true)");
@@ -14,7 +35,7 @@ export const startSecurityCleanupCron = () => {
   // Runs every day at 3:00 AM
   cron.schedule("0 3 * * *", async () => {
     try {
-      console.log("🧹 Running security cleanup cron...");
+      console.log("🧹 Running security & message cleanup cron...");
 
       const now = new Date();
 
@@ -39,8 +60,7 @@ export const startSecurityCleanupCron = () => {
       });
 
       /**
-       * 3) OPTIONAL: Mark sessions inactive if lastSeenAt older than 10 days
-       * TTL will delete them anyway, but this helps instantly block access
+       * 3) Deactivate stale sessions (last seen > 10 days)
        */
       const inactiveBefore = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
 
@@ -49,13 +69,24 @@ export const startSecurityCleanupCron = () => {
         { isActive: false }
       );
 
-      console.log("✅ Security cleanup done:", {
+      /**
+       * 4) 🔥 DELETE EXPIRED ANNOUNCEMENTS (END OF DAY - IST)
+       */
+      const todayIST = getStartOfISTDay();
+
+      const deletedAnnouncements = await Message.deleteMany({
+        type: "ANNOUNCEMENT",
+        createdAt: { $lt: todayIST },
+      });
+
+      console.log("✅ Cleanup summary:", {
         deletedRevokedRefresh: deletedRevokedRefresh.deletedCount,
         deletedUsedResets: deletedUsedResets.deletedCount,
         deactivatedSessions: deactivatedSessions.modifiedCount,
+        deletedAnnouncements: deletedAnnouncements.deletedCount,
       });
     } catch (err) {
-      console.log("❌ Security cleanup cron failed:", err.message);
+      console.error("❌ Cleanup cron failed:", err.message);
     }
   });
 };

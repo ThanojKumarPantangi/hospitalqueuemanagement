@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -17,6 +17,9 @@ import { showToast } from "../../utils/toastBus";
 import {
   sendDepartmentAnnouncementApi,
   sendMessageApi,
+  sendGlobalWaitingPatientsApi,
+  sendGlobalActiveDoctorsApi,
+  previewRecipientsApi,
 } from "../../api/message.api";
 import { getAllDepartmentsApi } from "../../api/token.api";
 
@@ -49,6 +52,30 @@ async function apiSendDepartmentAnnouncement(payload) {
   }
 }
 
+async function apiSendGlobalWaitingPatients(payload) {
+  try {
+    const { data } = await sendGlobalWaitingPatientsApi(payload);
+    return data;
+  } catch (err) {
+    throw new Error(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Failed to send waiting patients message."
+    );
+  }
+}
+
+async function apiSendGlobalActiveDoctors(payload) {
+  try {
+    const { data } = await sendGlobalActiveDoctorsApi(payload);
+    return data;
+  } catch (err) {
+    throw new Error(
+      err?.response?.data?.message || err?.message || "Failed to send doctors message."
+    );
+  }
+}
+
 async function apiGetAllDepartments() {
   try {
     const { data } = await getAllDepartmentsApi();
@@ -59,6 +86,19 @@ async function apiGetAllDepartments() {
       err?.message ||
       "Failed to load departments.";
     throw new Error(msg);
+  }
+}
+
+async function apiPreviewRecipients(payload) {
+  try {
+    const { data } = await previewRecipientsApi(payload);
+    return data;
+  } catch (err) {
+    throw new Error(
+      err?.response?.data?.message ||
+        err?.message ||
+        "Failed to preview recipients."
+    );
   }
 }
 
@@ -91,9 +131,7 @@ const TabButton = ({ active, icon, title, desc, onClick }) => {
       <div className="flex items-start gap-3">
         <div
           className={`p-2 rounded-xl ${
-            active
-              ? "bg-white/10 dark:bg-black/10"
-              : "bg-gray-100 dark:bg-gray-800"
+            active ? "bg-white/10 dark:bg-black/10" : "bg-gray-100 dark:bg-gray-800"
           }`}
         >
           {icon}
@@ -102,15 +140,11 @@ const TabButton = ({ active, icon, title, desc, onClick }) => {
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <p className="font-semibold">{title}</p>
-            <ChevronRight
-              className={`w-4 h-4 ${active ? "opacity-80" : "opacity-40"}`}
-            />
+            <ChevronRight className={`w-4 h-4 ${active ? "opacity-80" : "opacity-40"}`} />
           </div>
           <p
             className={`text-xs mt-1 ${
-              active
-                ? "text-white/80 dark:text-gray-700"
-                : "text-gray-500 dark:text-gray-400"
+              active ? "text-white/80 dark:text-gray-700" : "text-gray-500 dark:text-gray-400"
             }`}
           >
             {desc}
@@ -125,7 +159,7 @@ const TabButton = ({ active, icon, title, desc, onClick }) => {
    MAIN COMPONENT
 =========================== */
 export default function AdminMessagingPanel() {
-  const [mode, setMode] = useState("user"); // "user" | "department"
+  const [mode, setMode] = useState("user"); // "user" | "department" | "waitingPatients" | "activeDoctors"
 
   // user message form
   const [toUserId, setToUserId] = useState("");
@@ -134,7 +168,7 @@ export default function AdminMessagingPanel() {
   const [type, setType] = useState("ANNOUNCEMENT");
   const [metadata, setMetadata] = useState("");
 
-  // department announcement form
+  // department / announcement form
   const [departmentId, setDepartmentId] = useState("");
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
@@ -143,15 +177,32 @@ export default function AdminMessagingPanel() {
   const [departments, setDepartments] = useState([]);
   const [departmentsLoading, setDepartmentsLoading] = useState(false);
 
+  // general UI state
   const [loading, setLoading] = useState(false);
+
+  // preview modal & caching
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const previewCacheRef = useRef(new Map()); // key -> { data, ts }
 
   const canSendUserMessage = useMemo(() => {
     return toUserId.trim() && content.trim();
   }, [toUserId, content]);
 
+  // department mode requires departmentId, global modes only require content
   const canSendAnnouncement = useMemo(() => {
-    return departmentId.trim() && annContent.trim();
-  }, [departmentId, annContent]);
+    if (mode === "department") {
+      return departmentId.trim() && annContent.trim();
+    }
+    return annContent.trim();
+  }, [mode, departmentId, annContent]);
+
+  const shortId = (id = "") => {
+  if (!id) return "";
+  return `…${id.slice(-6)}`;
+};
+
 
   // Load departments once
   useEffect(() => {
@@ -200,11 +251,53 @@ export default function AdminMessagingPanel() {
   };
 
   const resetAnnouncementForm = () => {
-    setDepartmentId(departments?.[0]?._id || "");
+    // keep departmentId so admin doesn't lose selection; reset title/content
     setAnnTitle("");
     setAnnContent("");
   };
 
+  /* ===========================
+     Preview Recipients (with 30s cache)
+  =========================== */
+  const getPreviewCacheKey = (modeKey, deptId) => `${modeKey}:${deptId || ""}`;
+
+  const handlePreviewRecipients = async ({ force = false } = {}) => {
+    const key = getPreviewCacheKey(mode, departmentId);
+
+    try {
+      // check cache
+      if (!force && previewCacheRef.current.has(key)) {
+        const entry = previewCacheRef.current.get(key);
+        const ageMs = Date.now() - entry.ts;
+        if (ageMs <= 30 * 1000) {
+          setPreviewData(entry.data);
+          setPreviewOpen(true);
+          return;
+        }
+      }
+
+      setPreviewLoading(true);
+
+      const data = await apiPreviewRecipients({
+        mode,
+        departmentId: mode === "department" ? departmentId : undefined,
+      });
+
+      // store cache
+      previewCacheRef.current.set(key, { data, ts: Date.now() });
+
+      setPreviewData(data);
+      setPreviewOpen(true);
+    } catch (err) {
+      showToast({ type: "error", message: err.message || "Failed to preview recipients" });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  /* ===========================
+     SEND HANDLER
+  =========================== */
   const handleSend = async () => {
     try {
       setLoading(true);
@@ -245,15 +338,23 @@ export default function AdminMessagingPanel() {
         });
 
         resetUserForm();
-      } else {
-        if (!canSendAnnouncement) {
-          showToast({
-            type: "error",
-            message: "departmentId and content are required",
-          });
-          return;
-        }
+        return;
+      }
 
+      // Announcement / global modes
+      if (!canSendAnnouncement) {
+        // canSendAnnouncement already accounts for department requirement in department mode
+        showToast({
+          type: "error",
+          message:
+            mode === "department"
+              ? "departmentId and content are required"
+              : "content is required",
+        });
+        return;
+      }
+
+      if (mode === "department") {
         await apiSendDepartmentAnnouncement({
           departmentId,
           title: annTitle || undefined,
@@ -266,6 +367,41 @@ export default function AdminMessagingPanel() {
         });
 
         resetAnnouncementForm();
+        // invalidate cache for this key
+        previewCacheRef.current.delete(getPreviewCacheKey(mode, departmentId));
+        return;
+      }
+
+      if (mode === "waitingPatients") {
+        await apiSendGlobalWaitingPatients({
+          title: annTitle || undefined,
+          content: annContent,
+        });
+
+        showToast({
+          type: "success",
+          message: "Message sent to all waiting patients",
+        });
+
+        resetAnnouncementForm();
+        previewCacheRef.current.delete(getPreviewCacheKey(mode, departmentId));
+        return;
+      }
+
+      if (mode === "activeDoctors") {
+        await apiSendGlobalActiveDoctors({
+          title: annTitle || undefined,
+          content: annContent,
+        });
+
+        showToast({
+          type: "success",
+          message: "Message sent to all active doctors",
+        });
+
+        resetAnnouncementForm();
+        previewCacheRef.current.delete(getPreviewCacheKey(mode, departmentId));
+        return;
       }
     } catch (err) {
       showToast({
@@ -277,19 +413,16 @@ export default function AdminMessagingPanel() {
     }
   };
 
+  /* ===========================
+     RENDER
+  =========================== */
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6 space-y-8">
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-6xl mx-auto"
-      >
+      <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Hospital Queue • Admin
-            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Hospital Queue • Admin</p>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">
               Messaging & Announcements
             </h1>
@@ -298,18 +431,12 @@ export default function AdminMessagingPanel() {
             </p>
           </div>
 
-          <motion.div
-            initial={{ scale: 0.98, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm"
-          >
+          <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl px-4 py-3 shadow-sm">
             <div className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
               <MessageSquareText className="w-5 h-5" />
               <p className="text-sm font-semibold">Quick Actions</p>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Choose a mode and send instantly.
-            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Choose a mode and send instantly.</p>
           </motion.div>
         </div>
 
@@ -317,34 +444,20 @@ export default function AdminMessagingPanel() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-6">
           {/* Left: Mode Selector */}
           <div className="space-y-3">
-            <TabButton
-              active={mode === "user"}
-              onClick={() => setMode("user")}
-              icon={<User className="w-5 h-5" />}
-              title="Send Message"
-              desc="Direct message to a specific user (toUserId)"
-            />
+            <TabButton active={mode === "user"} onClick={() => setMode("user")} icon={<User className="w-5 h-5" />} title="Send Message" desc="Direct message to a specific user (toUserId)" />
 
-            <TabButton
-              active={mode === "department"}
-              onClick={() => setMode("department")}
-              icon={<Building2 className="w-5 h-5" />}
-              title="Department Announcement"
-              desc="Broadcast message to all users in a department"
-            />
+            <TabButton active={mode === "department"} onClick={() => setMode("department")} icon={<Building2 className="w-5 h-5" />} title="Department Announcement" desc="Broadcast message to all users in a department" />
 
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm"
-            >
+            <TabButton active={mode === "waitingPatients"} onClick={() => setMode("waitingPatients")} icon={<Megaphone className="w-5 h-5" />} title="Waiting Patients (Today)" desc="Broadcast to all patients with WAITING tokens today" />
+
+            <TabButton active={mode === "activeDoctors"} onClick={() => setMode("activeDoctors")} icon={<User className="w-5 h-5" />} title="Active Doctors" desc="Broadcast to all active & available doctors" />
+
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
                 <Megaphone className="w-5 h-5" />
                 <p className="font-semibold text-sm">Tip</p>
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 leading-relaxed">
-                Keep messages short and clear for faster queue handling.
-              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 leading-relaxed">Keep messages short and clear for faster queue handling.</p>
             </motion.div>
           </div>
 
@@ -352,22 +465,11 @@ export default function AdminMessagingPanel() {
           <div className="lg:col-span-2">
             <AnimatePresence mode="wait">
               {mode === "user" ? (
-                <motion.div
-                  key="userForm"
-                  initial={{ opacity: 0, x: 18 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -18 }}
-                  transition={{ duration: 0.25 }}
-                  className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-5 md:p-6"
-                >
+                <motion.div key="userForm" initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: 0.25 }} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-5 md:p-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Admin → Send Message
-                      </p>
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                        Direct User Message
-                      </h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Admin → Send Message</p>
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">Direct User Message</h2>
                     </div>
 
                     <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
@@ -387,11 +489,7 @@ export default function AdminMessagingPanel() {
                     </Field>
 
                     <Field icon={<Tag className="w-4 h-4" />} label="Type (optional)">
-                      <select
-                        value={type}
-                        onChange={(e) => setType(e.target.value)}
-                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15"
-                      >
+                      <select value={type} onChange={(e) => setType(e.target.value)} className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15">
                         <option value="ANNOUNCEMENT">ANNOUNCEMENT</option>
                         <option value="QUEUE">QUEUE</option>
                         <option value="PAYMENT">PAYMENT</option>
@@ -400,57 +498,26 @@ export default function AdminMessagingPanel() {
                     </Field>
 
                     <Field icon={<Type className="w-4 h-4" />} label="Title (optional)">
-                      <input
-                        value={msgTitle}
-                        onChange={(e) => setMsgTitle(e.target.value)}
-                        placeholder="e.g. Doctor is delayed"
-                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15"
-                      />
+                      <input value={msgTitle} onChange={(e) => setMsgTitle(e.target.value)} placeholder="e.g. Doctor is delayed" className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15" />
                     </Field>
 
-                    <Field
-                      icon={<FileText className="w-4 h-4" />}
-                      label="Metadata (optional JSON)"
-                    >
-                      <input
-                        value={metadata}
-                        onChange={(e) => setMetadata(e.target.value)}
-                        placeholder='e.g. {"priority":"high"}'
-                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15"
-                      />
+                    <Field icon={<FileText className="w-4 h-4" />} label="Metadata (optional JSON)">
+                      <input value={metadata} onChange={(e) => setMetadata(e.target.value)} placeholder='e.g. {"priority":"high"}' className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15" />
                     </Field>
                   </div>
 
                   <div className="mt-4">
-                    <Field
-                      icon={<MessageSquareText className="w-4 h-4" />}
-                      label="Content *"
-                    >
-                      <textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        placeholder="Write the message..."
-                        rows={5}
-                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15 resize-none"
-                      />
+                    <Field icon={<MessageSquareText className="w-4 h-4" />} label="Content *">
+                      <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Write the message..." rows={5} className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15 resize-none" />
                     </Field>
                   </div>
 
                   <div className="flex items-center justify-end gap-2 mt-5">
-                    <button
-                      disabled={loading}
-                      onClick={resetUserForm}
-                      className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition disabled:opacity-50"
-                    >
+                    <button disabled={loading} onClick={resetUserForm} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition disabled:opacity-50">
                       Clear
                     </button>
 
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
-                      disabled={loading}
-                      onClick={handleSend}
-                      className="px-4 py-2 rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-semibold flex items-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 transition disabled:opacity-60"
-                    >
+                    <motion.button whileTap={{ scale: 0.98 }} disabled={loading} onClick={handleSend} className="px-4 py-2 rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-semibold flex items-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 transition disabled:opacity-60">
                       {loading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -466,95 +533,76 @@ export default function AdminMessagingPanel() {
                   </div>
                 </motion.div>
               ) : (
-                <motion.div
-                  key="deptForm"
-                  initial={{ opacity: 0, x: 18 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -18 }}
-                  transition={{ duration: 0.25 }}
-                  className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-5 md:p-6"
-                >
+                <motion.div key="deptForm" initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: 0.25 }} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-5 md:p-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Admin → Department Announcement
+                        {mode === "department" && "Admin → Department Announcement"}
+                        {mode === "waitingPatients" && "Admin → Waiting Patients Announcement"}
+                        {mode === "activeDoctors" && "Admin → Active Doctors Announcement"}
                       </p>
                       <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mt-1">
-                        Broadcast Announcement
+                        {mode === "department" && "Broadcast Announcement"}
+                        {mode === "waitingPatients" && "Waiting Patients (Today)"}
+                        {mode === "activeDoctors" && "Active Doctors"}
                       </h2>
                     </div>
 
                     <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                       <Megaphone className="w-4 h-4" />
-                      <span className="text-sm font-medium">Department Wide</span>
+                      <span className="text-sm font-medium">
+                        {mode === "department" && "Department Wide"}
+                        {mode === "waitingPatients" && "Broadcast to waiting patients"}
+                        {mode === "activeDoctors" && "Broadcast to active doctors"}
+                      </span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-                    <Field
-                      icon={<Building2 className="w-4 h-4" />}
-                      label="Select Department *"
-                    >
-                      <select
-                        value={departmentId}
-                        onChange={(e) => setDepartmentId(e.target.value)}
-                        disabled={departmentsLoading}
-                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15 disabled:opacity-60"
-                      >
-                        {departmentsLoading ? (
-                          <option value="">Loading departments...</option>
-                        ) : departments.length === 0 ? (
-                          <option value="">No departments found</option>
-                        ) : (
-                          departments.map((d) => (
-                            <option key={d._id} value={d._id}>
-                              {d.name}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                    </Field>
+                    {mode === "department" && (
+                      <Field icon={<Building2 className="w-4 h-4" />} label="Select Department *">
+                        <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} disabled={departmentsLoading} className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15 disabled:opacity-60">
+                          {departmentsLoading ? (
+                            <option value="">Loading departments...</option>
+                          ) : departments.length === 0 ? (
+                            <option value="">No departments found</option>
+                          ) : (
+                            departments.map((d) => (
+                              <option key={d._id} value={d._id}>
+                                {d.name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </Field>
+                    )}
 
                     <Field icon={<Type className="w-4 h-4" />} label="Title (optional)">
-                      <input
-                        value={annTitle}
-                        onChange={(e) => setAnnTitle(e.target.value)}
-                        placeholder="e.g. OP timings changed"
-                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15"
-                      />
+                      <input value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} placeholder="e.g. OP timings changed" className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15" />
                     </Field>
                   </div>
 
                   <div className="mt-4">
-                    <Field
-                      icon={<MessageSquareText className="w-4 h-4" />}
-                      label="Content *"
-                    >
-                      <textarea
-                        value={annContent}
-                        onChange={(e) => setAnnContent(e.target.value)}
-                        placeholder="Write the department announcement..."
-                        rows={6}
-                        className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15 resize-none"
-                      />
+                    <Field icon={<MessageSquareText className="w-4 h-4" />} label="Content *">
+                      <textarea value={annContent} onChange={(e) => setAnnContent(e.target.value)} placeholder="Write the department announcement..." rows={6} className="w-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-gray-100/15 resize-none" />
                     </Field>
                   </div>
 
                   <div className="flex items-center justify-end gap-2 mt-5">
-                    <button
-                      disabled={loading}
-                      onClick={resetAnnouncementForm}
-                      className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition disabled:opacity-50"
-                    >
+                    <button disabled={loading} onClick={resetAnnouncementForm} className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition disabled:opacity-50">
                       Clear
                     </button>
 
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
-                      disabled={loading || departmentsLoading || !departmentId}
-                      onClick={handleSend}
-                      className="px-4 py-2 rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-semibold flex items-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 transition disabled:opacity-60"
+                    {/* Preview Recipients button */}
+                    <button
+                      disabled={previewLoading}
+                      onClick={() => handlePreviewRecipients({ force: false })}
+                      className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 transition disabled:opacity-50"
                     >
+                      {previewLoading ? "Checking..." : "Preview Recipients"}
+                    </button>
+
+                    <motion.button whileTap={{ scale: 0.98 }} disabled={loading || (mode === "department" && (departmentsLoading || !departmentId)) || !canSendAnnouncement} onClick={handleSend} className="px-4 py-2 rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-semibold flex items-center gap-2 hover:bg-gray-800 dark:hover:bg-gray-200 transition disabled:opacity-60">
                       {loading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -574,6 +622,48 @@ export default function AdminMessagingPanel() {
           </div>
         </div>
       </motion.div>
+
+      {/* Preview Modal */}
+      <AnimatePresence>
+        {previewOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <motion.div initial={{ scale: 0.96 }} animate={{ scale: 1 }} exit={{ scale: 0.96 }} className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg p-5 shadow-xl">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">Recipients ({previewData?.count || 0})</h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => handlePreviewRecipients({ force: true })} className="text-sm px-2 py-1 rounded-md border border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">Refresh</button>
+                  <button onClick={() => setPreviewOpen(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+                </div>
+              </div>
+
+              {/* Warning banner */}
+              <div className="mt-3 p-3 rounded-md bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/20 text-sm text-yellow-800 dark:text-yellow-300">
+                Recipients may change before sending — this is a snapshot. If you want the latest list, click Refresh.
+              </div>
+
+              <div className="mt-4 max-h-64 overflow-auto space-y-2">
+                {previewData?.recipients?.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center">No recipients found</p>
+                ) : (
+                  previewData.recipients.map((u) => (
+                    <div key={u._id} className="flex justify-between items-center px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm">
+                      <div>
+                        <div className="text-gray-900 dark:text-gray-100 font-medium">{u.name}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">ID {shortId(u._id)}</div>
+                      </div>
+                      <div className="text-gray-500">{u.role}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="mt-4 text-right">
+                <button onClick={() => setPreviewOpen(false)} className="px-4 py-2 rounded-xl bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900">Close</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

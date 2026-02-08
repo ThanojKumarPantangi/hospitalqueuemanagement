@@ -2,8 +2,19 @@ import {
   sendMessageService,
   getMessagesService,
   markMessagesReadService,
-  sendDepartmentAnnouncementService
+  sendDepartmentAnnouncementService,
+  sendGlobalWaitingPatientsMessageService,
+  sendGlobalActiveDoctorsMessageService,
+  sendMessageToAdminService,
+  replyToThreadService,
+  getAdminThreadsService,
+  getThreadMessagesService,
+  getUserThreadMessagesService,
+  getUserThreadsService,
+  closeTicketService,
+  previewRecipientsService
 } from "../services/message.service.js";
+
 
 /* ============================
    ADMIN → SEND MESSAGE
@@ -71,6 +82,320 @@ export const sendDepartmentAnnouncementController = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to send department announcement",
+    });
+  }
+};
+
+/* ==========================================
+   ADMIN → SEND GLOBAL WAITING PATIENTS MESSAGE
+========================================== */
+export const sendGlobalWaitingPatientsMessageController = async (req, res) => {
+  try {
+    const { title, content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        message: "content is required",
+      });
+    }
+
+    const messages = await sendGlobalWaitingPatientsMessageService({
+      fromUserId: req.user.id, // admin
+      title,
+      content,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Global waiting patients message sent successfully",
+      recipientsCount: messages.length,
+    });
+  } catch (err) {
+    console.error("Global waiting patients message error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Failed to send global waiting patients message",
+    });
+  }
+};
+
+
+/* ==========================================
+   ADMIN → SEND GLOBAL ACTIVE DOCTORS MESSAGE
+========================================== */
+export const sendGlobalActiveDoctorsMessageController = async (req, res) => {
+  try {
+    const { title, content } = req.body;
+
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        message: "content is required",
+      });
+    }
+
+    const messages = await sendGlobalActiveDoctorsMessageService({
+      fromUserId: req.user.id, // admin
+      title,
+      content,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Global active doctors message sent successfully",
+      recipientsCount: messages.length,
+    });
+  } catch (err) {
+    console.error("Global active doctors message error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Failed to send global active doctors message",
+    });
+  }
+};
+
+/* ==========================================
+   PATIENT / DOCTOR → SEND MESSAGE TO ADMIN
+========================================== */
+export const sendMessageToAdminController = async (req, res) => {
+  try {
+    const { title, content, category = "GENERAL" } = req.body;
+
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        message: "content is required",
+      });
+    }
+
+    const message = await sendMessageToAdminService({
+      fromUserId: req.user.id,
+      fromRole: req.user.role,
+      title,
+      content,
+      category,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Message sent to admin",
+      data: message,
+    });
+  } catch (err) {
+    res.status(403).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+/* ============================
+   USER → THREAD LIST
+============================ */
+export const getUserThreadsController = async (req, res) => {
+  try {
+    const threads = await getUserThreadsService({
+      userId: req.user.id,
+    });
+
+    res.json({
+      success: true,
+      threads,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+/* ============================
+   USER → THREAD MESSAGES
+============================ */
+export const getUserThreadMessagesController = async (req, res) => {
+  try {
+    const { threadId } = req.params;
+
+    const messages = await getUserThreadMessagesService({
+      userId: req.user.id,
+      threadId,
+    });
+
+    res.json({
+      success: true,
+      messages,
+    });
+  } catch (err) {
+    res.status(403).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+/* ============================
+   ADMIN → REPLY TO THREAD
+============================ */
+export const replyToThreadController = async (req, res) => {
+  try {
+    const { threadId, title, content, category } = req.body;
+
+    if (!threadId || !content) {
+      return res.status(400).json({
+        success: false,
+        message: "threadId and content are required",
+      });
+    }
+
+    const reply = await replyToThreadService({
+      threadId,
+      fromUserId: req.user.id, // ADMIN
+      title,
+      content,
+      category,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Reply sent successfully",
+      data: reply,
+    });
+  } catch (err) {
+    return res.status(403).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+/* ============================
+   ADMIN → THREAD LIST
+============================ */
+export const getAdminThreadsController = async (req, res) => {
+  try {
+    const threads = await getAdminThreadsService();
+
+    res.json({
+      success: true,
+      threads,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+/* ============================
+   ADMIN → THREAD MESSAGES
+============================ */
+export const getThreadMessagesController = async (req, res) => {
+  try {
+    const { threadId } = req.params;
+
+    const messages = await getThreadMessagesService({
+      threadId,
+      adminId: req.user.id,
+    });
+
+    res.json({
+      success: true,
+      messages,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+/* ============================
+   CLOSE TICKET CONTROLLER
+============================ */
+export const closeTicketController = async (req, res) => {
+  try {
+    const { threadId } = req.params;
+    const adminId = req.user.id;
+
+    if (!threadId) {
+      return res.status(400).json({
+        success: false,
+        message: "threadId is required",
+      });
+    }
+
+    const result = await closeTicketService({
+      threadId,
+      adminId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Ticket closed successfully",
+      data: result,
+    });
+  } catch (err) {
+    console.error("Close ticket failed:", err.message);
+
+    // Known / expected errors
+    if (
+      err.message === "Only admin can close tickets" ||
+      err.message === "Ticket already closed"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: err.message,
+      });
+    }
+
+    if (err.message === "Ticket not found") {
+      return res.status(404).json({
+        success: false,
+        message: err.message,
+      });
+    }
+
+    // Fallback
+    return res.status(500).json({
+      success: false,
+      message: "Failed to close ticket",
+    });
+  }
+};
+
+/* ============================
+   ADMIN → PREVIEW RECIPIENTS
+============================ */
+export const previewRecipientsController = async (req, res) => {
+  try {
+    const { mode, departmentId } = req.query;
+
+    if (!mode) {
+      return res.status(400).json({
+        success: false,
+        message: "mode is required",
+      });
+    }
+
+    const data = await previewRecipientsService({
+      mode,
+      departmentId,
+    });
+
+    return res.json({
+      success: true,
+      ...data,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
     });
   }
 };

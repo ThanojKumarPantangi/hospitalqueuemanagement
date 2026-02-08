@@ -19,6 +19,7 @@ import Token from "./pages/patient/Token.jsx";
 import MyVisits from "./pages/patient/MyVisits.jsx";
 import SessionSecurity from "./pages/patient/SessionSecurity.jsx";
 import PatientProfile from "./pages/patient/PatientProfile.jsx";
+import UserInbox from "./pages/patient/UserInbox.jsx";
 
 import DoctorDashboard from "./pages/doctor/Dashboard";
 import DoctorProfile from "./pages/doctor/DoctorProfile.jsx";
@@ -30,6 +31,7 @@ import DoctorManagement from "./pages/admin/Doctors";
 import DepartmentManagement from "./pages/admin/Departments";
 import QueueMonitor from "./pages/admin/QueueMonitor";
 import AdminPatientQrScanner from "./pages/admin/AdminPatientQrScanner.jsx";
+import AdminInbox from "./pages/admin/AdminInbox.jsx";
 import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
 import AdminMessagingPanel from "./pages/admin/AdminMessagingPanel.jsx";
 
@@ -68,6 +70,7 @@ function App() {
             <Route path="/patient/session" element={<SessionSecurity />} />
             <Route path="/patient/profile" element={<PatientProfile />} />
             <Route path="/patient/change-password" element={<ChangePasswordUI />} />
+            <Route path="/patient/inbox" element={<UserInbox />} />
           </Route>
 
           {/* DOCTOR */}
@@ -89,6 +92,7 @@ function App() {
               <Route path="analytics" element={<AnalyticsDashboard />} />
               <Route path="settings" element={<ChangePasswordUI />} />
               <Route path="messaging" element={<AdminMessagingPanel />} />
+              <Route path="inbox" element={<AdminInbox />} />
             </Route>
           </Route>
         </Route>

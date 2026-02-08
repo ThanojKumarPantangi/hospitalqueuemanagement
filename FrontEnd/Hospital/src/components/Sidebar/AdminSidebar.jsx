@@ -12,6 +12,7 @@ import {
   BarChart3 ,
   Menu,
   Mail,
+  Inbox,
   X
 } from "lucide-react";
 import HospitalIcon from "../icon/HospitalIcon"; // Assuming you have this
@@ -28,6 +29,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     { name: "Departments", path: "/admin/departments", icon: Building2 },
     { name: "Queue Monitor", path: "/admin/queue-monitor", icon: MonitorCheck },
     { name: "Messsage", path: "/admin/messaging", icon:Mail },
+    {name:"Inbox",path:"/admin/inbox", icon:Inbox},
     { name: "Analytics", path: "/admin/analytics", icon:BarChart3 },
     { type: "divider" },
     { name: "Settings", path: "/admin/settings", icon: Settings },

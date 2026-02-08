@@ -7,9 +7,10 @@ import {
   User,
   LogOut,
   Menu,
+  Users,
   X,
   Bell,
-  ChevronDown,
+  MessagesSquare,
   Stethoscope
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -169,7 +170,13 @@ const Navbar = () => {
                     onClick={() => navigate("/patient/session")} 
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   >
-                    <Stethoscope className="w-4 h-4 text-gray-400" /> Current Session
+                    <Users className="w-4 h-4 text-gray-400" /> Current Session
+                  </button>
+                  <button 
+                    onClick={() => navigate("/patient/inbox")} 
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    <MessagesSquare className="w-4 h-4 text-gray-400" /> Inbox
                   </button>
                   <button 
                     onClick={() => navigate("/patient/profile")} 
@@ -235,6 +242,14 @@ const Navbar = () => {
                 );
               })}
 
+              <motion.button
+                variants={mobileItemVariants}
+                onClick={() => { navigate("/patient/inbox"); setMobileOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900"
+              >
+                <MessagesSquare className="w-5 h-5 text-gray-400" />
+                Inbox
+              </motion.button>
               <div className="h-px bg-gray-100 dark:bg-gray-800 my-4" />
 
               <motion.button
@@ -242,7 +257,7 @@ const Navbar = () => {
                 onClick={() => { navigate("/patient/session"); setMobileOpen(false); }}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900"
               >
-                <User className="w-5 h-5 text-gray-400" />
+                <Users className="w-5 h-5 text-gray-400" />
                 Session
               </motion.button>
 
