@@ -36,7 +36,7 @@ Smart Q digitizes token issuance, enforces priority-based ordering (`EMERGENCY` 
 
 ## 🌐 Live URLs
 
-- **Frontend:** https://hospitaqueuemanagement.vercel.app  
+- **Frontend:** https://hospitalqueuemanagement.vercel.app 
 - **Backend:** https://hospitalqueuemanagement.onrender.com
 
 ---
