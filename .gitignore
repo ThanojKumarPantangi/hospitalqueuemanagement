@@ -1,18 +1,54 @@
+# ===============================
 # Dependencies
+# ===============================
 node_modules/
 
-# Environment
+# ===============================
+# Environment variables
+# ===============================
 .env
+.env.*
 
+# Allow example env files (optional but recommended)
+!.env.example
+
+# ===============================
 # Build output
+# ===============================
 dist/
 build/
 
+# ===============================
 # Logs
+# ===============================
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# OS / Editor
+# ===============================
+# OS files
+# ===============================
 .DS_Store
-.vscode/
+Thumbs.db
 
+# ===============================
+# Editor / IDE
+# ===============================
+.vscode/
 .VSCodeCounter/
+.idea/
+*.swp
+
+# ===============================
+# Vite / tooling caches
+# ===============================
+.vite/
+.cache/
+
+# ===============================
+# Coverage / temp
+# ===============================
+coverage/
+tmp/
+temp/

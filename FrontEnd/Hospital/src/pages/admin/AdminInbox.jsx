@@ -525,19 +525,38 @@ export default function AdminInbox() {
                     <div className="relative z-10">
                       <div className="flex justify-between items-start mb-1.5">
                         <div className="flex items-center gap-2.5">
-                          <div className={`
-                            w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white dark:ring-slate-700 shadow-sm
-                            ${thread.user?.role === "ADMIN" ? "bg-slate-800 dark:bg-slate-700 text-white" : "bg-gradient-to-br from-indigo-500 to-purple-600 text-white"}
-                          `}>
+                          <div
+                            className={`
+                              w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ring-2 ring-white dark:ring-slate-700 shadow-sm
+                              ${
+                                thread.user?.role === "DOCTOR"
+                                  ? "bg-slate-800 dark:bg-slate-700 text-white"
+                                  : "bg-gradient-to-br from-indigo-500 to-purple-600 text-white"
+                              }
+                            `}
+                          >
                             {thread.user?.name?.charAt(0)?.toUpperCase() || "U"}
                           </div>
+
                           <div className="flex flex-col">
-                            <span className={`text-sm font-bold leading-tight ${isActive ? "text-indigo-950 dark:text-white" : "text-slate-700 dark:text-slate-200"}`}>
+                            <span
+                              className={`text-sm font-bold leading-tight ${
+                                isActive
+                                  ? "text-indigo-950 dark:text-white"
+                                  : "text-slate-700 dark:text-slate-200"
+                              }`}
+                            >
                               {thread.user?.name || "Unknown"}
                             </span>
-                            {thread.user?.role === "ADMIN" && <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">Admin</span>}
+
+                            {thread.user?.role && (
+                              <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+                                {thread.user.role}
+                              </span>
+                            )}
                           </div>
                         </div>
+
                         <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold bg-slate-50 dark:bg-slate-800/50 px-1.5 py-0.5 rounded border border-slate-100 dark:border-slate-700">
                           {new Date(thread.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>

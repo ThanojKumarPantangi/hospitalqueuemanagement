@@ -23,17 +23,10 @@ export const initSocket = (server) => {
 
   io = new Server(server, {
     cors: {
-      origin:"https://hospitalqueuemanagement.vercel.app",
+      origin:process.env.FRONTEND_URL,
       credentials: true,
     },
   });
-
-  // io = new Server(server, {
-  //   cors: {
-  //     origin:"http://localhost:5173",
-  //     credentials: true,
-  //   },
-  // });
 
   /* ============================
      AUTH MIDDLEWARE

@@ -2,16 +2,10 @@
 import axios from "axios";
 import { showToast } from "../utils/toastBus";
 
-
 const api = axios.create({
-  baseURL:"https://hospitalqueuemanagement.onrender.com",
+  baseURL:import.meta.env.VITE_API_URL,
   withCredentials: true,
 });
-
-// const api = axios.create({
-//   baseURL:"http://localhost:5000",
-//   withCredentials: true,
-// });
 
 /* ============================
    REQUEST INTERCEPTOR

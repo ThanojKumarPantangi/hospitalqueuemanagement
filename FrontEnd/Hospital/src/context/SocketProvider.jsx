@@ -16,7 +16,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     const socket = io(
-      import.meta.env.VITE_SOCKET_URL || "https://hospitalqueuemanagement.onrender.com",
+      import.meta.env.VITE_API_URL,
       { 
         withCredentials: true,
         auth: {
@@ -24,16 +24,6 @@ export const SocketProvider = ({ children }) => {
         },
       }
     );
-
-    // const socket = io(
-    //   import.meta.env.VITE_SOCKET_URL || "http://localhost:5000",
-    //   { 
-    //     withCredentials: true,
-    //     auth: {
-    //       token: localStorage.getItem("accessToken"),
-    //     },
-    //   }
-    // );
 
     socketRef.current = socket;
 

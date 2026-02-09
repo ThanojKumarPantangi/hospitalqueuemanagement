@@ -8,8 +8,7 @@ import {
   Menu,
   X,
   Bell,
-  Stethoscope,
-  ChevronDown
+  MessagesSquare
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ThemeToggle from "../button/ThemeToggle";
@@ -182,6 +181,13 @@ const DoctorNavbar = () => {
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   >
                     <UserCog className="w-4 h-4 text-gray-400" /> Edit Profile
+                  </button>
+
+                  <button 
+                    onClick={() => navigate("/doctor/inbox")} 
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    <MessagesSquare className="w-4 h-4 text-gray-400" /> Inbox
                   </button>
                   
                   <Link

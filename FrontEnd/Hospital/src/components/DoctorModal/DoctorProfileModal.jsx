@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  LayoutGroup,
+  useMotionTemplate,
+  useMotionValue,
+} from "framer-motion";
 import {
   X,
   Stethoscope,
@@ -22,61 +28,67 @@ import {
   Sparkles,
   CheckCircle2,
   Info,
+  User,
+  MapPin,
+  Mail,
+  Phone,
+  ArrowRight,
 } from "lucide-react";
 
 /* =========================
-   ANIMATION VARIANTS
+   ANIMATION CONSTANTS & VARIANTS
    ========================= */
+const TRANSITION_SPRING = { type: "spring", stiffness: 300, damping: 30 };
+const TRANSITION_SOFT = { duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] };
+
 const backdropVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.22 } },
-  exit: { opacity: 0, transition: { duration: 0.18 } },
+  hidden: { opacity: 0, backdropFilter: "blur(0px)" },
+  visible: { opacity: 1, backdropFilter: "blur(12px)", transition: { duration: 0.4 } },
+  exit: { opacity: 0, backdropFilter: "blur(0px)", transition: { duration: 0.3 } },
 };
 
 const modalVariants = {
-  hidden: { opacity: 0, scale: 0.965, y: 18, filter: "blur(8px)" },
+  hidden: { opacity: 0, scale: 0.9, y: 40, rotateX: 5 },
   visible: {
     opacity: 1,
     scale: 1,
     y: 0,
-    filter: "blur(0px)",
-    transition: { type: "spring", stiffness: 320, damping: 26 },
+    rotateX: 0,
+    transition: { type: "spring", stiffness: 350, damping: 25, mass: 0.8 },
   },
-  exit: { opacity: 0, scale: 0.97, y: 14, filter: "blur(8px)", transition: { duration: 0.18 } },
+  exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.2 } },
 };
 
-const containerVariants = {
+const contentContainerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+  },
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
+const contentItemVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.98 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring", stiffness: 210, damping: 20 },
+    scale: 1,
+    transition: { type: "spring", stiffness: 200, damping: 20 },
   },
 };
 
-const softPop = {
-  rest: { y: 0 },
-  hover: { y: -2 },
-  tap: { scale: 0.98 },
-};
-
 /* =========================
-   HELPERS (Preserved Logic)
+   LOGIC HELPERS
    ========================= */
 const OPD_ORDER = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 const DAYS = [
-  { value: "MON", label: "Monday" },
-  { value: "TUE", label: "Tuesday" },
-  { value: "WED", label: "Wednesday" },
-  { value: "THU", label: "Thursday" },
-  { value: "FRI", label: "Friday" },
-  { value: "SAT", label: "Saturday" },
-  { value: "SUN", label: "Sunday" },
+  { value: "MON", label: "Monday", short: "Mon" },
+  { value: "TUE", label: "Tuesday", short: "Tue" },
+  { value: "WED", label: "Wednesday", short: "Wed" },
+  { value: "THU", label: "Thursday", short: "Thu" },
+  { value: "FRI", label: "Friday", short: "Fri" },
+  { value: "SAT", label: "Saturday", short: "Sat" },
+  { value: "SUN", label: "Sunday", short: "Sun" },
 ];
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
@@ -89,8 +101,8 @@ const getStatusBadge = (user) => {
       label: "Pending Verification",
       icon: ShieldAlert,
       colorClass:
-        "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
-      dotClass: "bg-amber-500",
+        "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
+      dotClass: "bg-amber-500 shadow-amber-500/50",
     };
   }
   if (!user?.isActive) {
@@ -99,7 +111,7 @@ const getStatusBadge = (user) => {
       icon: Activity,
       colorClass:
         "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700",
-      dotClass: "bg-slate-500",
+      dotClass: "bg-slate-500 shadow-slate-500/50",
     };
   }
   if (user?.isActive && !user?.isAvailable) {
@@ -107,16 +119,16 @@ const getStatusBadge = (user) => {
       label: "On Leave",
       icon: Clock,
       colorClass:
-        "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
-      dotClass: "bg-blue-500",
+        "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20",
+      dotClass: "bg-indigo-500 shadow-indigo-500/50",
     };
   }
   return {
-    label: "Active",
+    label: "Active Practice",
     icon: BadgeCheck,
     colorClass:
-      "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800",
-    dotClass: "bg-emerald-500",
+      "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
+    dotClass: "bg-emerald-500 shadow-emerald-500/50",
   };
 };
 
@@ -150,146 +162,136 @@ const sortOpd = (list) => {
 };
 
 /* =========================
-   UI COMPONENTS
+   PRESENTATIONAL COMPONENTS
    ========================= */
 
-const SectionCard = ({ title, icon: Icon, subtitle, right, children }) => (
-  <div className="relative rounded-2xl border border-slate-200/70 dark:border-slate-800 bg-white/70 dark:bg-slate-950/40 shadow-sm overflow-hidden">
-    <div className="absolute inset-0 pointer-events-none">
-      <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-blue-400 via-indigo-300 to-cyan-300 dark:opacity-10" />
-      <div className="absolute -bottom-28 -left-28 h-72 w-72 rounded-full blur-3xl opacity-15 bg-gradient-to-br from-rose-300 via-amber-200 to-purple-300 dark:opacity-10" />
+// 1. Tooltip / Hint Wrapper
+const InputLabel = ({ label, icon: Icon, required, hint }) => (
+  <div className="flex items-center justify-between mb-2">
+    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+      {Icon && <Icon size={14} className="text-slate-400 dark:text-slate-500" />}
+      <span className="text-xs font-bold uppercase tracking-wider">{label}</span>
+      {required && <span className="text-rose-500 text-xs">*</span>}
     </div>
-
-    <div className="relative px-5 py-4 border-b border-slate-100 dark:border-slate-900 bg-white/70 dark:bg-slate-950/50 backdrop-blur">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 flex items-center justify-center">
-              <Icon size={16} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-extrabold text-slate-900 dark:text-white truncate">
-                {title}
-              </p>
-              {subtitle ? (
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                  {subtitle}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        {right ? <div className="shrink-0">{right}</div> : null}
-      </div>
-    </div>
-
-    <div className="relative p-5">{children}</div>
-  </div>
-);
-
-const StatCard = ({ icon: Icon, label, value, subLabel }) => (
-  <div className="relative p-4 rounded-2xl bg-white/80 border border-slate-200/70 shadow-sm dark:bg-slate-950/40 dark:border-slate-800 overflow-hidden">
-    <div className="absolute inset-0 pointer-events-none">
-      <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full blur-3xl opacity-15 bg-gradient-to-br from-blue-400 via-indigo-300 to-cyan-300 dark:opacity-10" />
-    </div>
-
-    <div className="relative flex items-center gap-3">
-      <div className="p-2.5 rounded-xl bg-slate-50 text-slate-700 dark:bg-slate-900 dark:text-slate-200 border border-slate-200/70 dark:border-slate-800">
-        <Icon size={20} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[10px] uppercase font-extrabold text-slate-400 tracking-widest">
-          {label}
-        </p>
-        <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
-          {value}
-        </p>
-        {subLabel ? (
-          <p className="text-[10px] text-slate-400 font-semibold mt-0.5 truncate">
-            {subLabel}
-          </p>
-        ) : null}
-      </div>
-    </div>
-  </div>
-);
-
-const InputWrapper = ({ label, icon: Icon, hint, children, className = "" }) => (
-  <div className={cn("space-y-1.5", className)}>
-    <div className="flex items-center justify-between px-1">
-      <div className="flex items-center gap-1.5">
-        {Icon && <Icon size={12} className="text-slate-400" />}
-        <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-          {label}
-        </span>
-      </div>
-
-      {hint ? (
-        <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-slate-400">
-          <Info size={12} />
+    {hint && (
+      <div className="group relative flex items-center">
+        <Info size={13} className="text-slate-400 cursor-help" />
+        <span className="absolute right-0 bottom-full mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
           {hint}
         </span>
-      ) : null}
+      </div>
+    )}
+  </div>
+);
+
+// 2. High-Fidelity Input
+const AnimatedInput = ({ label, icon, value, onChange, disabled, type = "text", placeholder, ...props }) => {
+  return (
+    <div className="relative group">
+      <InputLabel label={label} icon={icon} {...props} />
+      <div className="relative transition-all duration-300 transform">
+        <input
+          type={type}
+          disabled={disabled}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          className={cn(
+            "w-full bg-white dark:bg-slate-900/50",
+            "border-2 rounded-xl px-4 py-3 text-sm font-medium text-slate-800 dark:text-slate-100",
+            "outline-none transition-all duration-200",
+            disabled
+              ? "border-slate-100 dark:border-slate-800 text-slate-500 bg-slate-50/50 cursor-not-allowed"
+              : "border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 hover:border-slate-300 dark:hover:border-slate-600 shadow-sm"
+          )}
+        />
+        {!disabled && (
+          <div className="absolute inset-0 rounded-xl pointer-events-none border border-blue-500/0 peer-focus:border-blue-500/100 transition-colors" />
+        )}
+      </div>
     </div>
-    {children}
-  </div>
-);
+  );
+};
 
-const StyledInput = ({ disabled, className = "", ...props }) => (
-  <input
-    disabled={disabled}
-    className={cn(
-      "w-full px-4 py-3 rounded-xl text-sm font-semibold transition-all outline-none",
-      disabled
-        ? "bg-transparent border border-transparent text-slate-800 dark:text-slate-200 px-0"
-        : "bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:bg-slate-950 dark:border-slate-800 dark:text-white",
-      "placeholder:text-slate-400",
-      className
-    )}
-    {...props}
-  />
-);
-
-const StyledSelect = ({ disabled, className = "", ...props }) => (
+// 3. Custom Select with enhanced visuals
+const SmartSelect = ({ label, options, value, onChange, disabled, placeholder }) => (
   <div className="relative">
-    <select
-      disabled={disabled}
-      className={cn(
-        "w-full appearance-none px-4 py-3 rounded-xl text-sm font-semibold transition-all outline-none",
-        disabled
-          ? "bg-transparent border-none text-slate-800 dark:text-slate-200 px-0 cursor-default"
-          : "bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 dark:bg-slate-950 dark:border-slate-800 dark:text-white cursor-pointer pr-10",
-        className
-      )}
-      {...props}
-    />
-    {!disabled && (
-      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-    )}
+    <InputLabel label={label} icon={Building2} />
+    <div className="relative">
+      <select
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className={cn(
+          "w-full appearance-none bg-white dark:bg-slate-900/50",
+          "border-2 rounded-xl px-4 py-3 pr-10 text-sm font-medium",
+          "outline-none transition-all duration-200",
+          disabled
+            ? "border-slate-100 dark:border-slate-800 text-slate-400 bg-slate-50 cursor-default"
+            : "border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer hover:border-slate-300"
+        )}
+      >
+        <option value="" disabled>
+          {placeholder || "Select option..."}
+        </option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className={cn(
+          "absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none transition-transform",
+          disabled ? "text-slate-300" : "text-slate-500"
+        )}
+        size={16}
+      />
+    </div>
   </div>
 );
 
-const MiniBadge = ({ icon: Icon, text, tone = "slate" }) => {
-  const toneMap = {
-    slate: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800",
-    blue: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/50",
-    emerald:
-      "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800/50",
-    amber:
-      "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/50",
+// 4. Qualification Chip
+const QualChip = ({ text, onRemove, disabled }) => (
+  <motion.div
+    layout
+    initial={{ scale: 0.8, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    exit={{ scale: 0.8, opacity: 0 }}
+    className={cn(
+      "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-semibold shadow-sm",
+      "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+    )}
+  >
+    <GraduationCap size={14} className="text-blue-500" />
+    <span>{text}</span>
+    {!disabled && onRemove && (
+      <button
+        onClick={onRemove}
+        className="ml-1 p-0.5 rounded-full hover:bg-rose-100 text-slate-400 hover:text-rose-500 transition-colors"
+      >
+        <X size={14} />
+      </button>
+    )}
+  </motion.div>
+);
+
+// 5. Stat Box
+const QuickStat = ({ icon: Icon, label, value, color = "blue" }) => {
+  const colorMap = {
+    blue: "text-blue-600 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400",
+    emerald: "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-400",
+    violet: "text-violet-600 bg-violet-50 dark:bg-violet-500/10 dark:text-violet-400",
   };
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-extrabold uppercase tracking-widest",
-        toneMap[tone] || toneMap.slate
-      )}
-    >
-      {Icon ? <Icon size={12} /> : null}
-      {text}
-    </span>
+    <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/50">
+      <div className={cn("p-2 rounded-xl mb-2", colorMap[color])}>
+        <Icon size={20} />
+      </div>
+      <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-0.5">{label}</div>
+      <div className="text-lg font-black text-slate-800 dark:text-white">{value}</div>
+    </div>
   );
 };
 
@@ -304,26 +306,24 @@ const DoctorProfileModal = ({
   departments = [],
   onSave,
 }) => {
-  const prefersReducedMotion = useReducedMotion();
 
+  
+  // Logic Extraction
   const user = doctorData?.profile?.user;
   const profile = doctorData?.profile?.profile;
-
+  
+  // Derived State
   const status = useMemo(() => getStatusBadge(user), [user]);
-
   const initials = useMemo(() => {
     const name = user?.name || "Dr";
-    return name
-      .split(" ")
-      .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase())
-      .join("");
+    return name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
   }, [user?.name]);
 
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState(() => cloneProfileToForm(profile));
   const [saving, setSaving] = useState(false);
 
+  // Sync with prop changes
   useEffect(() => {
     setForm(cloneProfileToForm(profile));
     setEditMode(false);
@@ -332,13 +332,14 @@ const DoctorProfileModal = ({
 
   const opdSorted = useMemo(() => sortOpd(form?.opdTimings), [form?.opdTimings]);
 
+  // Dirty Check
   const hasChanges = useMemo(() => {
     const original = cloneProfileToForm(profile);
     const current = form;
     return JSON.stringify(original) !== JSON.stringify(current);
   }, [profile, form]);
 
-  // Department Logic
+  // Department Helpers
   const departmentOptions = useMemo(
     () => departments.map((d) => ({ value: d._id, label: d.name, meta: d })),
     [departments]
@@ -352,12 +353,18 @@ const DoctorProfileModal = ({
     [departments, selectedDepartmentId]
   );
 
-  // Handlers (LOGIC UNCHANGED)
-  const handleReset = () => setForm(cloneProfileToForm(profile));
+  /* --- HANDLERS --- */
+  const handleReset = () => {
+    setForm(cloneProfileToForm(profile));
+    setEditMode(false);
+  };
+
   const handleAddQualification = () =>
     setForm((p) => ({ ...p, qualifications: [...(p.qualifications || []), ""] }));
+
   const handleRemoveQualification = (idx) =>
     setForm((p) => ({ ...p, qualifications: p.qualifications.filter((_, i) => i !== idx) }));
+
   const handleQualificationChange = (idx, val) =>
     setForm((p) => {
       const n = [...p.qualifications];
@@ -370,8 +377,10 @@ const DoctorProfileModal = ({
       ...p,
       opdTimings: [...(p.opdTimings || []), { day: "MON", startTime: "09:00", endTime: "12:00" }],
     }));
+
   const handleRemoveSlot = (idx) =>
     setForm((p) => ({ ...p, opdTimings: p.opdTimings.filter((_, i) => i !== idx) }));
+
   const handleSlotChange = (idx, key, val) =>
     setForm((p) => {
       const n = [...p.opdTimings];
@@ -379,7 +388,7 @@ const DoctorProfileModal = ({
       return { ...p, opdTimings: n };
     });
 
-  const handleSave = async () => {
+  const handleSaveWrapper = async () => {
     if (!onSave) return;
     try {
       setSaving(true);
@@ -405,7 +414,7 @@ const DoctorProfileModal = ({
     }
   };
 
-  // ESC Close (UI only)
+  // Keyboard trap
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => {
@@ -415,11 +424,31 @@ const DoctorProfileModal = ({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, saving, onClose]);
 
+  /* --- MOUSE EFFECT HOOKS --- */
+  // These MUST be called before any conditional return
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  // FIX: This hook was previously inside the return statement (JSX), causing the error.
+  const spotlightBackground = useMotionTemplate`
+    radial-gradient(
+      650px circle at ${mouseX}px ${mouseY}px,
+      rgba(56, 189, 248, 0.1),
+      transparent 80%
+    )
+  `;
+
+  const handleMouseMove = ({ currentTarget, clientX, clientY }) => {
+    let { left, top } = currentTarget.getBoundingClientRect();
+    mouseX.set(clientX - left);
+    mouseY.set(clientY - top);
+  };
+
   if (!open) return null;
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[100] grid place-items-center p-4 sm:p-6 overflow-hidden">
         {/* Backdrop */}
         <motion.div
           variants={backdropVariants}
@@ -427,7 +456,7 @@ const DoctorProfileModal = ({
           animate="visible"
           exit="exit"
           onClick={!saving ? onClose : undefined}
-          className="absolute inset-0 bg-slate-900/65 backdrop-blur-md"
+          className="absolute inset-0 bg-slate-900/60"
         />
 
         {/* Modal Container */}
@@ -436,481 +465,525 @@ const DoctorProfileModal = ({
           initial="hidden"
           animate="visible"
           exit="exit"
+          onMouseMove={handleMouseMove}
           className={cn(
-            "relative w-full max-w-5xl h-[90vh]",
+            "relative w-full max-w-6xl h-[92vh] max-h-[900px]",
             "bg-white dark:bg-slate-950",
-            "rounded-[2rem] shadow-2xl overflow-hidden",
-            "border border-slate-200 dark:border-slate-800",
-            "flex flex-col"
+            "rounded-[2.5rem] shadow-2xl overflow-hidden",
+            "flex flex-col md:flex-row",
+            "border border-white/20 dark:border-slate-800"
           )}
         >
-          {/* Decorative background */}
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full blur-3xl opacity-25 bg-gradient-to-br from-blue-400 via-indigo-300 to-cyan-300 dark:opacity-15" />
-            <div className="absolute -bottom-28 -left-28 h-80 w-80 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-rose-300 via-amber-200 to-purple-300 dark:opacity-10" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_55%)]" />
-          </div>
+          {/* Decorative Spotlight Effect */}
+          <motion.div
+            className="pointer-events-none absolute -inset-px rounded-[2.5rem] opacity-0 transition duration-300 group-hover:opacity-100"
+            style={{
+              background: spotlightBackground, // Use the pre-calculated hook value
+            }}
+          />
 
-          {/* --- Header --- */}
-          <div className="relative shrink-0 z-20 bg-white/75 dark:bg-slate-950/70 backdrop-blur-xl border-b border-slate-100 dark:border-slate-900 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4 min-w-0">
+          {/* ==============================================
+              LEFT SIDEBAR: Identity & High Level Stats
+             ============================================== */}
+          <div className="relative w-full md:w-80 lg:w-96 shrink-0 flex flex-col bg-slate-50/80 dark:bg-slate-900/50 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 z-10 backdrop-blur-sm">
+            
+            {/* Cover Art Pattern */}
+            <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 overflow-hidden">
+              <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
+              <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-slate-50 dark:from-slate-900/80 to-transparent" />
+            </div>
+
+            {/* Profile Content */}
+            <div className="relative flex flex-col items-center pt-16 px-6 pb-6 h-full overflow-y-auto custom-scrollbar">
+              
               {/* Avatar */}
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-blue-500/25">
-                {loading ? (
-                  <div className="w-6 h-6 rounded-full bg-white/20 animate-pulse" />
-                ) : (
-                  initials
-                )}
-              </div>
-
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <h2 className="text-lg font-black text-slate-900 dark:text-white truncate">
-                    {loading ? "Loading..." : `Dr. ${safeUpper(user?.name)}`}
-                  </h2>
-                  <span className={cn("flex h-2 w-2 rounded-full", status.dotClass)} />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                  <span className="truncate">ID: {user?.doctorRollNo || "---"}</span>
-                  <span className="opacity-50">•</span>
-
-                  <span
-                    className={cn(
-                      "px-2 py-0.5 rounded-full border text-[10px] font-extrabold uppercase tracking-widest",
-                      status.colorClass
-                    )}
-                  >
-                    {status.label}
-                  </span>
-
-                  {user?.isVerified ? (
-                    <MiniBadge icon={ShieldCheck} text="Verified" tone="emerald" />
-                  ) : (
-                    <MiniBadge icon={ShieldAlert} text="Not Verified" tone="amber" />
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {!loading && (
-                <>
-                  {editMode ? (
-                    <>
-                      <motion.button
-                        variants={softPop}
-                        initial="rest"
-                        whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                        whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                        disabled={saving}
-                        onClick={handleReset}
-                        className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
-                        title="Reset Changes"
-                        type="button"
-                      >
-                        <RotateCcw size={18} />
-                      </motion.button>
-
-                      <motion.button
-                        variants={softPop}
-                        initial="rest"
-                        whileHover={!saving && !prefersReducedMotion ? "hover" : "rest"}
-                        whileTap={!saving && !prefersReducedMotion ? "tap" : "rest"}
-                        disabled={saving || !hasChanges}
-                        onClick={handleSave}
-                        className={cn(
-                          "flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm text-white shadow-lg transition-all",
-                          hasChanges
-                            ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 hover:-translate-y-0.5"
-                            : "bg-slate-300 dark:bg-slate-800 cursor-not-allowed shadow-none"
-                        )}
-                        type="button"
-                      >
-                        {saving ? (
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <Save size={16} />
-                        )}
-                        {saving ? "Saving..." : "Save Changes"}
-                      </motion.button>
-                    </>
-                  ) : (
-                    <motion.button
-                      variants={softPop}
-                      initial="rest"
-                      whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                      whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                      onClick={() => setEditMode(true)}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200/60 dark:border-slate-800"
-                      type="button"
-                    >
-                      <Pencil size={16} />
-                      Edit Profile
-                    </motion.button>
-                  )}
-                </>
-              )}
-
-              <motion.button
-                variants={softPop}
-                initial="rest"
-                whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                onClick={!saving ? onClose : undefined}
-                className="p-2.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-900 transition-colors"
-                type="button"
+              <motion.div 
+                initial={{ scale: 0, rotate: -20 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={TRANSITION_SPRING}
+                className="relative"
               >
-                <X size={20} />
-              </motion.button>
-            </div>
-          </div>
-
-          {/* --- Scrollable Content --- */}
-          <div className="relative flex-1 overflow-y-auto bg-slate-50/50 dark:bg-slate-950/50 p-6 custom-scrollbar">
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="max-w-4xl mx-auto space-y-6"
-            >
-              {/* 1. Stats Row */}
-              <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatCard
-                  icon={BriefcaseMedical}
-                  label="Experience"
-                  value={`${profile?.experienceYears || 0} Years`}
-                  subLabel="Clinical Practice"
-                />
-                <StatCard
-                  icon={CalendarDays}
-                  label="Availability"
-                  value={user?.isAvailable ? "Available" : "Unavailable"}
-                  subLabel={opdSorted.length > 0 ? `${opdSorted.length} Active Slots` : "No slots configured"}
-                />
-                <StatCard
-                  icon={Building2}
-                  label="Department"
-                  value={profile?.department?.name || "Unassigned"}
-                  subLabel={profile?.department?.consultationFee ? `₹${profile.department.consultationFee} / Visit` : null}
-                />
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-white dark:border-slate-900 shadow-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                   <span className="text-3xl sm:text-4xl font-black text-slate-400 select-none">
+                     {loading ? "..." : initials}
+                   </span>
+                </div>
+                {/* Active Status Indicator Ring */}
+                <div className={cn(
+                  "absolute bottom-1 right-1 w-6 h-6 rounded-full border-4 border-white dark:border-slate-900",
+                  status.dotClass
+                )} />
               </motion.div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column */}
-                <div className="lg:col-span-2 space-y-6">
-                  {/* Bio */}
-                  <motion.div variants={itemVariants}>
-                    <SectionCard
-                      title="About Doctor"
-                      icon={FileText}
-                      subtitle="Professional bio / summary"
-                      right={<MiniBadge icon={Sparkles} text={editMode ? "Editing" : "View"} tone={editMode ? "blue" : "slate"} />}
-                    >
-                      {editMode ? (
-                        <textarea
-                          value={form.bio}
-                          onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
-                          disabled={saving}
-                          rows={4}
-                          className="w-full p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-semibold resize-none"
-                          placeholder="Write a brief professional bio..."
-                        />
-                      ) : (
-                        <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line">
-                          {form.bio || "No biography provided."}
-                        </p>
-                      )}
-                    </SectionCard>
-                  </motion.div>
-
-                  {/* Professional Details */}
-                  <motion.div variants={itemVariants}>
-                    <SectionCard
-                      title="Professional Details"
-                      icon={Stethoscope}
-                      subtitle="Specialization, experience, department"
-                      right={<MiniBadge icon={BadgeCheck} text="Details" tone="emerald" />}
-                    >
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <InputWrapper label="Specialization" hint="Example: Cardiology">
-                          <StyledInput
-                            value={form.specialization}
-                            onChange={(e) => setForm((p) => ({ ...p, specialization: e.target.value }))}
-                            disabled={!editMode}
-                            placeholder="e.g. Cardiology"
-                          />
-                        </InputWrapper>
-
-                        <InputWrapper label="Experience (Years)" hint="Number">
-                          <StyledInput
-                            type="number"
-                            value={form.experienceYears}
-                            onChange={(e) => setForm((p) => ({ ...p, experienceYears: e.target.value }))}
-                            disabled={!editMode}
-                            placeholder="e.g. 10"
-                          />
-                        </InputWrapper>
-
-                        <div className="md:col-span-2">
-                          <InputWrapper label="Department" hint={selectedDepartmentMeta?.consultationFee ? `Fee: ₹${selectedDepartmentMeta.consultationFee}` : ""}>
-                            {editMode ? (
-                              <StyledSelect
-                                value={selectedDepartmentId}
-                                onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))}
-                                disabled={loading || saving}
-                              >
-                                <option value="" disabled>
-                                  Select Department
-                                </option>
-                                {departmentOptions.map((op) => (
-                                  <option key={op.value} value={op.value}>
-                                    {op.label}
-                                  </option>
-                                ))}
-                              </StyledSelect>
-                            ) : (
-                              <div className="py-3 text-sm font-black text-slate-800 dark:text-slate-200">
-                                {profile?.department?.name || "Not assigned"}
-                              </div>
-                            )}
-                          </InputWrapper>
-                        </div>
-                      </div>
-                    </SectionCard>
-                  </motion.div>
-
-                  {/* Qualifications */}
-                  <motion.div variants={itemVariants}>
-                    <SectionCard
-                      title="Qualifications"
-                      icon={GraduationCap}
-                      subtitle="Degrees and certifications"
-                      right={
-                        editMode ? (
-                          <motion.button
-                            variants={softPop}
-                            initial="rest"
-                            whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                            whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                            onClick={handleAddQualification}
-                            className="text-xs font-black text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 px-3 py-1.5 rounded-xl transition-colors border border-blue-100 dark:border-blue-800/40"
-                            type="button"
-                          >
-                            + Add
-                          </motion.button>
-                        ) : (
-                          <MiniBadge icon={GraduationCap} text={`${(form.qualifications || []).length} Items`} tone="slate" />
-                        )
-                      }
-                    >
-                      <div className="flex flex-col gap-3">
-                        <LayoutGroup>
-                          <AnimatePresence initial={false}>
-                            {(form.qualifications || []).map((q, idx) => (
-                              <motion.div
-                                layout
-                                initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                                transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
-                                key={`qual-${idx}`}
-                                className="w-full"
-                              >
-                                {editMode ? (
-                                  <div className="flex items-center gap-2">
-                                    <StyledInput
-                                      value={q}
-                                      onChange={(e) => handleQualificationChange(idx, e.target.value)}
-                                      placeholder="Degree (e.g. MBBS)"
-                                      disabled={saving}
-                                    />
-                                    <motion.button
-                                      variants={softPop}
-                                      initial="rest"
-                                      whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                                      whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                                      onClick={() => handleRemoveQualification(idx)}
-                                      disabled={saving}
-                                      className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-900/30 transition border border-rose-100 dark:border-rose-800/40"
-                                      type="button"
-                                    >
-                                      <Trash2 size={16} />
-                                    </motion.button>
-                                  </div>
-                                ) : (
-                                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs font-extrabold uppercase tracking-wide border border-slate-200/70 dark:border-slate-800">
-                                    <GraduationCap size={14} className="text-indigo-500" />
-                                    {q}
-                                  </div>
-                                )}
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-                        </LayoutGroup>
-
-                        {!form.qualifications?.length && (
-                          <div className="text-sm text-slate-400 italic">
-                            No qualifications added yet.
-                          </div>
-                        )}
-                      </div>
-                    </SectionCard>
-                  </motion.div>
-                </div>
-
-                {/* Right Column */}
-                <div className="space-y-6">
-                  <motion.div variants={itemVariants}>
-                    <SectionCard
-                      title="OPD Schedule"
-                      icon={Clock}
-                      subtitle="Weekly timing slots"
-                      right={
-                        editMode ? (
-                          <motion.button
-                            variants={softPop}
-                            initial="rest"
-                            whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                            whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                            onClick={handleAddSlot}
-                            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition border border-slate-200/60 dark:border-slate-800"
-                            type="button"
-                          >
-                            <Plus size={16} />
-                          </motion.button>
-                        ) : (
-                          <MiniBadge icon={Clock} text={`${opdSorted.length} Slots`} tone="blue" />
-                        )
-                      }
-                    >
-                      <div className="space-y-3">
-                        <AnimatePresence mode="popLayout">
-                          {opdSorted.length > 0 ? (
-                            opdSorted.map((slot, idx) => (
-                              <motion.div
-                                layout
-                                initial={{ opacity: 0, x: -16 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 16 }}
-                                transition={{ duration: prefersReducedMotion ? 0 : 0.22 }}
-                                key={`slot-${idx}-${slot.day}-${slot.startTime}-${slot.endTime}`}
-                                className={cn(
-                                  "p-4 rounded-2xl border transition-all",
-                                  editMode
-                                    ? "bg-slate-50 border-slate-200 dark:bg-slate-950 dark:border-slate-800"
-                                    : "bg-white border-slate-200/60 dark:bg-slate-950/30 dark:border-slate-800 shadow-sm"
-                                )}
-                              >
-                                {editMode ? (
-                                  <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
-                                        Slot {idx + 1}
-                                      </span>
-
-                                      <motion.button
-                                        variants={softPop}
-                                        initial="rest"
-                                        whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                                        whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                                        onClick={() => {
-                                          const realIdx = form.opdTimings.indexOf(slot);
-                                          handleRemoveSlot(realIdx);
-                                        }}
-                                        disabled={saving}
-                                        className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 p-2 rounded-xl transition border border-transparent"
-                                        type="button"
-                                      >
-                                        <Trash2 size={14} />
-                                      </motion.button>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 gap-2">
-                                      <StyledSelect
-                                        value={slot.day}
-                                        onChange={(e) => {
-                                          const realIdx = form.opdTimings.indexOf(slot);
-                                          handleSlotChange(realIdx, "day", e.target.value);
-                                        }}
-                                        disabled={saving}
-                                      >
-                                        {DAYS.map((d) => (
-                                          <option key={d.value} value={d.value}>
-                                            {d.label}
-                                          </option>
-                                        ))}
-                                      </StyledSelect>
-
-                                      <div className="flex gap-2">
-                                        <StyledInput
-                                          type="time"
-                                          value={normalizeTime(slot.startTime)}
-                                          onChange={(e) => {
-                                            const realIdx = form.opdTimings.indexOf(slot);
-                                            handleSlotChange(realIdx, "startTime", e.target.value);
-                                          }}
-                                          disabled={saving}
-                                        />
-                                        <StyledInput
-                                          type="time"
-                                          value={normalizeTime(slot.endTime)}
-                                          onChange={(e) => {
-                                            const realIdx = form.opdTimings.indexOf(slot);
-                                            handleSlotChange(realIdx, "endTime", e.target.value);
-                                          }}
-                                          disabled={saving}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-700 dark:text-blue-300 font-black text-xs border border-blue-100 dark:border-blue-800/40">
-                                        {slot.day.substring(0, 3)}
-                                      </div>
-
-                                      <div>
-                                        <div className="text-sm font-black text-slate-800 dark:text-slate-100">
-                                          {normalizeTime(slot.startTime)} - {normalizeTime(slot.endTime)}
-                                        </div>
-                                        <div className="text-[10px] text-slate-400 font-semibold">
-                                          Weekly
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <CheckCircle2 size={18} className="text-emerald-500" />
-                                  </div>
-                                )}
-                              </motion.div>
-                            ))
-                          ) : (
-                            <div className="h-44 flex flex-col items-center justify-center text-slate-400 text-sm border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-white/60 dark:bg-slate-950/30">
-                              <Clock size={26} className="mb-2 opacity-60" />
-                              No schedules configured
-                            </div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </SectionCard>
-                  </motion.div>
+              {/* Name & Title */}
+              <div className="text-center mt-4 space-y-1 w-full">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white truncate">
+                  Dr. {safeUpper(user?.name)}
+                </h2>
+                <div className="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium">
+                  <span className="bg-slate-200/50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md">ID: {user?.doctorRollNo || "---"}</span>
                 </div>
               </div>
-            </motion.div>
+
+              {/* Status Badge */}
+              <div className={cn(
+                "mt-4 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-bold uppercase tracking-widest border",
+                status.colorClass
+              )}>
+                <status.icon size={14} />
+                {status.label}
+              </div>
+
+              <div className="w-full h-px bg-slate-200 dark:bg-slate-800 my-6" />
+
+              {/* Quick Stats Grid */}
+              <div className="grid grid-cols-2 gap-3 w-full">
+                 <QuickStat 
+                    icon={BriefcaseMedical} 
+                    label="Exp" 
+                    value={`${profile?.experienceYears || 0} Yrs`} 
+                    color="blue"
+                 />
+                 <QuickStat 
+                    icon={Building2} 
+                    label="Dept" 
+                    value={profile?.department?.name?.substring(0, 8) + (profile?.department?.name?.length > 8 ? "..." : "") || "N/A"} 
+                    color="violet"
+                 />
+                 <div className="col-span-2">
+                    <QuickStat 
+                      icon={CalendarDays}
+                      label="Availability"
+                      value={opdSorted.length > 0 ? `${opdSorted.length} Slots / Week` : "Not Configured"}
+                      color="emerald"
+                    />
+                 </div>
+              </div>
+
+              <div className="flex-1" /> {/* Spacer */}
+
+              {/* Contact / Meta Info (Static for visuals) */}
+              <div className="w-full space-y-3 mt-6">
+                 <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+                    <Mail size={16} />
+                    <span className="truncate">{user?.email || "No email linked"}</span>
+                 </div>
+                 <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+                    <Phone size={16} />
+                    <span className="truncate">{user?.phone || "+91 000 000 0000"}</span>
+                 </div>
+              </div>
+            </div>
           </div>
 
-          {/* Bottom sticky info */}
-          <div className="relative shrink-0 px-6 py-3 border-t border-slate-100 dark:border-slate-900 bg-white/75 dark:bg-slate-950/70 backdrop-blur-xl">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                Tip
-              </span>
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-                {editMode ? "Save changes when done" : "Click edit to update profile"}
-              </span>
+          {/* ==============================================
+              RIGHT CONTENT: Tabs & Form Area
+             ============================================== */}
+          <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-950 relative">
+            
+            {/* Header / Toolbar */}
+            <div className="shrink-0 h-16 sm:h-20 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-6 sm:px-8 bg-white/80 dark:bg-slate-950/80 backdrop-blur z-20">
+               <div>
+                  <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    Profile Details
+                    {hasChanges && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
+                  </h1>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 font-medium hidden sm:block">
+                    Manage professional information and scheduling
+                  </p>
+               </div>
+
+               <div className="flex items-center gap-2 sm:gap-3">
+                  {editMode ? (
+                     <>
+                        <button
+                          onClick={handleReset}
+                          disabled={saving}
+                          className="p-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors tooltip-trigger"
+                          title="Discard changes"
+                        >
+                          <RotateCcw size={20} />
+                        </button>
+                        <button
+                          onClick={handleSaveWrapper}
+                          disabled={saving || !hasChanges}
+                          className={cn(
+                            "flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm text-white shadow-lg transition-all transform active:scale-95",
+                            hasChanges
+                                ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-blue-500/30"
+                                : "bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed shadow-none"
+                          )}
+                        >
+                           {saving ? <Activity className="animate-spin" size={18}/> : <Save size={18} />}
+                           <span>{saving ? "Saving..." : "Save Changes"}</span>
+                        </button>
+                     </>
+                  ) : (
+                    <button
+                      onClick={() => setEditMode(true)}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 transition-colors border border-transparent dark:border-slate-800"
+                    >
+                       <Pencil size={16} />
+                       Edit
+                    </button>
+                  )}
+                  
+                  <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 mx-1" />
+                  
+                  <button
+                    onClick={onClose}
+                    className="p-2.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+               </div>
             </div>
+
+            {/* Scrollable Form Content */}
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar space-y-8">
+               <motion.div 
+                 variants={contentContainerVariants}
+                 initial="hidden"
+                 animate="visible"
+                 className="max-w-4xl mx-auto space-y-8 pb-12"
+               >
+                  
+                  {/* SECTION 1: Bio */}
+                  <motion.section variants={contentItemVariants} className="space-y-4">
+                     <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <div className="p-2 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                           <FileText size={20} />
+                        </div>
+                        <h3 className="font-bold text-slate-800 dark:text-slate-200">About Me</h3>
+                     </div>
+                     <div className="relative">
+                        {editMode ? (
+                          <div className="relative">
+                            <textarea
+                               value={form.bio}
+                               onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
+                               disabled={saving}
+                               rows={5}
+                               className="w-full bg-slate-50 dark:bg-slate-900/50 border-2 border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-sm font-medium text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all resize-y"
+                               placeholder="Write a professional summary..."
+                            />
+                            <div className="absolute bottom-3 right-3 text-xs text-slate-400 font-medium pointer-events-none">
+                              {form.bio.length} chars
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800/50">
+                             <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-line">
+                               {form.bio || <span className="italic text-slate-400">No biography provided. Click edit to add one.</span>}
+                             </p>
+                          </div>
+                        )}
+                     </div>
+                  </motion.section>
+
+                  {/* SECTION 2: Professional Details */}
+                  <motion.section variants={contentItemVariants} className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400">
+                           <Stethoscope size={20} />
+                        </div>
+                        <h3 className="font-bold text-slate-800 dark:text-slate-200">Professional Details</h3>
+                     </div>
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
+                        <AnimatedInput
+                           label="Specialization"
+                           icon={Stethoscope}
+                           value={form.specialization}
+                           onChange={(e) => setForm(p => ({...p, specialization: e.target.value}))}
+                           disabled={!editMode || saving}
+                           placeholder="e.g. Cardiology"
+                        />
+                        <AnimatedInput
+                           label="Experience (Years)"
+                           type="number"
+                           icon={BriefcaseMedical}
+                           value={form.experienceYears}
+                           onChange={(e) => setForm(p => ({...p, experienceYears: e.target.value}))}
+                           disabled={!editMode || saving}
+                           placeholder="e.g. 12"
+                        />
+                        
+                        <div className="md:col-span-2">
+                           {editMode ? (
+                              <SmartSelect
+                                label="Department"
+                                options={departmentOptions}
+                                value={selectedDepartmentId}
+                                onChange={(e) => setForm(p => ({...p, department: e.target.value}))}
+                                disabled={saving}
+                                placeholder="Select a department"
+                              />
+                           ) : (
+                              <div className="relative group">
+                                <InputLabel label="Department" icon={Building2} />
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                                   <div className="flex items-center gap-3">
+                                      <div className="h-10 w-10 rounded-lg bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-slate-500">
+                                         <Building2 size={20}/>
+                                      </div>
+                                      <div>
+                                         <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                                            {profile?.department?.name || "Not Assigned"}
+                                         </div>
+                                         <div className="text-xs text-slate-500">
+                                            {selectedDepartmentMeta?.consultationFee ? `Consultation Fee: ₹${selectedDepartmentMeta.consultationFee}` : "No fee data"}
+                                         </div>
+                                      </div>
+                                   </div>
+                                   {profile?.department && <BadgeCheck className="text-emerald-500" size={20}/>}
+                                </div>
+                              </div>
+                           )}
+                        </div>
+                     </div>
+                  </motion.section>
+
+                  {/* SECTION 3: Qualifications */}
+                  <motion.section variants={contentItemVariants} className="space-y-4">
+                     <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2">
+                           <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+                              <GraduationCap size={20} />
+                           </div>
+                           <h3 className="font-bold text-slate-800 dark:text-slate-200">Qualifications</h3>
+                        </div>
+                        {editMode && (
+                           <button 
+                             onClick={handleAddQualification}
+                             className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+                           >
+                              <Plus size={14} /> Add New
+                           </button>
+                        )}
+                     </div>
+                     
+                     <div className="p-1">
+                        <LayoutGroup>
+                           <motion.div layout className="flex flex-wrap gap-3 min-h-[60px]">
+                              <AnimatePresence mode="popLayout">
+                                 {(form.qualifications || []).map((q, idx) => (
+                                    editMode ? (
+                                       <motion.div 
+                                         layout
+                                         initial={{ opacity: 0, scale: 0.8 }}
+                                         animate={{ opacity: 1, scale: 1 }}
+                                         exit={{ opacity: 0, scale: 0.8 }}
+                                         key={`edit-qual-${idx}`}
+                                         className="flex items-center gap-2"
+                                       >
+                                          <input
+                                             value={q}
+                                             onChange={(e) => handleQualificationChange(idx, e.target.value)}
+                                             placeholder="Degree..."
+                                             className="
+                                                bg-white dark:bg-slate-600
+                                                text-slate-800 dark:text-slate-100
+                                                placeholder:text-slate-400 dark:placeholder:text-slate-300
+                                                border border-slate-200 dark:border-slate-600
+                                                rounded-lg px-3 py-2 text-sm font-semibold
+                                                w-32 focus:w-48
+                                                transition-all outline-none
+                                                focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                                              "
+                                             autoFocus={q === ""}
+                                          />
+                                          <button 
+                                            onClick={() => handleRemoveQualification(idx)}
+                                            className="p-2 bg-rose-100/70 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg hover:bg-rose-200 dark:hover:bg-rose-900/50 transition-colors"
+                                          >
+                                             <Trash2 size={16} />
+                                          </button>
+                                       </motion.div>
+                                    ) : (
+                                       <QualChip key={`view-qual-${idx}`} text={q} />
+                                    )
+                                 ))}
+                              </AnimatePresence>
+                              {(!form.qualifications?.length) && !editMode && (
+                                 <div className="text-sm text-slate-400 italic py-2">No qualifications added yet.</div>
+                              )}
+                           </motion.div>
+                        </LayoutGroup>
+                     </div>
+                  </motion.section>
+
+                  {/* SECTION 4: OPD Schedule */}
+                  <motion.section variants={contentItemVariants} className="space-y-4">
+                     <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2">
+                           <div className="p-2 rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
+                              <Clock size={20} />
+                           </div>
+                           <h3 className="font-bold text-slate-800 dark:text-slate-200">OPD Schedule</h3>
+                        </div>
+                        {editMode && (
+                           <button 
+                             onClick={handleAddSlot}
+                             className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+                           >
+                              <Plus size={14} /> Add Slot
+                           </button>
+                        )}
+                     </div>
+
+                     <div className="space-y-3">
+                        <AnimatePresence mode="popLayout">
+                           {opdSorted.length > 0 ? (
+                              opdSorted.map((slot, idx) => (
+                                 <motion.div
+                                    layout
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    key={`slot-${idx}-${slot.day}`}
+                                    className={cn(
+                                       "group relative p-4 rounded-2xl border transition-all duration-300",
+                                       editMode 
+                                         ? "bg-slate-50 border-slate-200 dark:bg-slate-900 dark:border-slate-700" 
+                                         : "bg-white border-slate-200 hover:shadow-lg hover:shadow-blue-500/5 hover:border-blue-200 dark:bg-slate-900/30 dark:border-slate-800"
+                                    )}
+                                 >
+                                    {editMode ? (
+                                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                        <div className="w-full sm:w-1/3">
+                                          <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                                            Day
+                                          </div>
+                                          <select
+                                            value={slot.day}
+                                            onChange={(e) => {
+                                              const realIdx = form.opdTimings.indexOf(slot);
+                                              handleSlotChange(realIdx, "day", e.target.value);
+                                            }}
+                                            className="
+                                              w-full p-2 rounded-lg
+                                              bg-white dark:bg-slate-800
+                                              text-slate-800 dark:text-slate-100
+                                              border border-slate-200 dark:border-slate-600
+                                              text-sm font-bold
+                                              focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                                            "
+                                          >
+                                            {DAYS.map(d => (
+                                              <option key={d.value} value={d.value}>
+                                                {d.label}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 w-full sm:w-1/2">
+                                          <div className="flex-1">
+                                            <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                                              Start
+                                            </div>
+                                            <input
+                                              type="time"
+                                              value={normalizeTime(slot.startTime)}
+                                              onChange={(e) => {
+                                                const realIdx = form.opdTimings.indexOf(slot);
+                                                handleSlotChange(realIdx, "startTime", e.target.value);
+                                              }}
+                                              className="
+                                                w-full p-2 rounded-lg
+                                                bg-white dark:bg-slate-800
+                                                text-slate-800 dark:text-slate-100
+                                                border border-slate-200 dark:border-slate-600
+                                                text-sm font-mono
+                                                focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                                              "
+                                            />
+                                          </div>
+
+                                          <span className="text-slate-300 dark:text-slate-500 mt-5">-</span>
+
+                                          <div className="flex-1">
+                                            <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                                              End
+                                            </div>
+                                            <input
+                                              type="time"
+                                              value={normalizeTime(slot.endTime)}
+                                              onChange={(e) => {
+                                                const realIdx = form.opdTimings.indexOf(slot);
+                                                handleSlotChange(realIdx, "endTime", e.target.value);
+                                              }}
+                                              className="
+                                                w-full p-2 rounded-lg
+                                                bg-white dark:bg-slate-800
+                                                text-slate-800 dark:text-slate-100
+                                                border border-slate-200 dark:border-slate-600
+                                                text-sm font-mono
+                                                focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+                                              "
+                                            />
+                                          </div>
+                                        </div>
+
+                                        <button
+                                          onClick={() => {
+                                            const realIdx = form.opdTimings.indexOf(slot);
+                                            handleRemoveSlot(realIdx);
+                                          }}
+                                          className="
+                                            absolute top-2 right-2 sm:static sm:mt-4 p-2
+                                            text-rose-600 dark:text-rose-400
+                                            bg-rose-100/70 dark:bg-rose-900/30
+                                            rounded-lg
+                                            hover:bg-rose-200 dark:hover:bg-rose-900/50
+                                            transition-colors
+                                          "
+                                        >
+                                          <Trash2 size={18} />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                       <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-4">
+                                             <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex flex-col items-center justify-center border border-blue-100 dark:border-blue-800/50">
+                                                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{slot.day.substring(0,3)}</span>
+                                             </div>
+                                             <div>
+                                                <div className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                                   {normalizeTime(slot.startTime)} 
+                                                   <ArrowRight size={14} className="text-slate-300"/> 
+                                                   {normalizeTime(slot.endTime)}
+                                                </div>
+                                                <div className="text-xs text-slate-400 font-medium">Weekly Recursion</div>
+                                             </div>
+                                          </div>
+                                          <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-wide border border-emerald-100">
+                                             Active
+                                          </div>
+                                       </div>
+                                    )}
+                                 </motion.div>
+                              ))
+                           ) : (
+                              <motion.div 
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                className="flex flex-col items-center justify-center h-48 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20"
+                              >
+                                 <Clock size={32} className="text-slate-300 mb-2" />
+                                 <p className="text-slate-500 text-sm font-medium">No schedule slots configured.</p>
+                              </motion.div>
+                           )}
+                        </AnimatePresence>
+                     </div>
+                  </motion.section>
+
+               </motion.div>
+            </div>
+            
+            {/* Footer / Gradient fade */}
+            <div className="pointer-events-none absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-white dark:from-slate-950 to-transparent z-10" />
+            
           </div>
         </motion.div>
       </div>

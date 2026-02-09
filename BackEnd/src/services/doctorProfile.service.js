@@ -4,7 +4,7 @@ import User from "../models/user.model.js";
 export const fetchDoctorProfileByUserId = async (userId) => {
   // 1️⃣ Ensure user exists
   const user = await User.findById(userId)
-    .select("name role doctorRollNo isVerified isAvailable isActive");
+    .select("name role doctorRollNo isVerified isAvailable isActive email phone");
 
   if (!user) {
     throw new Error("User not found");
@@ -31,6 +31,8 @@ export const fetchDoctorProfileByUserId = async (userId) => {
       isVerified: user.isVerified,
       isAvailable: user.isAvailable,
       isActive: user.isActive,
+      email: user.email,
+      phone:user.phone,
     },
     profile,
   };

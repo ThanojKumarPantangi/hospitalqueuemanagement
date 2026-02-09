@@ -24,6 +24,7 @@ import UserInbox from "./pages/patient/UserInbox.jsx";
 import DoctorDashboard from "./pages/doctor/Dashboard";
 import DoctorProfile from "./pages/doctor/DoctorProfile.jsx";
 import DoctorQueue from "./pages/doctor/Queue.jsx";
+import DoctorInbox from "./pages/doctor/DoctorInbox.jsx";
 
 import AdminLayout from "./layouts/AdminNavbarLayout.jsx";
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -79,6 +80,7 @@ function App() {
             <Route path="/doctor/profile" element={<DoctorProfile />} />
             <Route path="/doctor/queue" element={<DoctorQueue />} />
             <Route path="/doctor/change-password" element={<ChangePasswordUI />} />
+            <Route path="/doctor/inbox" element={<DoctorInbox />} />
           </Route>
 
           {/* ADMIN */}
