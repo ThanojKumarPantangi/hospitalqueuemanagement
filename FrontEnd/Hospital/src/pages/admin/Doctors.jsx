@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ArrowUpRight,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import Toast from "../../components/ui/Toast";
 import DoctorProfileModal from "../../components/DoctorModal/DoctorProfileModal";
 import CreateDoctorModal from "../../components/DoctorModal/CreateDoctorModal";
@@ -169,45 +170,205 @@ const ConfirmModal = ({
   onConfirm,
   loading,
 }) => {
+  // Strictly adhering to your logic pattern
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center">
+  return createPortal(
+    <div
+      className="
+        fixed inset-0 
+        z-[9999] 
+        flex items-center justify-center 
+        p-4 sm:p-6
+        overflow-y-auto overflow-x-hidden
+      "
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* -------------------------------------------
+        Backdrop Layer 
+        -------------------------------------------
+        - Darker alpha for better focus
+        - Stronger blur for modern glass feel
+        - Entry animation properties
+      */}
       <div
-        className="absolute inset-0 bg-black/40"
+        className="
+          fixed inset-0 
+          bg-slate-900/60 dark:bg-black/80
+          backdrop-blur-sm
+          transition-opacity duration-300 ease-out
+          animate-in fade-in
+        "
+        aria-hidden="true"
         onClick={loading ? undefined : onCancel}
       />
 
-      <div className="relative w-[92%] max-w-md rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl p-5">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-          {title}
-        </h3>
+      {/* -------------------------------------------
+        Modal Content Card 
+        -------------------------------------------
+        - Improved borders (double border effect)
+        - Deeper shadows
+        - Better entry animations (slide + zoom)
+      */}
+      <div
+        className="
+          relative 
+          w-full max-w-lg 
+          transform overflow-hidden 
+          rounded-2xl 
+          bg-white dark:bg-slate-900 
+          border border-slate-200 dark:border-slate-700
+          shadow-[0_24px_60px_-12px_rgba(0,0,0,0.3)]
+          dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.7)]
+          ring-1 ring-white/10
+          p-8 
+          text-left 
+          align-middle 
+          transition-all 
+          animate-in zoom-in-95 slide-in-from-bottom-8 fade-in
+          duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+        "
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Decorative Top Accent Line */}
+        <div 
+          className="
+            absolute top-0 left-0 right-0 
+            h-1.5 
+            bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600
+          " 
+        />
 
-        {description && (
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
-            {description}
-          </p>
-        )}
+        <div className="flex flex-col gap-4">
+          
+          {/* Title Section */}
+          <div className="space-y-2">
+            <h3 
+              className="
+                text-xl font-bold tracking-tight 
+                text-slate-900 dark:text-white
+                flex items-center gap-3
+              "
+            >
+              {/* Optional Visual Indicator */}
+              <span className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              {title}
+            </h3>
 
-        <div className="flex justify-end gap-2 mt-5">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="px-4 py-2 rounded-xl text-sm font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-60"
+            {description && (
+              <p 
+                className="
+                  text-[15px] leading-relaxed 
+                  text-slate-600 dark:text-slate-400
+                  border-l-2 border-slate-200 dark:border-slate-800
+                  pl-4 mt-2
+                "
+              >
+                {description}
+              </p>
+            )}
+          </div>
+
+          {/* Action Footer */}
+          <div 
+            className="
+              flex flex-col-reverse sm:flex-row 
+              justify-end items-center 
+              gap-3 mt-8 pt-6
+              border-t border-slate-100 dark:border-slate-800
+            "
           >
-            No
-          </button>
+            <button
+              onClick={onCancel}
+              disabled={loading}
+              type="button"
+              className="
+                w-full sm:w-auto
+                px-5 py-2.5 
+                rounded-xl text-sm font-semibold 
+                bg-white hover:bg-slate-50 
+                dark:bg-slate-900 dark:hover:bg-slate-800
+                text-slate-700 dark:text-slate-300
+                border border-slate-200 dark:border-slate-700
+                shadow-sm hover:shadow
+                transition-all duration-200 ease-in-out
+                active:scale-95 active:bg-slate-100
+                disabled:opacity-50 disabled:cursor-not-allowed
+                focus:outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700
+              "
+            >
+              No, cancel
+            </button>
 
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="px-4 py-2 rounded-xl text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-60"
-          >
-            {loading ? "Processing..." : "Yes"}
-          </button>
+            <button
+              onClick={onConfirm}
+              disabled={loading}
+              type="button"
+              className="
+                group
+                w-full sm:w-auto
+                relative
+                flex items-center justify-center gap-2
+                px-6 py-2.5 
+                rounded-xl text-sm font-bold tracking-wide
+                bg-gradient-to-br from-emerald-500 to-emerald-700
+                hover:from-emerald-400 hover:to-emerald-600
+                text-white
+                shadow-lg shadow-emerald-500/30
+                hover:shadow-xl hover:shadow-emerald-500/40
+                border border-transparent
+                transition-all duration-200 ease-in-out
+                active:scale-[0.98] active:translate-y-0.5
+                disabled:opacity-70 disabled:cursor-not-allowed disabled:shadow-none
+                focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900
+              "
+            >
+              {loading ? (
+                <>
+                  <svg 
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    fill="none" 
+                    viewBox="0 0 24 24"
+                  >
+                    <circle 
+                      className="opacity-25" 
+                      cx="12" cy="12" r="10" 
+                      stroke="currentColor" 
+                      strokeWidth="4"
+                    />
+                    <path 
+                      className="opacity-75" 
+                      fill="currentColor" 
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <span>Yes, confirm</span>
+                  <svg 
+                    className="w-4 h-4 transition-transform group-hover:translate-x-1" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.getElementById("modal-root")
   );
 };
 
