@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { useLocation, useNavigate } from "react-router-dom";
 import { sendotp, verifyotp } from "../../api/auth.api";
 import Toast from "../../components/ui/Toast";
+import { showToast } from "../../utils/toastBus";
 import { motion, AnimatePresence} from "framer-motion";
 import {
   ShieldCheck,
@@ -173,11 +174,6 @@ function OtpVerify() {
 
   const [sending, setSending] = useState(false);
 
-  const [toast, setToast] = useState({
-    show: false,
-    message: "",
-    type: "success",
-  });
 
   const [shake, setShake] = useState(false);
 
@@ -232,7 +228,7 @@ function OtpVerify() {
 
       await sendotp({ email });
 
-      setToast({
+      showToast({
         show: true,
         message: "OTP sent successfully!",
         type: "success",
@@ -243,7 +239,7 @@ function OtpVerify() {
     } catch (err) {
       const msg = err.response?.data?.message || "Try again after some time";
       setError(msg);
-      setToast({ show: true, message: msg, type: "error" });
+      showToast({ show: true, message: msg, type: "error" });
 
       // optional: keep timer 0 so resend stays available if send failed
       setTimer(0);
@@ -270,7 +266,7 @@ function OtpVerify() {
         otp: finalOtp,
       });
 
-      setToast({
+      showToast({
         show: true,
         message: "OTP verified successfully!",
         type: "success",
@@ -284,7 +280,7 @@ function OtpVerify() {
       const msg =
         err.response?.data?.message || "Invalid OTP. Please try again.";
       setError(msg);
-      setToast({ show: true, message: msg, type: "error" });
+      showToast({ show: true, message: msg, type: "error" });
 
       setShake(true);
       setTimeout(() => setShake(false), 260);
@@ -350,19 +346,6 @@ function OtpVerify() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative font-sans selection:bg-teal-500/30">
       <Background />
-
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toast.show && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
-            <Toast
-              message={toast.message}
-              type={toast.type}
-              onClose={() => setToast({ ...toast, show: false })}
-            />
-          </div>
-        )}
-      </AnimatePresence>
 
       <div className="container mx-auto px-4 z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-20 h-full py-8">
         {/* --- LEFT SIDE: BRANDING & STATS --- */}

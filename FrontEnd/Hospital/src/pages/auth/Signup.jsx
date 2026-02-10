@@ -22,7 +22,7 @@ import {
   Zap,
   BadgeCheck
 } from "lucide-react";
-import Toast from "../../components/ui/Toast";
+import { showToast } from "../../utils/toastBus";
 import { signupApi } from "../../api/auth.api";
 
 /* =========================================
@@ -302,11 +302,7 @@ const Signup = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [toast, setToast] = useState({
-    show: false,
-    message: "",
-    type: "success",
-  });
+
 
   const [showPass, setShowPass] = useState(false);
   const [shake, setShake] = useState(false);
@@ -326,7 +322,7 @@ const Signup = () => {
 
     if (!name || !email || !password || !phone) {
       setError("All fields are required");
-      setToast({ show: true, message: "All fields are required", type: "error" });
+      showToast({ show: true, message: "All fields are required", type: "error" });
       setShake(true);
       setTimeout(() => setShake(false), 260);
       return;
@@ -334,14 +330,14 @@ const Signup = () => {
 
     if (!phone.trim()) {
       e.phone = "Phone is required";
-      setToast({ show: true, message: "Phone is required", type: "error" });
+      showToast({ show: true, message: "Phone is required", type: "error" });
 
       setShake(true);
       setTimeout(() => setShake(false), 260);
       return;
     } else if (!/^\d{10}$/.test(phone.trim())) {
       e.phone = "Enter a valid 10-digit phone number";
-      setToast({
+      showToast({
         show: true,
         message: "Enter a valid 10-digit phone number",
         type: "error",
@@ -360,14 +356,14 @@ const Signup = () => {
         password: password.trim(),
       });
 
-      setToast({ show: true, message: "Signup successful", type: "success" });
+      showToast({ show: true, message: "Signup successful", type: "success" });
 
       sessionStorage.setItem("otpEmail", email);
       navigate("/verify-otp", { state: { phone, email } });
     } catch (err) {
       const message = err.response?.data?.message || "Signup failed";
       setError(message);
-      setToast({ show: true, message, type: "error" });
+      showToast({ show: true, message, type: "error" });
 
       setShake(true);
       setTimeout(() => setShake(false), 260);
@@ -379,20 +375,6 @@ const Signup = () => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative font-sans selection:bg-teal-500/30">
       <Background />
-
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toast.show && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
-            <Toast
-              message={toast.message}
-              type={toast.type}
-              onClose={() => setToast({ ...toast, show: false })}
-            />
-          </div>
-        )}
-      </AnimatePresence>
-
       <div className="container mx-auto px-4 z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-20 h-full py-8">
         {/* --- LEFT SIDE: BRANDING & STATS --- */}
         <motion.div 

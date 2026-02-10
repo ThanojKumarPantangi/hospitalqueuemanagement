@@ -23,7 +23,7 @@ import {
   RefreshCw,
   Zap
 } from "lucide-react";
-import Toast from "../../components/ui/Toast";
+import { showToast } from "../../utils/toastBus";
 import { doctorSignupApi } from "../../api/auth.api";
 
 /* =========================================
@@ -321,11 +321,8 @@ const DoctorSignup = () => {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [shake, setShake] = useState(false);
-  const [toast, setToast] = useState({
-    show: false,
-    message: "",
-    type: "success",
-  });
+
+
 
   // --- VALIDATION (PRESERVED EXACTLY) ---
   const validate = () => {
@@ -371,7 +368,7 @@ const DoctorSignup = () => {
         password: form.password.trim(),
       });
 
-      setToast({
+      showToast({
         show: true,
         message: res?.data?.message || "Account created successfully",
         type: "success",
@@ -386,7 +383,7 @@ const DoctorSignup = () => {
 
       setErrors({});
     } catch (err) {
-      setToast({
+      showToast({
         show: true,
         message: err?.response?.data?.message || "Something went wrong",
         type: "error",
@@ -407,18 +404,7 @@ const DoctorSignup = () => {
     <div className="min-h-screen w-full flex items-center justify-center relative font-sans selection:bg-teal-500/30">
       <Background />
 
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toast.show && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
-            <Toast
-              message={toast.message}
-              type={toast.type}
-              onClose={() => setToast({ ...toast, show: false })}
-            />
-          </div>
-        )}
-      </AnimatePresence>
+    
 
       <div className="container mx-auto px-4 z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-20 h-full py-8">
         {/* --- LEFT SIDE: BRANDING & STATS --- */}

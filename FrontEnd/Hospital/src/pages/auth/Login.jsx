@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { loginApi } from "../../api/auth.api";
 import { jwtDecode } from "jwt-decode";
-import Toast from "../../components/ui/Toast";
+import { showToast } from "../../utils/toastBus";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Mail,
@@ -264,7 +264,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState({ show: false, message: "", type: "success" });
   const [action, setAction] = useState("LOGIN"); // "LOGIN" or "VERIFY_OTP"
   const [showPass, setShowPass] = useState(false);
 
@@ -326,11 +325,11 @@ const Login = () => {
       const message = err.response?.data?.message || "Authentication failed";
 
       if (message === "Phone number not verified") {
-        setToast({ show: true, message: "Verification Required", type: "info" });
+        showToast({ show: true, message: "Verification Required", type: "info" });
         sessionStorage.setItem("otpEmail", email);
         setAction("VERIFY_OTP");
       } else {
-        setToast({ show: true, message, type: "error" });
+        showToast({ show: true, message, type: "error" });
         setError(message);
       }
     } finally {
@@ -345,19 +344,6 @@ const Login = () => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative font-sans selection:bg-teal-500/30">
       <Background />
-
-      {/* Toast Notification */}
-      <AnimatePresence>
-        {toast.show && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
-            <Toast
-              message={toast.message}
-              type={toast.type}
-              onClose={() => setToast({ ...toast, show: false })}
-            />
-          </div>
-        )}
-      </AnimatePresence>
 
       <div className="container mx-auto px-4 z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-20 h-full py-8">
         {/* --- LEFT SIDE: BRANDING & STATS (Hidden on mobile) --- */}
