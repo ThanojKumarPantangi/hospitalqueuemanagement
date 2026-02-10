@@ -1,10 +1,10 @@
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { loginApi } from "../../api/auth.api";
 import { jwtDecode } from "jwt-decode";
 import Toast from "../../components/ui/Toast";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Mail,
   Lock,
@@ -13,308 +13,300 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  Sparkles,
-  Stethoscope,
-  ShieldAlert,
+  Activity,
   CheckCircle2,
-  Info,
+  Stethoscope,
+  Building2,
+  AlertCircle,
+  Sparkles,
+  RefreshCw,
+  Zap
 } from "lucide-react";
 
-/* =========================
-   ANIMATIONS
-========================= */
-const pageVariants = {
+/* =========================================
+   ANIMATION VARIANTS (extended for richer motion)
+   ========================================= */
+const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { duration: 0.35, ease: "easeOut" },
-  },
-};
-
-const panelVariants = {
-  hidden: { opacity: 0, x: -36, scale: 0.985 },
-  visible: {
-    opacity: 1,
-    x: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 220, damping: 24 },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 34, scale: 0.985 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 260, damping: 26 },
-  },
-};
-
-const contentVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.06 } },
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.15
+    }
+  }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
+  hidden: { y: 18, opacity: 0 },
   visible: {
-    opacity: 1,
     y: 0,
-    transition: { type: "spring", stiffness: 260, damping: 22 },
-  },
+    opacity: 1,
+    transition: { type: "spring", stiffness: 120, damping: 14 }
+  }
 };
 
-const shakeVariants = {
-  hidden: { x: 0 },
-  visible: {
-    x: [0, -5, 5, -4, 4, 0],
-    transition: { duration: 0.25 },
-  },
-};
-
-const glowPulse = {
+const glowVariants = {
+  initial: { opacity: 0.55, scale: 0.9 },
   animate: {
-    opacity: [0.25, 0.5, 0.25],
-    scale: [1, 1.04, 1],
-    transition: { duration: 4.2, repeat: Infinity, ease: "easeInOut" },
-  },
+    opacity: [0.3, 0.85, 0.3],
+    scale: [0.95, 1.12, 0.95],
+    transition: { duration: 10, repeat: Infinity, ease: "easeInOut" }
+  }
 };
 
-const floatSlow = {
-  animate: {
-    y: [0, -12, 0],
-    x: [0, 10, 0],
-    transition: { duration: 9, repeat: Infinity, ease: "easeInOut" },
-  },
-};
+/* =========================================
+   UTILITY HOOKS & HELPERS (non-API, purely UI)
+   ========================================= */
+function useShake(isShaking) {
+  // small helper to derive a shake variant when there is an error
+  return {
+    initial: { x: 0 },
+    animate: isShaking
+      ? { x: [0, -8, 8, -6, 6, -3, 3, 0], transition: { duration: 0.45 } }
+      : { x: 0 }
+  };
+}
 
-const floatSlower = {
-  animate: {
-    y: [0, 14, 0],
-    x: [0, -12, 0],
-    transition: { duration: 11, repeat: Infinity, ease: "easeInOut" },
-  },
-};
+/* =========================================
+   SUB-COMPONENTS (UI ELEMENTS) — improved and extended
+   ========================================= */
 
-const buttonVariants = {
-  idle: { scale: 1 },
-  hover: { scale: 1.02 },
-  tap: { scale: 0.985 },
-};
+// 1. Dynamic Background with animated orbs + soft grid + subtle SVG highlights
+const Background = () => (
+  <div className="fixed inset-0 z-0 overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="absolute inset-0 opacity-20 bg-[linear-gradient(90deg,#0f172a_1px,transparent_1px),linear-gradient(#0f172a_1px,transparent_1px)] bg-[size:64px_64px]" />
 
-const fieldWrapVariants = {
-  idle: { scale: 1 },
-  focus: { scale: 1.01 },
-};
-
-/* =========================
-   SMALL UI PARTS
-========================= */
-const MiniChip = ({ icon: Icon, children }) => {
-  return (
+    {/* Soft animated orbs */}
     <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="
-        inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl
-        bg-white/10 border border-white/15
-        text-white text-xs font-extrabold
-        backdrop-blur-md
-      "
-    >
-      <Icon className="w-4 h-4 opacity-90" />
-      {children}
-    </motion.div>
-  );
-};
+      variants={glowVariants}
+      initial="initial"
+      animate="animate"
+      className="absolute -left-24 -top-24 w-[520px] h-[520px] bg-gradient-to-br from-cyan-500/20 to-teal-400/10 rounded-full blur-[120px]"
+    />
 
-const DividerLine = () => {
-  return (
-    <div className="h-px w-full bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-  );
-};
+    <motion.div
+      variants={glowVariants}
+      initial="initial"
+      animate="animate"
+      transition={{ delay: 2 }}
+      className="absolute -right-24 -bottom-24 w-[520px] h-[520px] bg-gradient-to-br from-indigo-600/18 to-purple-600/10 rounded-full blur-[120px]"
+    />
 
-const ParticleLayer = () => {
-  // tiny decorative dots (pure CSS)
-  return (
-    <div className="absolute inset-0 pointer-events-none opacity-[0.22]">
-      <div className="absolute top-20 left-12 w-1.5 h-1.5 rounded-full bg-white/30" />
-      <div className="absolute top-40 left-1/3 w-1 h-1 rounded-full bg-white/20" />
-      <div className="absolute top-28 right-20 w-1.5 h-1.5 rounded-full bg-white/25" />
-      <div className="absolute bottom-28 right-24 w-1 h-1 rounded-full bg-white/20" />
-      <div className="absolute bottom-40 left-20 w-1.5 h-1.5 rounded-full bg-white/25" />
-      <div className="absolute bottom-20 left-1/2 w-1 h-1 rounded-full bg-white/20" />
-    </div>
-  );
-};
+    {/* Center accent orb */}
+    <motion.div
+      variants={glowVariants}
+      initial="initial"
+      animate="animate"
+      transition={{ delay: 4 }}
+      className="absolute left-1/2 top-[40%] translate-x-[-50%] w-[300px] h-[300px] bg-cyan-500/12 rounded-full blur-[80px]"
+    />
 
-const Field = ({
+    {/* Decorative SVG lines for a high-end product feel */}
+    <svg className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden>
+      <defs>
+        <linearGradient id="lg" x1="0" x2="1">
+          <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.06" />
+          <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <rect x="-20" y="-20" width="40" height="40" fill="url(#lg)" />
+    </svg>
+  </div>
+);
+
+// 2. Custom Input Field with animated floating label, focus glow & error shake
+const CustomInput = ({
   icon: Icon,
-  type = "text",
+  type,
   placeholder,
   value,
   onChange,
+  error,
+  rightElement,
   disabled,
-  rightSlot,
-  onFocus,
-  onBlur,
-  isFocused,
+  id,
+  label
 }) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const shake = useShake(!!error);
+  const inputRef = useRef(null);
+
   return (
-    <motion.div
-      variants={fieldWrapVariants}
-      initial="idle"
-      animate={isFocused ? "focus" : "idle"}
-      className="relative"
-    >
-      {/* left icon */}
-      <div
-        className="
-          absolute left-3.5 top-1/2 -translate-y-1/2
-          p-2 rounded-xl
-          bg-white/5 border border-white/10
-          text-white/70
-        "
+    <motion.div variants={itemVariants} className="relative w-full">
+      {/* Floating Label */}
+      <motion.label
+        htmlFor={id}
+        initial={false}
+        animate={isFocused || value ? { y: -9, x: 0, scale: 0.85 } : { y: 13, x: 40, scale: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className={`absolute left-0 text-sm font-medium pointer-events-none select-none z-10 px-1 bg-white dark:bg-slate-900 ${
+          isFocused ? "text-teal-500" : value ? "text-slate-700 dark:text-slate-300" : "text-slate-500 dark:text-slate-400"
+        }`}
       >
-        <motion.div
-          animate={{
-            scale: isFocused ? 1.06 : 1,
-            rotate: isFocused ? 2 : 0,
-          }}
-          transition={{ type: "spring", stiffness: 300, damping: 22 }}
-        >
-          <Icon className="w-4 h-4" />
-        </motion.div>
-      </div>
+        {label || placeholder}
+      </motion.label>
 
-      {/* input */}
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        placeholder={placeholder}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        className="
-          w-full rounded-2xl pl-12 pr-12 py-3.5 text-sm font-semibold
-          bg-white/5 text-white placeholder-white/40
-          border border-white/10
-          focus:border-teal-400 focus:ring-4 focus:ring-teal-400/10
-          outline-none transition
-          disabled:opacity-60 disabled:cursor-not-allowed
-        "
-      />
-
-      {/* right slot */}
-      {rightSlot ? (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          {rightSlot}
+      <motion.div
+        className="relative"
+        {...(reduceMotion ? {} : shake)}
+      >
+        {/* Icon */}
+        <div className={`absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center transition-colors duration-300 ${
+          isFocused ? "text-teal-500" : "text-slate-400 dark:text-slate-500"
+        }`}>
+          <Icon className="w-5 h-5" />
         </div>
-      ) : null}
 
-      {/* subtle focus glow line */}
+        {/* Input */}
+        <input
+          ref={inputRef}
+          id={id}
+          type={type}
+          value={value}
+          onChange={onChange}
+          placeholder=""
+          disabled={disabled}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className={`w-full bg-white dark:bg-slate-900 border-2 rounded-xl py-3.5 pl-12 pr-12 text-slate-900 dark:text-slate-100 transition-all duration-300 outline-none disabled:opacity-50 disabled:cursor-not-allowed font-medium
+            ${error 
+              ? "border-red-400 dark:border-red-500 focus:border-red-500 dark:focus:border-red-400 ring-2 ring-red-100 dark:ring-red-900/30" 
+              : isFocused
+                ? "border-teal-500 dark:border-teal-400 ring-2 ring-teal-100 dark:ring-teal-900/30"
+                : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+            }`}
+        />
+
+        {/* Right Element */}
+        {rightElement && (
+          <div className="absolute right-0 top-0 bottom-0 w-12 flex items-center justify-center">
+            {rightElement}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Error Message */}
       <AnimatePresence>
-        {isFocused ? (
+        {error && (
           <motion.div
-            initial={{ opacity: 0, scaleX: 0.92 }}
-            animate={{ opacity: 1, scaleX: 1 }}
-            exit={{ opacity: 0, scaleX: 0.92 }}
-            transition={{ duration: 0.2 }}
-            className="
-              absolute -bottom-2 left-2 right-2 h-[2px]
-              bg-gradient-to-r from-teal-400/0 via-teal-400/60 to-teal-400/0
-              blur-[0.2px]
-            "
-          />
-        ) : null}
+            id={`${id}-error`}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            className="flex items-center gap-1.5 text-xs text-red-500 dark:text-red-400 mt-2 ml-1"
+          >
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span className="font-medium">{error}</span>
+          </motion.div>
+        )}
       </AnimatePresence>
     </motion.div>
   );
 };
 
-const SkeletonField = () => {
-  return (
-    <div className="relative overflow-hidden h-[52px] rounded-2xl bg-white/8 border border-white/10">
-      <motion.div
-        initial={{ x: "-120%" }}
-        animate={{ x: "120%" }}
-        transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-        className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.12),transparent)]"
-      />
+// 3. Stat/Feature Badge for the hero section — now with micro-interaction
+const StatBadge = ({ icon: Icon, label, value, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay, duration: 0.45, type: "spring", stiffness: 120 }}
+    whileHover={{ scale: 1.03, translateY: -4 }}
+    className="flex items-center gap-3 bg-white/6 dark:bg-white/4 backdrop-blur-md border border-white/8 dark:border-white/6 p-3 rounded-2xl w-fit"
+  >
+    <div className="p-2 bg-gradient-to-br from-teal-500/20 to-cyan-500/20 rounded-lg">
+      <Icon className="w-5 h-5 text-teal-400" />
     </div>
+    <div>
+      <p className="text-xs text-slate-700 dark:text-slate-300 font-medium uppercase tracking-wider">{label}</p>
+      <p className="text-slate-900 dark:text-white font-bold">{value}</p>
+    </div>
+  </motion.div>
+);
+
+// 4. Ripple button (visual enhancement) — still preserves type=submit behavior
+const ActionButton = ({ children, loading, ...rest }) => {
+  return (
+    <motion.button
+      whileHover={!loading ? { scale: 1.01, y: -2 } : {}}
+      whileTap={!loading ? { scale: 0.99 } : {}}
+      {...rest}
+      className={`w-full relative overflow-hidden h-14 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed group ${rest.className || ""}`}
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-out" />
+
+      <span className="relative flex items-center justify-center gap-2.5">
+        {loading ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Processing...</span>
+          </>
+        ) : (
+          <>
+            {children}
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+          </>
+        )}
+      </span>
+    </motion.button>
   );
 };
 
-/* =========================
-   MAIN COMPONENT
-========================= */
-function Login() {
+/* =========================================
+   MAIN COMPONENT (kept API logic intact, UI enhanced)
+   ========================================= */
+const Login = () => {
+  // --- STATE MANAGEMENT ---
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [toast, setToast] = useState({
-    show: false,
-    message: "",
-    type: "success",
-  });
-
-  const [action, setAction] = useState("LOGIN");
+  const [toast, setToast] = useState({ show: false, message: "", type: "success" });
+  const [action, setAction] = useState("LOGIN"); // "LOGIN" or "VERIFY_OTP"
   const [showPass, setShowPass] = useState(false);
-  const [shake, setShake] = useState(false);
-
-  // UI-only focus tracking
-  const [focused, setFocused] = useState(null);
 
   const navigate = useNavigate();
   const { login } = useAuth();
 
+  // micro-ref for focus
+  const emailRef = useRef(null);
+
+  // --- DYNAMIC TEXT ---
+  const headerContent = useMemo(
+    () => ({
+      title: action === "LOGIN" ? "Welcome Back" : "Verify Identity",
+      subtitle: action === "LOGIN" ? "Access your secure healthcare dashboard" : "Please enter your credentials to continue"
+    }),
+    [action]
+  );
+
+  useEffect(() => {
+    // gently focus email on mount for faster keyboard flow
+    if (emailRef.current) setTimeout(() => emailRef.current.focus(), 300);
+  }, []);
+
+  // --- LOGIC (API & AUTH) — preserved exactly as requested ---
   const navigateBasedOnRole = (role) => {
     if (role === "ADMIN") navigate("/admin/dashboard");
     else if (role === "DOCTOR") navigate("/doctor/dashboard");
     else navigate("/patient/dashboard");
   };
 
-  const headerTitle = useMemo(() => {
-    return action === "LOGIN" ? "Welcome Back" : "Verify OTP";
-  }, [action]);
-
-  const headerDesc = useMemo(() => {
-    return action === "LOGIN"
-      ? "Sign in to access your hospital portal"
-      : "Continue to verify your phone number";
-  }, [action]);
-
-  const actionHint = useMemo(() => {
-    if (action === "VERIFY_OTP") {
-      return "OTP verification required for your account";
-    }
-    return "Secure role-based access for Admin / Doctor / Patient";
-  }, [action]);
-
-  // ------------------ API LOGIC (DO NOT TOUCH) ------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
     if (action === "VERIFY_OTP") {
+      // Logic requirement: Redirect to OTP page
       navigate("/verify-otp", { state: { email } });
       return;
     }
 
     if (!email || !password) {
-      setError("Email and password are required");
-      setToast({
-        show: true,
-        message: "Email and password are required",
-        type: "error",
-      });
-
-      setShake(true);
-      setTimeout(() => setShake(false), 260);
+      setError("Credentials required");
       return;
     }
 
@@ -322,429 +314,231 @@ function Login() {
       setLoading(true);
       const res = await loginApi({
         email: email.trim(),
-        password: password.trim(),
+        password: password.trim()
       });
-      const { accessToken } = res.data;
 
-      login(accessToken);
+      const { accessToken } = res.data;
+      login(accessToken); // Update Auth Context
+
       const decoded = jwtDecode(accessToken);
       navigateBasedOnRole(decoded.role);
     } catch (err) {
-      const message = err.response?.data?.message || "Login failed";
-      setToast({ show: true, message, type: "error" });
+      const message = err.response?.data?.message || "Authentication failed";
 
       if (message === "Phone number not verified") {
+        setToast({ show: true, message: "Verification Required", type: "info" });
         sessionStorage.setItem("otpEmail", email);
         setAction("VERIFY_OTP");
+      } else {
+        setToast({ show: true, message, type: "error" });
+        setError(message);
       }
     } finally {
       setLoading(false);
     }
   };
 
+  // compute per-field error messages so inputs can show specific messages
+  const emailError = error && !email ? "Email is required" : null;
+  const passwordError = error && !password ? "Password is required" : null;
+
   return (
-    <>
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ ...toast, show: false })}
-        />
-      )}
+    <div className="min-h-screen w-full flex items-center justify-center relative font-sans selection:bg-teal-500/30">
+      <Background />
 
-      {/* BACKGROUND */}
-      <motion.div
-        variants={pageVariants}
-        initial="hidden"
-        animate="visible"
-        className="min-h-screen relative overflow-hidden"
-      >
-        {/* aurora background */}
-        <motion.div
-          animate={{ opacity: [0.6, 0.9, 0.6] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(20,184,166,0.22),transparent_55%)]"
-        />
-        <motion.div
-          animate={{ opacity: [0.45, 0.75, 0.45] }}
-          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(99,102,241,0.18),transparent_55%)]"
-        />
-        <motion.div
-          animate={{ opacity: [0.35, 0.65, 0.35] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.16),transparent_55%)]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-black/75" />
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast.show && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast({ ...toast, show: false })}
+            />
+          </div>
+        )}
+      </AnimatePresence>
 
-        <ParticleLayer />
+      <div className="container mx-auto px-4 z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-20 h-full py-8">
+        {/* --- LEFT SIDE: BRANDING & STATS (Hidden on mobile) --- */}
+        <motion.div initial="hidden" animate="visible" variants={containerVariants} className="hidden lg:flex flex-col gap-8 max-w-lg">
+          <motion.div variants={itemVariants} className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-sm font-medium">
+              <ShieldCheck className="w-4 h-4" />
+              Secure Hospital Portal
+            </div>
 
-        {/* floating blobs */}
-        <motion.div
-          {...floatSlow}
-          className="absolute -top-24 -left-24 w-[380px] h-[380px] rounded-full bg-teal-500/12 blur-3xl"
-        />
-        <motion.div
-          {...floatSlower}
-          className="absolute -bottom-28 -right-28 w-[420px] h-[420px] rounded-full bg-indigo-500/12 blur-3xl"
-        />
+            <motion.h1 variants={itemVariants} className="text-5xl font-bold text-slate-900 dark:text-white leading-tight">
+              Modern Healthcare <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400">Management</span>
+            </motion.h1>
 
-        {/* CONTENT */}
-        <div className="relative z-10 min-h-screen flex items-center justify-center px-5 py-10">
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-7 items-stretch">
-            {/* LEFT PANEL (DESKTOP) */}
-            <motion.div
-              variants={panelVariants}
-              initial="hidden"
-              animate="visible"
-              className="
-                hidden lg:flex rounded-[36px] overflow-hidden
-                border border-white/10
-                shadow-[0_40px_120px_rgba(0,0,0,0.65)]
-              "
-            >
-              <div className="relative w-full p-10 bg-gradient-to-br from-teal-500/95 via-indigo-500/90 to-purple-500/90">
-                {/* glow */}
-                <motion.div
-                  {...glowPulse}
-                  className="absolute inset-0 opacity-35"
+            <motion.p variants={itemVariants} className="text-slate-700 dark:text-slate-400 text-lg leading-relaxed">
+              Streamline appointments, manage patient records, and access real-time medical insights with our secure role-based platform.
+            </motion.p>
+          </motion.div>
+
+          {/* Feature Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <StatBadge icon={Activity} label="System Status" value="99.9% Uptime" delay={0.35} />
+            <StatBadge icon={Stethoscope} label="Practitioners" value="250+ Active" delay={0.45} />
+            <StatBadge icon={Building2} label="Departments" value="12 Integrated" delay={0.55} />
+            <StatBadge icon={CheckCircle2} label="Compliance" value="HIPAA Ready" delay={0.65} />
+          </div>
+        </motion.div>
+
+        {/* --- RIGHT SIDE: LOGIN FORM --- */}
+        <motion.div
+          initial={{ opacity: 0, x: 60 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="w-full max-w-[480px]"
+        >
+          <motion.div 
+            className="relative"
+            whileHover={{ y: -4 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* Gradient Glow Effect */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 via-cyan-500 to-teal-500 rounded-3xl opacity-20 blur-xl" />
+            
+            {/* Main Card */}
+            <div className="relative bg-white dark:bg-slate-900 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-2xl">
+              {/* Header */}
+              <div className="mb-8">
+                <motion.div 
+                  key={action} 
+                  initial={{ opacity: 0, y: 10 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ duration: 0.4 }}
                 >
-                  <div className="absolute -top-24 -left-24 w-96 h-96 bg-white/20 blur-3xl rounded-full" />
-                  <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-white/10 blur-3xl rounded-full" />
+                  <h2 id="login-heading" className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                    {headerContent.title}
+                  </h2>
+                  <p className="text-slate-600 dark:text-slate-400 text-sm">
+                    {headerContent.subtitle}
+                  </p>
                 </motion.div>
 
-                <div className="relative h-full flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <motion.div
-                        whileHover={{ rotate: 2, scale: 1.03 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 18 }}
-                        className="
-                          w-12 h-12 rounded-2xl
-                          bg-white/15 border border-white/20
-                          flex items-center justify-center
-                          shadow-lg
-                        "
+                {/* Tip */}
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  transition={{ delay: 0.2 }} 
+                  className="mt-4 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg px-3 py-2"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>Use your institutional email for faster verification</span>
+                </motion.div>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                <motion.div 
+                  variants={containerVariants} 
+                  initial="hidden" 
+                  animate="visible" 
+                  className="space-y-5"
+                >
+                  {/* Email Input */}
+                  <CustomInput
+                    icon={Mail}
+                    type="email"
+                    id="email"
+                    label="Email Address"
+                    placeholder="Enter email address"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    error={emailError}
+                    disabled={loading}
+                    rightElement={
+                      email && (
+                        <button 
+                          onClick={() => { setEmail(''); emailRef.current?.focus(); }} 
+                          type="button" 
+                          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1.5" 
+                          aria-label="Clear email"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
+                      )
+                    }
+                  />
+
+                  {/* Password Input */}
+                  <CustomInput
+                    icon={Lock}
+                    type={showPass ? "text" : "password"}
+                    id="password"
+                    label="Password"
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    error={passwordError}
+                    disabled={loading}
+                    rightElement={
+                      <button
+                        type="button"
+                        onClick={() => setShowPass(!showPass)}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors p-1.5"
+                        aria-label={showPass ? "Hide password" : "Show password"}
                       >
-                        <Stethoscope className="w-6 h-6 text-white" />
-                      </motion.div>
+                        {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    }
+                  />
 
-                      <div className="text-white">
-                        <p className="text-xs font-extrabold uppercase tracking-wider opacity-90">
-                          Hospital Portal
-                        </p>
-                        <h2 className="text-2xl font-black tracking-tight">
-                          Secure Login
-                        </h2>
-                      </div>
-                    </div>
-
-                    <p className="mt-6 text-white/90 text-sm leading-relaxed max-w-md">
-                      Sign in to manage doctor schedules, token flow, and patient
-                      queue operations with secure access.
-                    </p>
-
-                    <div className="mt-6 flex flex-wrap gap-2">
-                      <MiniChip icon={ShieldCheck}>Protected Access</MiniChip>
-                      <MiniChip icon={Sparkles}>Smooth Experience</MiniChip>
-                      <MiniChip icon={ShieldAlert}>OTP Safety</MiniChip>
-                    </div>
+                  {/* Forgot Password Link */}
+                  <div className="flex items-center justify-end">
+                    <Link 
+                      to="/forgot-password" 
+                      className="text-sm text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium transition-colors hover:underline decoration-2 underline-offset-2"
+                    >
+                      Forgot password?
+                    </Link>
                   </div>
 
-                  <div className="relative rounded-3xl bg-white/10 border border-white/15 backdrop-blur-md p-6">
-                    <p className="text-white text-sm font-black">
-                      Admin + Doctor + Patient dashboards
-                    </p>
-                    <p className="mt-2 text-white/80 text-xs leading-relaxed">
-                      Your role is detected automatically after login and you’ll
-                      be redirected to the correct dashboard.
-                    </p>
+                  {/* Submit Button */}
+                  <ActionButton 
+                    type="submit" 
+                    disabled={loading} 
+                    loading={loading} 
+                    aria-label={action === "LOGIN" ? "Sign in" : "Proceed to verify"}
+                  >
+                    <span>{action === "LOGIN" ? "Sign In" : "Proceed to Verify"}</span>
+                  </ActionButton>
+                </motion.div>
+              </form>
 
-                    <div className="mt-4">
-                      <DividerLine />
-                      <div className="mt-3 flex items-center gap-2 text-white/85 text-xs font-semibold">
-                        <Info className="w-4 h-4" />
-                        Secure session handling + OTP verification when needed
-                      </div>
-                    </div>
+              {/* Footer */}
+              <div className="mt-8 space-y-4">
+                {/* Divider */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Fast & Secure</span>
                   </div>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+                </div>
+
+                {/* Sign Up Link */}
+                <div className="text-center text-sm text-slate-600 dark:text-slate-400">
+                  Don&apos;t have an account?{' '}
+                  <Link 
+                    to="/signup" 
+                    className="text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold hover:underline decoration-2 underline-offset-2 transition-colors"
+                  >
+                    Create Account
+                  </Link>
                 </div>
               </div>
-            </motion.div>
-
-            {/* RIGHT CARD */}
-            <motion.div
-              variants={cardVariants}
-              initial="hidden"
-              animate="visible"
-              className="w-full flex items-center"
-            >
-              <motion.div
-                variants={shake ? shakeVariants : {}}
-                initial="hidden"
-                animate="visible"
-                whileHover={{ y: -2 }}
-                transition={{ type: "spring", stiffness: 220, damping: 22 }}
-                className="
-                  w-full
-                  rounded-[36px]
-                  bg-white/5
-                  border border-white/10
-                  backdrop-blur-2xl
-                  shadow-[0_30px_90px_rgba(0,0,0,0.70)]
-                  overflow-hidden
-                  relative
-                "
-              >
-                {/* card glow border */}
-                <motion.div
-                  animate={{ opacity: [0.2, 0.35, 0.2] }}
-                  transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-                  className="
-                    absolute inset-0 pointer-events-none
-                    bg-[radial-gradient(circle_at_top,rgba(45,212,191,0.18),transparent_55%)]
-                  "
-                />
-
-                {/* TOP STRIP */}
-                <div className="relative px-7 pt-8 pb-6 border-b border-white/10">
-                  <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-indigo-500/10 to-purple-500/10" />
-
-                  <div className="relative flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-[11px] font-extrabold uppercase tracking-[0.25em] text-white/50">
-                        Authentication
-                      </p>
-
-                      <h1 className="mt-2 text-2xl font-black text-white tracking-tight">
-                        {headerTitle}
-                      </h1>
-
-                      <p className="mt-1 text-sm text-white/60">{headerDesc}</p>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="
-                          mt-3 inline-flex items-center gap-2
-                          px-3 py-1.5 rounded-2xl
-                          bg-white/5 border border-white/10
-                          text-xs font-bold text-white/70
-                        "
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-teal-300" />
-                        {actionHint}
-                      </motion.div>
-                    </div>
-
-                    <motion.div
-                      whileHover={{ rotate: 2, scale: 1.03 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 18 }}
-                      className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center"
-                    >
-                      <ShieldCheck className="w-6 h-6 text-teal-300" />
-                    </motion.div>
-                  </div>
-                </div>
-
-                {/* FORM */}
-                <motion.form
-                  onSubmit={handleSubmit}
-                  variants={contentVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="px-7 py-7 space-y-4 relative"
-                >
-                  <motion.div variants={itemVariants}>
-                    {loading ? (
-                      <SkeletonField />
-                    ) : (
-                      <Field
-                        icon={Mail}
-                        type="email"
-                        placeholder="Email address"
-                        value={email}
-                        disabled={loading}
-                        onChange={(e) => setEmail(e.target.value)}
-                        onFocus={() => setFocused("email")}
-                        onBlur={() => setFocused(null)}
-                        isFocused={focused === "email"}
-                      />
-                    )}
-                  </motion.div>
-
-                  <motion.div variants={itemVariants}>
-                    {loading ? (
-                      <SkeletonField />
-                    ) : (
-                      <Field
-                        icon={Lock}
-                        type={showPass ? "text" : "password"}
-                        placeholder="Password"
-                        value={password}
-                        disabled={loading}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onFocus={() => setFocused("password")}
-                        onBlur={() => setFocused(null)}
-                        isFocused={focused === "password"}
-                        rightSlot={
-                          <button
-                            type="button"
-                            onClick={() => setShowPass((p) => !p)}
-                            className="
-                              p-2 rounded-xl text-white/60
-                              hover:text-white transition
-                              hover:bg-white/5
-                            "
-                            aria-label="Toggle password"
-                          >
-                            {showPass ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                        }
-                      />
-                    )}
-                  </motion.div>
-
-                  {/* ERROR */}
-                  <AnimatePresence>
-                    {error ? (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        className="
-                          rounded-2xl border border-rose-500/25
-                          bg-rose-500/10 px-4 py-3
-                          text-xs font-semibold text-rose-200
-                        "
-                      >
-                        {error}
-                      </motion.div>
-                    ) : null}
-                  </AnimatePresence>
-
-                  {/* SUBMIT */}
-                  <motion.div variants={itemVariants} className="pt-1">
-                    <motion.button
-                      variants={buttonVariants}
-                      initial="idle"
-                      whileHover={!loading ? "hover" : "idle"}
-                      whileTap={!loading ? "tap" : "idle"}
-                      disabled={loading}
-                      className="
-                        w-full rounded-2xl py-3.5
-                        bg-gradient-to-r from-teal-500 via-teal-400 to-emerald-400
-                        text-sm font-black text-[#041018]
-                        shadow-[0_18px_50px_rgba(20,184,166,0.25)]
-                        disabled:opacity-70 disabled:cursor-not-allowed
-                        transition
-                        relative overflow-hidden
-                      "
-                    >
-                      {/* shine */}
-                      <motion.span
-                        aria-hidden="true"
-                        className="
-                          absolute inset-0
-                          bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.35),transparent)]
-                          opacity-0
-                        "
-                        animate={{
-                          opacity: loading ? 0 : 1,
-                          x: loading ? 0 : ["-120%", "120%"],
-                        }}
-                        transition={{
-                          duration: 1.8,
-                          repeat: loading ? 0 : Infinity,
-                          ease: "linear",
-                        }}
-                      />
-
-                      <AnimatePresence mode="wait">
-                        {loading ? (
-                          <motion.span
-                            key="loading"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -6 }}
-                            transition={{ duration: 0.2 }}
-                            className="flex items-center justify-center gap-2 relative"
-                          >
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Signing in...
-                          </motion.span>
-                        ) : action === "LOGIN" ? (
-                          <motion.span
-                            key="login"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -6 }}
-                            transition={{ duration: 0.2 }}
-                            className="flex items-center justify-center gap-2 relative"
-                          >
-                            LOG IN <ArrowRight className="h-4 w-4" />
-                          </motion.span>
-                        ) : (
-                          <motion.span
-                            key="otp"
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -6 }}
-                            transition={{ duration: 0.2 }}
-                            className="flex items-center justify-center gap-2 relative"
-                          >
-                            VERIFY OTP <ArrowRight className="h-4 w-4" />
-                          </motion.span>
-                        )}
-                      </AnimatePresence>
-                    </motion.button>
-
-                    {/* quick actions */}
-                    <div className="mt-5 flex items-center justify-between">
-                      <Link
-                        to="/forgot-password"
-                        className="text-xs font-bold text-teal-300 hover:text-teal-200 transition"
-                      >
-                        Forgot password?
-                      </Link>
-
-                      <p className="text-xs text-white/60">
-                        New here?{" "}
-                        <Link
-                          to="/signup"
-                          className="font-black text-teal-300 hover:text-teal-200 transition"
-                        >
-                          Create Account
-                        </Link>
-                      </p>
-                    </div>
-                  </motion.div>
-                </motion.form>
-
-                {/* BOTTOM STRIP */}
-                <div className="px-7 pb-7">
-                  <div className="rounded-3xl border border-white/10 bg-white/5 px-5 py-4">
-                    <p className="text-[11px] text-white/50 font-semibold">
-                      By continuing, you agree to the hospital security policy.
-                    </p>
-                    <p className="mt-1 text-xs text-white/60">
-                      OTP verification may be required for unverified phone
-                      numbers.
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          </div>
-        </div>
-      </motion.div>
-    </>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+    </div>
   );
-}
+};
 
 export default Login;

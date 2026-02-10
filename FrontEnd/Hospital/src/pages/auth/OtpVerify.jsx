@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { sendotp, verifyotp } from "../../api/auth.api";
 import Toast from "../../components/ui/Toast";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence} from "framer-motion";
 import {
   ShieldCheck,
   Mail,
@@ -12,75 +12,58 @@ import {
   Loader2,
   Sparkles,
   CheckCircle2,
-  AlertTriangle,
+  AlertCircle,
   Info,
+  Activity,
+  Building2,
+  Users,
+  Zap,
+  Lock
 } from "lucide-react";
 
-/* =========================
-   ANIMATIONS
-========================= */
-const overlayVariants = {
+/* =========================================
+   ANIMATION VARIANTS
+   ========================================= */
+const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.2, ease: "easeOut" } },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 28, scale: 0.985 },
   visible: {
     opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 260, damping: 22 },
-  },
-};
-
-const contentVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.15
+    }
+  }
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
+  hidden: { y: 18, opacity: 0 },
   visible: {
-    opacity: 1,
     y: 0,
-    transition: { type: "spring", stiffness: 260, damping: 22 },
-  },
+    opacity: 1,
+    transition: { type: "spring", stiffness: 120, damping: 14 }
+  }
+};
+
+const glowVariants = {
+  initial: { opacity: 0.55, scale: 0.9 },
+  animate: {
+    opacity: [0.3, 0.85, 0.3],
+    scale: [0.95, 1.12, 0.95],
+    transition: { duration: 10, repeat: Infinity, ease: "easeInOut" }
+  }
 };
 
 const shakeVariants = {
   idle: { x: 0 },
   shake: {
-    x: [0, -5, 5, -4, 4, -3, 3, 0],
-    transition: { duration: 0.22 },
-  },
+    x: [0, -8, 8, -6, 6, -3, 3, 0],
+    transition: { duration: 0.45 }
+  }
 };
 
-const floatSlow = {
-  animate: {
-    y: [0, -12, 0],
-    x: [0, 8, 0],
-    transition: { duration: 8, repeat: Infinity, ease: "easeInOut" },
-  },
-};
-
-const floatSlower = {
-  animate: {
-    y: [0, 14, 0],
-    x: [0, -10, 0],
-    transition: { duration: 10, repeat: Infinity, ease: "easeInOut" },
-  },
-};
-
-const buttonVariants = {
-  idle: { scale: 1 },
-  hover: { scale: 1.02 },
-  tap: { scale: 0.985 },
-};
-
-/* =========================
-   HELPERS
-========================= */
+/* =========================================
+   UTILITY FUNCTIONS
+   ========================================= */
 const clampDigits = (val) => String(val || "").replace(/[^\d]/g, "");
 const maskEmail = (email) => {
   if (!email) return "";
@@ -90,6 +73,90 @@ const maskEmail = (email) => {
   return `${name.slice(0, 2)}***@${domain}`;
 };
 
+/* =========================================
+   SUB-COMPONENTS
+   ========================================= */
+
+// Background Component
+const Background = () => (
+  <div className="fixed inset-0 z-0 overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="absolute inset-0 opacity-20 bg-[linear-gradient(90deg,#0f172a_1px,transparent_1px),linear-gradient(#0f172a_1px,transparent_1px)] bg-[size:64px_64px]" />
+
+    <motion.div
+      variants={glowVariants}
+      initial="initial"
+      animate="animate"
+      className="absolute -left-24 -top-24 w-[520px] h-[520px] bg-gradient-to-br from-cyan-500/20 to-teal-400/10 rounded-full blur-[120px]"
+    />
+
+    <motion.div
+      variants={glowVariants}
+      initial="initial"
+      animate="animate"
+      transition={{ delay: 2 }}
+      className="absolute -right-24 -bottom-24 w-[520px] h-[520px] bg-gradient-to-br from-indigo-600/18 to-purple-600/10 rounded-full blur-[120px]"
+    />
+
+    <motion.div
+      variants={glowVariants}
+      initial="initial"
+      animate="animate"
+      transition={{ delay: 4 }}
+      className="absolute left-1/2 top-[40%] translate-x-[-50%] w-[300px] h-[300px] bg-cyan-500/12 rounded-full blur-[80px]"
+    />
+  </div>
+);
+
+// Stat Badge
+const StatBadge = ({ icon: Icon, label, value, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay, duration: 0.45, type: "spring", stiffness: 120 }}
+    whileHover={{ scale: 1.03, translateY: -4 }}
+    className="flex items-center gap-3 bg-white/6 dark:bg-white/4 backdrop-blur-md border border-white/8 dark:border-white/6 p-3 rounded-2xl w-fit"
+  >
+    <div className="p-2 bg-gradient-to-br from-teal-500/20 to-cyan-500/20 rounded-lg">
+      <Icon className="w-5 h-5 text-teal-400" />
+    </div>
+    <div>
+      <p className="text-xs text-slate-700 dark:text-slate-300 font-medium uppercase tracking-wider">{label}</p>
+      <p className="text-slate-900 dark:text-white font-bold">{value}</p>
+    </div>
+  </motion.div>
+);
+
+// Action Button
+const ActionButton = ({ children, loading, ...rest }) => {
+  return (
+    <motion.button
+      whileHover={!loading ? { scale: 1.01, y: -2 } : {}}
+      whileTap={!loading ? { scale: 0.99 } : {}}
+      {...rest}
+      className={`w-full relative overflow-hidden h-14 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed group ${rest.className || ""}`}
+    >
+      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-out" />
+
+      <span className="relative flex items-center justify-center gap-2.5">
+        {loading ? (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>{children}</span>
+          </>
+        ) : (
+          <>
+            {children}
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+          </>
+        )}
+      </span>
+    </motion.button>
+  );
+};
+
+/* =========================================
+   MAIN COMPONENT
+   ========================================= */
 function OtpVerify() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -137,7 +204,9 @@ function OtpVerify() {
 
   const timerLabel = useMemo(() => {
     if (timer <= 0) return "Ready";
-    return `${timer}s`;
+    const minutes = Math.floor(timer / 60);
+    const seconds = timer % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, [timer]);
 
   /* ---------------- TIMER ---------------- */
@@ -278,348 +347,318 @@ function OtpVerify() {
     inputRefs.current[focusIndex]?.focus();
   };
 
-  /* ---------------- UI ---------------- */
   return (
-    <>
-      {toast.show && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast({ ...toast, show: false })}
-        />
-      )}
+    <div className="min-h-screen w-full flex items-center justify-center relative font-sans selection:bg-teal-500/30">
+      <Background />
 
-      {/* Background */}
-      <motion.div
-        variants={overlayVariants}
-        initial="hidden"
-        animate="visible"
-        className="min-h-screen relative overflow-hidden bg-[#060B16]"
-      >
-        {/* Aurora layers */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(20,184,166,0.20),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(99,102,241,0.16),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,rgba(168,85,247,0.14),transparent_55%)]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/35 to-black/75" />
-
-        {/* Floating blobs */}
-        <motion.div
-          {...floatSlow}
-          className="absolute -top-24 -left-24 w-[380px] h-[380px] rounded-full bg-teal-500/12 blur-3xl"
-        />
-        <motion.div
-          {...floatSlower}
-          className="absolute -bottom-28 -right-28 w-[420px] h-[420px] rounded-full bg-indigo-500/12 blur-3xl"
-        />
-
-        {/* Content */}
-        <div className="relative z-10 min-h-screen flex items-center justify-center px-5 py-10">
-          <motion.div
-            variants={cardVariants}
-            initial="hidden"
-            animate="visible"
-            className="
-              w-full max-w-lg
-              rounded-[36px]
-              bg-white/5
-              border border-white/10
-              backdrop-blur-2xl
-              shadow-[0_30px_90px_rgba(0,0,0,0.70)]
-              overflow-hidden
-              relative
-            "
-          >
-            {/* subtle card glow */}
-            <motion.div
-              animate={{ opacity: [0.2, 0.35, 0.2] }}
-              transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-              className="
-                absolute inset-0 pointer-events-none
-                bg-[radial-gradient(circle_at_top,rgba(45,212,191,0.16),transparent_55%)]
-              "
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast.show && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast({ ...toast, show: false })}
             />
+          </div>
+        )}
+      </AnimatePresence>
 
-            {/* Header */}
-            <div className="relative px-7 pt-8 pb-6 border-b border-white/10">
-              <div className="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-indigo-500/10 to-purple-500/10" />
+      <div className="container mx-auto px-4 z-10 flex flex-col lg:flex-row items-center justify-center gap-12 lg:gap-20 h-full py-8">
+        {/* --- LEFT SIDE: BRANDING & STATS --- */}
+        <motion.div 
+          initial="hidden" 
+          animate="visible" 
+          variants={containerVariants} 
+          className="hidden lg:flex flex-col gap-8 max-w-lg"
+        >
+          <motion.div variants={itemVariants} className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-sm font-medium">
+              <ShieldCheck className="w-4 h-4" />
+              Secure Verification
+            </div>
 
-              <div className="relative flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.25em] text-white/50">
-                    OTP Verification
-                  </p>
+            <motion.h1 variants={itemVariants} className="text-5xl font-bold text-slate-900 dark:text-white leading-tight">
+              Verify Your <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-400">Identity</span>
+            </motion.h1>
 
-                  <h1 className="mt-2 text-2xl font-black text-white tracking-tight">
-                    Security Check
-                  </h1>
+            <motion.p variants={itemVariants} className="text-slate-700 dark:text-slate-400 text-lg leading-relaxed">
+              We&apos;ve sent a 6-digit verification code to your email. Enter it below to complete your registration and secure your account.
+            </motion.p>
+          </motion.div>
 
-                  <p className="mt-2 text-sm text-white/60 flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-teal-300" />
-                    Code sent to{" "}
-                    <span className="font-black text-white/85">
-                      {maskEmail(email)}
-                    </span>
-                  </p>
+          {/* Feature Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <StatBadge icon={Lock} label="Encryption" value="Bank-Grade" delay={0.35} />
+            <StatBadge icon={Activity} label="Verification" value="Real-time" delay={0.45} />
+            <StatBadge icon={Users} label="Protected" value="100% Secure" delay={0.55} />
+            <StatBadge icon={Building2} label="Compliance" value="HIPAA Ready" delay={0.65} />
+          </div>
 
-                  <div
-                    className="
-                      mt-3 inline-flex items-center gap-2
-                      px-3 py-1.5 rounded-2xl
-                      bg-white/5 border border-white/10
-                      text-xs font-bold text-white/70
-                    "
-                  >
-                    <Sparkles className="w-4 h-4 text-teal-300" />
-                    Enter the 6-digit OTP to verify
-                  </div>
-                </div>
+          {/* Info Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-900/10 dark:to-cyan-900/10 border border-teal-200 dark:border-teal-800/30 rounded-2xl p-6"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-teal-500/10 rounded-lg">
+                <Info className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+                  Quick Tip
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  You can paste the entire OTP code at once. The code is valid for 5 minutes and you can request a new one if needed.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
 
-                <motion.div
-                  whileHover={{ rotate: 2, scale: 1.03 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 18 }}
-                  className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center"
+        {/* --- RIGHT SIDE: OTP FORM --- */}
+        <motion.div
+          initial={{ opacity: 0, x: 60 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="w-full max-w-[480px]"
+        >
+          <motion.div 
+            className="relative"
+            whileHover={{ y: -4 }}
+            transition={{ duration: 0.3 }}
+            variants={shakeVariants}
+            animate={shake ? "shake" : "idle"}
+          >
+            {/* Gradient Glow Effect */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 via-cyan-500 to-teal-500 rounded-3xl opacity-20 blur-xl" />
+            
+            {/* Main Card */}
+            <div className="relative bg-white dark:bg-slate-900 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-2xl">
+              {/* Header */}
+              <div className="mb-8">
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ duration: 0.4 }}
                 >
-                  <ShieldCheck className="w-6 h-6 text-teal-300" />
+                  <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                    Verify Your Email
+                  </h2>
+                  <p className="text-slate-600 dark:text-slate-400 text-sm">
+                    Enter the 6-digit code sent to your email
+                  </p>
+                </motion.div>
+
+                {/* Email Display */}
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  transition={{ delay: 0.2 }} 
+                  className="mt-4 flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5"
+                >
+                  <Mail className="w-4 h-4 text-teal-500" />
+                  <span className="font-medium">{maskEmail(email)}</span>
                 </motion.div>
               </div>
 
-              {/* Mini progress */}
-              <div className="relative mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-white/70 font-semibold">
-                    <Clock className="w-4 h-4 text-white/50" />
-                    {canResend ? "You can resend now" : "Resend cooldown"}
+              {/* Form */}
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  verifyOtp();
+                }} 
+                className="space-y-6" 
+                noValidate
+              >
+                <motion.div 
+                  variants={containerVariants} 
+                  initial="hidden" 
+                  animate="visible" 
+                  className="space-y-5"
+                >
+                  {/* OTP Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                      Verification Code
+                    </label>
+                    
+                    <div 
+                      className="grid grid-cols-6 gap-2 sm:gap-3"
+                      onPaste={handlePaste}
+                    >
+                      {otp.map((data, index) => (
+                        <motion.input
+                          key={index}
+                          whileFocus={{ scale: 1.04 }}
+                          transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          ref={(el) => (inputRefs.current[index] = el)}
+                          value={data}
+                          onChange={(e) => handleChange(e.target, index)}
+                          onKeyDown={(e) => handleKeyDown(e, index)}
+                          disabled={loading}
+                          className={`
+                            h-12 sm:h-14 w-full
+                            rounded-xl
+                            text-center text-xl sm:text-2xl font-bold
+                            bg-white dark:bg-slate-900
+                            text-slate-900 dark:text-white
+                            border-2 transition-all duration-300 outline-none
+                            disabled:opacity-50 disabled:cursor-not-allowed
+                            ${data 
+                              ? "border-teal-500 dark:border-teal-400 ring-2 ring-teal-100 dark:ring-teal-900/30" 
+                              : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                            }
+                            focus:border-teal-500 focus:ring-2 focus:ring-teal-100 dark:focus:ring-teal-900/30
+                          `}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                      <span>
+                        Filled: <span className="font-semibold text-slate-700 dark:text-slate-300">{otpFilledCount}/6</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        Paste code directly
+                      </span>
+                    </div>
                   </div>
 
-                  <span className="text-white/70 font-bold">{timerLabel}</span>
+                  {/* Timer Progress */}
+                  <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                    <div className="flex items-center justify-between text-sm mb-3">
+                      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                        <Clock className="w-4 h-4 text-slate-500" />
+                        <span className="font-medium">
+                          {canResend ? "Ready to resend" : "Resend cooldown"}
+                        </span>
+                      </div>
+                      <span className="font-bold text-teal-600 dark:text-teal-400">{timerLabel}</span>
+                    </div>
+
+                    <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${resendProgress}%` }}
+                        transition={{ duration: 0.35 }}
+                        className="h-full bg-gradient-to-r from-teal-500 to-cyan-500"
+                      />
+                    </div>
+
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <Info className="w-3.5 h-3.5" />
+                      Timer starts after OTP is sent successfully
+                    </p>
+                  </div>
+
+                  {/* Error Display */}
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 text-xs text-red-600 dark:text-red-400"
+                      >
+                        <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span className="font-medium">{error}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Verify Button */}
+                  <ActionButton 
+                    type="submit" 
+                    disabled={loading} 
+                    loading={loading}
+                  >
+                    <span>{loading ? "Verifying..." : "Verify Account"}</span>
+                  </ActionButton>
+
+                  {/* Resend Section */}
+                  <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                      Didn&apos;t receive the code?
+                    </p>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <motion.button
+                        type="button"
+                        onClick={triggerOtp}
+                        disabled={!canResend}
+                        whileHover={{ scale: canResend ? 1.02 : 1 }}
+                        whileTap={{ scale: canResend ? 0.98 : 1 }}
+                        className={`
+                          inline-flex items-center gap-2 px-4 py-2.5 rounded-lg
+                          text-sm font-semibold transition-all
+                          ${canResend
+                            ? "bg-teal-500 hover:bg-teal-600 text-white shadow-md hover:shadow-lg"
+                            : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                          }
+                        `}
+                      >
+                        {sending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCcw className="w-4 h-4" />
+                            Resend Code
+                          </>
+                        )}
+                      </motion.button>
+
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        {canResend ? "Available now" : `Wait ${timer}s`}
+                      </span>
+                    </div>
+
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-500" />
+                      Resend unlocks after cooldown ends
+                    </p>
+                  </div>
+                </motion.div>
+              </form>
+
+              {/* Footer */}
+              <div className="mt-8 space-y-4">
+                {/* Divider */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Secure Verification</span>
+                  </div>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
                 </div>
 
-                <div className="mt-2 h-2 rounded-full bg-white/10 overflow-hidden border border-white/10">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${resendProgress}%` }}
-                    transition={{ duration: 0.35 }}
-                    className="h-full bg-gradient-to-r from-teal-400 via-indigo-400 to-purple-400"
-                  />
-                </div>
-
-                <div className="mt-2 text-[11px] text-white/50 flex items-center gap-2">
-                  <Info className="w-3.5 h-3.5" />
-                  Timer starts only after OTP is successfully sent.
+                {/* Back to Login */}
+                <div className="text-center text-sm text-slate-600 dark:text-slate-400">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/login")}
+                    className="text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-semibold hover:underline decoration-2 underline-offset-2 transition-colors"
+                  >
+                    Back to Login
+                  </button>
                 </div>
               </div>
             </div>
-
-            {/* Body */}
-            <motion.form
-              onSubmit={(e) => {
-                e.preventDefault();
-                verifyOtp();
-              }}
-              variants={contentVariants}
-              initial="hidden"
-              animate="visible"
-              className="px-7 py-7 space-y-5 relative"
-            >
-              {/* OTP inputs */}
-              <motion.div variants={itemVariants}>
-                <motion.div
-                  variants={shakeVariants}
-                  animate={shake ? "shake" : "idle"}
-                  className="grid grid-cols-6 gap-2 sm:gap-3"
-                  onPaste={handlePaste}
-                >
-                  {otp.map((data, index) => (
-                    <motion.input
-                      key={index}
-                      whileFocus={{ scale: 1.04 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      ref={(el) => (inputRefs.current[index] = el)}
-                      value={data}
-                      onChange={(e) => handleChange(e.target, index)}
-                      onKeyDown={(e) => handleKeyDown(e, index)}
-                      disabled={loading}
-                      className="
-                        h-12 sm:h-14 w-full
-                        rounded-2xl
-                        text-center text-xl font-black
-                        bg-white/5 text-white
-                        border border-white/10
-                        focus:border-teal-400 focus:ring-4 focus:ring-teal-400/10
-                        outline-none transition
-                        disabled:opacity-60 disabled:cursor-not-allowed
-                      "
-                    />
-                  ))}
-                </motion.div>
-
-                <div className="mt-3 flex items-center justify-between text-xs">
-                  <span className="text-white/50 font-semibold">
-                    Filled:{" "}
-                    <span className="text-white/75 font-black">
-                      {otpFilledCount}/6
-                    </span>
-                  </span>
-
-                  <span className="text-white/50 font-semibold">
-                    Tip: Paste OTP directly
-                    <Sparkles className="inline-block ml-2 w-3.5 h-3.5 text-teal-300" />
-                  </span>
-                </div>
-              </motion.div>
-
-              <AnimatePresence>
-                {error ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    className="
-                      rounded-2xl border border-rose-500/20
-                      bg-rose-500/10 px-4 py-3
-                      text-xs font-semibold text-rose-200
-                      flex items-start gap-2
-                    "
-                  >
-                    <AlertTriangle className="w-4 h-4 mt-0.5 text-rose-300" />
-                    <span>{error}</span>
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-
-              {/* Verify button */}
-              <motion.div variants={itemVariants} className="pt-1">
-                <motion.button
-                  variants={buttonVariants}
-                  initial="idle"
-                  whileHover={!loading ? "hover" : "idle"}
-                  whileTap={!loading ? "tap" : "idle"}
-                  disabled={loading}
-                  className="
-                    w-full rounded-2xl py-3.5
-                    bg-gradient-to-r from-teal-500 via-teal-400 to-emerald-400
-                    text-sm font-black text-[#041018]
-                    shadow-[0_18px_50px_rgba(20,184,166,0.25)]
-                    disabled:opacity-70 disabled:cursor-not-allowed
-                    transition relative overflow-hidden
-                  "
-                >
-                  {/* shine */}
-                  <motion.span
-                    aria-hidden="true"
-                    className="
-                      absolute inset-0
-                      bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.35),transparent)]
-                      opacity-0
-                    "
-                    animate={{
-                      opacity: loading ? 0 : 1,
-                      x: loading ? 0 : ["-120%", "120%"],
-                    }}
-                    transition={{
-                      duration: 1.8,
-                      repeat: loading ? 0 : Infinity,
-                      ease: "linear",
-                    }}
-                  />
-
-                  <AnimatePresence mode="wait">
-                    {loading ? (
-                      <motion.span
-                        key="loading"
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex items-center justify-center gap-2 relative"
-                      >
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Verifying...
-                      </motion.span>
-                    ) : (
-                      <motion.span
-                        key="verify"
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        transition={{ duration: 0.2 }}
-                        className="flex items-center justify-center gap-2 relative"
-                      >
-                        VERIFY ACCOUNT <ArrowRight className="w-4 h-4" />
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </motion.button>
-              </motion.div>
-
-              {/* Resend */}
-              <motion.div variants={itemVariants} className="pt-1">
-                <div className="rounded-3xl border border-white/10 bg-white/5 px-5 py-4">
-                  <p className="text-xs text-white/60 font-semibold">
-                    Didn&apos;t receive the code?
-                  </p>
-
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <motion.button
-                      type="button"
-                      onClick={triggerOtp}
-                      disabled={!canResend}
-                      whileHover={{ scale: canResend ? 1.02 : 1 }}
-                      whileTap={{ scale: canResend ? 0.98 : 1 }}
-                      className={`
-                        inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl
-                        text-xs font-black
-                        border transition
-                        ${
-                          canResend
-                            ? "bg-white/5 text-teal-200 border-white/15 hover:bg-white/10"
-                            : "bg-white/5 text-white/30 border-white/10 cursor-not-allowed"
-                        }
-                      `}
-                    >
-                      {sending ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCcw className="w-4 h-4" />
-                          Resend Code
-                        </>
-                      )}
-                    </motion.button>
-
-                    <span className="text-xs font-bold text-white/50">
-                      {canResend ? "Ready now" : `Resend in ${timer}s`}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 text-[11px] text-white/45 flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-teal-300" />
-                    Resend button unlocks only after cooldown ends.
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Back to login */}
-              <motion.div variants={itemVariants} className="text-center pt-2">
-                <button
-                  type="button"
-                  onClick={() => navigate("/login")}
-                  className="text-xs font-black text-teal-300 hover:text-teal-200 transition"
-                >
-                  Back to Login
-                </button>
-              </motion.div>
-            </motion.form>
           </motion.div>
-        </div>
-      </motion.div>
-    </>
+        </motion.div>
+      </div>
+    </div>
   );
 }
 
