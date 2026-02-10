@@ -2,48 +2,51 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
 import api from "../api/axios";
-import { jwtDecode } from "jwt-decode";
+import { jwtDecode } from "jwt-decode"; // default import
 import { useSocket } from "../hooks/useSocket";
-
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
-  const { disconnectSocket } = useSocket();
+  const { connectSocket, disconnectSocket } = useSocket();
 
-
-  const logout = async () => {
-  try {
-    await api.post("/api/auth/logout");
-  } catch {
-    // ignore backend failure
-  } finally {
-    disconnectSocket();          
-    setUser(null);
-    localStorage.removeItem("accessToken");
-  }
-};
-
+  const setUserFromToken = (token) => {
+    try {
+      const decoded = jwtDecode(token);
+      setUser({
+        id: decoded.id,
+        role: decoded.role,
+        name: decoded.name,
+      });
+    } catch (e) {
+      console.warn("Invalid token in setUserFromToken:", e);
+      setUser(null);
+    }
+  };
 
   const login = (accessToken) => {
     localStorage.setItem("accessToken", accessToken);
     setUserFromToken(accessToken);
+
+    // connect socket after token saved
+    connectSocket();
   };
 
-
-  const setUserFromToken = (token) => {
-    const decoded = jwtDecode(token);
-    setUser({
-      id: decoded.id,
-      role: decoded.role,
-      name: decoded.name,
-    });
+  const logout = async () => {
+    try {
+      await api.post("/api/auth/logout");
+    } catch {
+      // ignore backend failure
+    } finally {
+      disconnectSocket();
+      setUser(null);
+      localStorage.removeItem("accessToken");
+    }
   };
 
   useEffect(() => {
-    // 🚫 Skip auth init on auth pages
-    if (["/login", "/signup","/logout","/verify-otp"].includes(location.pathname)) {
+    if (["/login", "/signup", "/logout", "/verify-otp"].includes(location.pathname)) {
       setLoading(false);
       return;
     }
@@ -55,24 +58,29 @@ export const AuthProvider = ({ children }) => {
         try {
           const decoded = jwtDecode(token);
           const now = Date.now() / 1000;
-
           if (decoded.exp > now) {
             setUserFromToken(token);
+            connectSocket(); // <-- connect with existing token
             setLoading(false);
             return;
           }
-        } catch {
-          // Nothing to write
+        } catch (e) {
+          // fall through to refresh
         }
       }
 
       try {
         const res = await api.post("/api/auth/refresh");
         const newToken = res.data.accessToken;
-        localStorage.setItem("accessToken", newToken);
-        setUserFromToken(newToken);
-      } catch {
-        // ❌ DO NOT logout
+        if (newToken) {
+          localStorage.setItem("accessToken", newToken);
+          setUserFromToken(newToken);
+          connectSocket(); // <- connect after refresh
+        } else {
+          localStorage.removeItem("accessToken");
+          setUser(null);
+        }
+      } catch (e) {
         localStorage.removeItem("accessToken");
         setUser(null);
       } finally {
@@ -81,10 +89,10 @@ export const AuthProvider = ({ children }) => {
     };
 
     initAuth();
-  }, [location.pathname]);
+  }, [location.pathname, connectSocket, disconnectSocket]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login,logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

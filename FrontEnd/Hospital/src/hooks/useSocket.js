@@ -11,6 +11,7 @@ export const useSocket = () => {
   return {
     socketRef: context.socketRef,
     isConnected: context.isConnected,
+    connectSocket: context.connectSocket,       // <- expose connect
     disconnectSocket: context.disconnectSocket,
   };
 };
