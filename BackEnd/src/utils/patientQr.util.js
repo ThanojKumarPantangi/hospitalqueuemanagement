@@ -6,7 +6,7 @@ export const generatePatientQrToken = (patientId) => {
       type: "PATIENT_QR",
       patientId,
     },
-    process.env.PATIENT_QR_SECRET,
+    process.env.PATIENT_QR_EXPIRES,
     { expiresIn: "5m" } // short-lived
   );
 };
