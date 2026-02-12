@@ -58,25 +58,25 @@ export const createTokenController = async (req, res) => {
     });
 
     //  Email after response 
-    // try {
-    //   const dept = await Department.findById(departmentId).lean();
+    try {
+      const dept = await Department.findById(departmentId).lean();
 
-    //   if (patient?.email) {
-    //     await sendEmail({
-    //       to: patient.email,
-    //       subject: `Token Confirmed - ${dept?.name || "Department"} | Smart Q`,
-    //       html: tokenBookedTemplate({
-    //         name: patient.name,
-    //         priority,
-    //         tokenNumber: token.tokenNumber,
-    //         departmentName: dept?.name || "Unknown Department",
-    //         appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),
-    //       }),
-    //     });
-    //   }
-    // } catch (emailErr) {
-    //   console.log("Token confirmation email failed:", emailErr.message);
-    // }
+      if (patient?.email) {
+        await sendEmail({
+          to: patient.email,
+          subject: `Token Confirmed - ${dept?.name || "Department"} | Smart Q`,
+          html: tokenBookedTemplate({
+            name: patient.name,
+            priority,
+            tokenNumber: token.tokenNumber,
+            departmentName: dept?.name || "Unknown Department",
+            appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),
+          }),
+        });
+      }
+    } catch (emailErr) {
+      console.log("Token confirmation email failed:", emailErr.message);
+    }
   } catch (error) {
     return res.status(400).json({
       message: error.message,

@@ -6,57 +6,6 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// api.interceptors.response.use(
-//   (response) => response,
-//   async (error) => {
-//     const originalRequest = error.config;
-
-//     if (!error.response) {
-//       showToast({
-//         type: "error",
-//         message: "Network error. Please check your internet connection.",
-//       });
-//       return Promise.reject(error);
-//     }
-
-//     const status = error.response.status;
-//     const url = originalRequest?.url || "";
-
-//     const shouldRefresh =
-//       status === 401 &&
-//       !originalRequest._retry &&
-//       !url.includes("/api/auth/login") &&
-//       !url.includes("/api/auth/refresh")&&
-//       !url.includes("/api/auth/me");
-
-//     if (shouldRefresh) {
-//       originalRequest._retry = true;
-
-//       try {
-//         await api.post("/api/auth/refresh");
-//         return api(originalRequest);
-//       } catch (refreshError) {
-//         try {
-//           await api.post("/api/auth/logout");
-//         } catch {
-//           //
-//         }
-
-//         const message =
-//           refreshError?.response?.data?.message ||
-//           "Session expired. Please login again.";
-
-//         showToast({ type: "error", message });
-
-//         window.location.href = "/login";
-//         return Promise.reject(refreshError);
-//       }
-//     }
-
-//     return Promise.reject(error);
-//   }
-// );
-
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
