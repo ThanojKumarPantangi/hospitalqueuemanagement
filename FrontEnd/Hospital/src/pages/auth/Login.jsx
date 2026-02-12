@@ -1,8 +1,10 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { loginApi } from "../../api/auth.api";
-import { jwtDecode } from "jwt-decode";
+// import { jwtDecode } from "jwt-decode";
+import {getOrCreateDeviceId} from "../../utils/deviceuuid"
+import api from "../../api/axios";
 import { showToast } from "../../utils/toastBus";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -264,11 +266,14 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [action, setAction] = useState("LOGIN"); // "LOGIN" or "VERIFY_OTP"
+  const [action, setAction] = useState("LOGIN");
   const [showPass, setShowPass] = useState(false);
 
   const navigate = useNavigate();
-  const { login } = useAuth();
+
+  const { setUser } = useAuth();
+
+  
 
   // micro-ref for focus
   const emailRef = useRef(null);
@@ -299,7 +304,6 @@ const Login = () => {
     setError("");
 
     if (action === "VERIFY_OTP") {
-      // Logic requirement: Redirect to OTP page
       navigate("/verify-otp", { state: { email } });
       return;
     }
@@ -311,27 +315,94 @@ const Login = () => {
 
     try {
       setLoading(true);
-      const res = await loginApi({
-        email: email.trim(),
-        password: password.trim()
-      });
 
-      const { accessToken } = res.data;
-      login(accessToken); // Update Auth Context
+      const deviceId = getOrCreateDeviceId();
 
-      const decoded = jwtDecode(accessToken);
-      navigateBasedOnRole(decoded.role);
+      const res = await loginApi(
+        {
+          email: email.trim(),      // Trim email
+          password: password,       // DO NOT trim password
+        },
+        {
+          headers: {
+            "x-device-id": deviceId,
+          },
+        }
+      );
+
+      //MFA Setup Required
+      if (res.data?.mfaSetupRequired) {
+        sessionStorage.setItem("mfaTempToken", res.data.tempToken);
+        navigate("/setup-mfa");
+        return;
+      }
+
+      //  MFA Verification Required
+      if (res.data?.mfaRequired) {
+        sessionStorage.setItem("mfaTempToken", res.data.tempToken);
+        navigate("/verify-mfa");
+        return;
+      }
+
+      //  Normal login (PATIENT)
+      const meRes = await api.get("/api/auth/me");
+      const user = meRes.data;
+
+      setUser(user);
+      navigateBasedOnRole(user.role);
+
     } catch (err) {
-      const message = err.response?.data?.message || "Authentication failed";
 
+      const message =
+        err.response?.data?.message || "Authentication failed";
+
+      //  Phone not verified
       if (message === "Phone number not verified") {
-        showToast({ show: true, message: "Verification Required", type: "info" });
+        showToast({
+          show: true,
+          message: "Verification Required",
+          type: "info",
+        });
+
         sessionStorage.setItem("otpEmail", email);
         setAction("VERIFY_OTP");
-      } else {
-        showToast({ show: true, message, type: "error" });
-        setError(message);
+        return;
       }
+
+      //  MFA Locked
+      if (
+        message.includes("MFA temporarily locked") ||
+        message.includes("Too many failed attempts")
+      ) {
+        showToast({
+          show: true,
+          message,
+          type: "warning",
+        });
+        setError(message);
+        return;
+      }
+
+      //  Suspicious login
+      if (message.includes("Suspicious login")) {
+        showToast({
+          show: true,
+          message,
+          type: "error",
+        });
+        setError(message);
+        return;
+      }
+
+      // Generic authentication error
+      showToast({
+        show: true,
+        message,
+        type: "error",
+      });
+
+      setError(message);
+
     } finally {
       setLoading(false);
     }

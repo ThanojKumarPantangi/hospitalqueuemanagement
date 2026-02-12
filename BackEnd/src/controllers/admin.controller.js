@@ -20,7 +20,7 @@ const getStartOfISTDay = (date = new Date()) => {
 
 export const createDepartment = async (req, res) => {
   try {
-    // 🔐 Admin-only
+    //  Admin-only
     if (req.user.role !== "ADMIN") {
       return res.status(403).json({
         success: false,
@@ -29,7 +29,7 @@ export const createDepartment = async (req, res) => {
     }
     const { name, maxCounters, consultationFee, slotDurationMinutes } = req.body;
 
-    // 🛑 Basic validation
+    // Basic validation
     if (!name || consultationFee == null || slotDurationMinutes == null) {
       return res.status(400).json({
         success: false,
@@ -178,7 +178,7 @@ export const createDoctor = async (req, res) => {
 
     const doctor = await User.create({
       name:name.trim().toLowerCase(),
-      email,
+      email: email.trim().toLowerCase(),
       doctorRollNo,
       role: "DOCTOR",
       departments: departmentIds,
@@ -263,7 +263,7 @@ export const updateDoctorDepartments = async (req, res) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    // ✅ store as single department
+    // store as single department
     doctor.departments = departmentId;
     await doctor.save();
 

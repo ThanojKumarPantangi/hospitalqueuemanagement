@@ -45,7 +45,7 @@ export const sendMessageService = async ({
     metadata,
   });
 
-  // 🔁 MULTI-TAB SAFE SOCKET EMIT
+  // MULTI-TAB SAFE SOCKET EMIT
   const socketIds = getOnlineUserSockets(toUserId);
 
   if (socketIds.size > 0) {
@@ -53,7 +53,7 @@ export const sendMessageService = async ({
       getIO().to(socketId).emit("messages:new", message.toObject());
     }
 
-    // ✅ MARK AS DELIVERED (at least one socket received it)
+    //  MARK AS DELIVERED (at least one socket received it)
     await Message.updateOne(
       { _id: message._id },
       { $set: { deliveredAt: new Date() } }
@@ -105,7 +105,7 @@ export const sendDepartmentAnnouncementService = async ({
     }))
   );
 
-  // 🔁 EMIT TO ALL ONLINE SOCKETS PER USER
+  //  EMIT TO ALL ONLINE SOCKETS PER USER
   for (const msg of messages) {
     const socketIds = getOnlineUserSockets(msg.toUser.toString());
 
@@ -195,7 +195,7 @@ export const sendGlobalActiveDoctorsMessageService = async ({
   title,
   content,
 }) => {
-  // 1️⃣ Find all eligible doctors
+  //  Find all eligible doctors
   const doctors = await User.find({
     role: "DOCTOR",
     isActive: true,
@@ -204,7 +204,7 @@ export const sendGlobalActiveDoctorsMessageService = async ({
 
   if (!doctors.length) return [];
 
-  // 2️⃣ Create messages (one per doctor)
+  //  Create messages (one per doctor)
   const messages = await Message.insertMany(
     doctors.map(doc => ({
       toUser: doc._id,
@@ -219,7 +219,7 @@ export const sendGlobalActiveDoctorsMessageService = async ({
     }))
   );
 
-  // 3️⃣ Emit to all online sockets (multi-tab safe)
+  //  Emit to all online sockets (multi-tab safe)
   for (const msg of messages) {
     const socketIds = getOnlineUserSockets(msg.toUser.toString());
 
@@ -228,7 +228,7 @@ export const sendGlobalActiveDoctorsMessageService = async ({
         getIO().to(socketId).emit("messages:new", msg.toObject());
       }
 
-      // 4️⃣ Mark delivered if at least one socket received it
+      //  Mark delivered if at least one socket received it
       await Message.updateOne(
         { _id: msg._id },
         { $set: { deliveredAt: new Date() } }
@@ -262,7 +262,7 @@ export const sendMessageToAdminService = async ({
     throw new Error("No active admin available");
   }
 
-  // ✅ ALWAYS create a new thread (new ticket)
+  //  ALWAYS create a new thread (new ticket)
   const threadId = new mongoose.Types.ObjectId();
 
   const message = await Message.create({
@@ -309,7 +309,7 @@ export const getUserThreadsService = async ({ userId }) => {
       },
     },
     {
-      // ✅ FIX: correct field
+      //  FIX: correct field
       $sort: { createdAt: -1 },
     },
     {
@@ -425,7 +425,7 @@ export const replyToThreadService = async ({
   }
 
   /* ============================
-     🚫 BLOCK CLOSED TICKETS
+      BLOCK CLOSED TICKETS
   ============================ */
   if (rootMessage.metadata?.ticketStatus === "CLOSED") {
     throw new Error("Ticket is closed");
@@ -602,7 +602,7 @@ export const getThreadMessagesService = async ({ threadId, adminId }) => {
     .populate("toUser", "name role")
     .lean();
 
-  // ✅ Mark admin-side messages as read
+  //  Mark admin-side messages as read
   await Message.updateMany(
     {
       threadId,
@@ -688,7 +688,7 @@ export const closeTicketService = async ({
 export const previewRecipientsService = async ({ mode, departmentId }) => {
   let users = [];
 
-  // ✅ IST-safe day range
+  //  IST-safe day range
   const date = new Date();
   const start = getStartOfISTDay(date);
   const end = new Date(start);
@@ -702,14 +702,14 @@ export const previewRecipientsService = async ({ mode, departmentId }) => {
       throw new Error("departmentId is required for department preview");
     }
 
-    // 1️⃣ Doctors assigned to department
+    //  Doctors assigned to department
     const doctors = await User.find({
       role: "DOCTOR",
       departments: departmentId,
       isActive: true,
     }).select("_id name role");
 
-    // 2️⃣ Patients via today's tokens (IST-safe)
+    //  Patients via today's tokens (IST-safe)
     const tokens = await Token.find({
       department: departmentId,
       appointmentDate: {
@@ -784,7 +784,7 @@ export const getMessagesService = async ({
 
   const filter = {
     toUser: userId,
-    threadId: { $exists: false }, // 🔑 KEY FIX
+    threadId: { $exists: false }, 
   };
 
   const [messages, total] = await Promise.all([

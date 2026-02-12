@@ -6,9 +6,10 @@ const refreshTokenSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
-    // 🔥 link refresh token to a session (device)
+    // Link refresh token to a specific session (device)
     session: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Session",
@@ -16,6 +17,7 @@ const refreshTokenSchema = new mongoose.Schema(
       index: true,
     },
 
+    // JWT ID
     jti: {
       type: String,
       required: true,
@@ -23,15 +25,24 @@ const refreshTokenSchema = new mongoose.Schema(
       index: true,
     },
 
+    // 🔐 Hashed refresh token (SHA256 of raw token)
+    tokenHash: {
+      type: String,
+      required: true,
+      index: true,
+    },
+
+    // Expiry date (TTL index)
     expiresAt: {
       type: Date,
       required: true,
-      index: { expires: 0 },
+      index: { expires: 0 }, // Automatically deletes document when expiresAt is reached
     },
 
     revoked: {
       type: Boolean,
       default: false,
+      index: true,
     },
 
     replacedByJti: {
@@ -41,5 +52,8 @@ const refreshTokenSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Optional helpful compound index for faster rotation lookups
+refreshTokenSchema.index({ user: 1, session: 1, revoked: 1 });
 
 export default mongoose.model("RefreshToken", refreshTokenSchema);

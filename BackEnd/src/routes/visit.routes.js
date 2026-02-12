@@ -16,7 +16,7 @@ router.post("/",
 router.get(
   "/patient/:patientId",
   authMiddleware,
-  roleMiddleware("DOCTOR"," ADMIN"),
+  roleMiddleware("DOCTOR","ADMIN"),
   getPatientVisitsController
 );
 

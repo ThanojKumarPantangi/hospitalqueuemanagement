@@ -8,11 +8,34 @@ export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const { accessToken, refreshToken, user } = await loginService(
-      email,
-      password,
-      req
-    );
+    const result = await loginService(email, password, req);
+
+    if (result.mfaSetupRequired) {
+      return res.json({
+        mfaSetupRequired: true,
+        tempToken: result.tempToken,
+      });
+    }
+
+
+    // If MFA required → do NOT create session yet
+    if (result.mfaRequired) {
+      return res.status(200).json({
+        mfaRequired: true,
+        tempToken: result.tempToken,
+      });
+    }
+
+    // Normal login (PATIENT)
+    const { accessToken, refreshToken, user } = result;
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 15 * 60 * 1000,
+    });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -22,9 +45,33 @@ export const login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({ accessToken, role: user.role });
+    return res.json({
+      message: "Login successful",
+      role: user.role,
+      userId: user._id,
+    });
+
   } catch (err) {
     return res.status(401).json({ message: err.message });
+  }
+};
+
+export const getMe = async (req, res) => {
+  try {
+    // authMiddleware already validated session + user
+    const user = req.user;
+
+    return res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Failed to fetch user",
+    });
   }
 };
 
@@ -82,6 +129,16 @@ export const refreshTokenController = async (req, res) => {
 
     const tokens = await rotateRefreshToken(token);
 
+    // Set new access token cookie
+    res.cookie("accessToken", tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    // Set new refresh token cookie
     res.cookie("refreshToken", tokens.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -90,10 +147,8 @@ export const refreshTokenController = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-
-    return res.json({ accessToken: tokens.accessToken });
+    return res.json({ success: true });
   } catch (error) {
-    // 🔥 Refresh token reuse / stolen token detected
     if (error.message === "Refresh token reuse detected") {
       return res.status(401).json({
         message:
@@ -102,7 +157,6 @@ export const refreshTokenController = async (req, res) => {
       });
     }
 
-    // Session inactive / expired
     if (error.message === "Session expired") {
       return res.status(401).json({
         message: "Session expired. Please login again.",
@@ -110,13 +164,11 @@ export const refreshTokenController = async (req, res) => {
       });
     }
 
-    // Any other refresh failure
     return res.status(401).json({
       message: "Unauthorized. Please login again.",
       code: "UNAUTHORIZED",
     });
   }
-
 };
 
 export const logoutController = async (req, res) => {
@@ -124,27 +176,30 @@ export const logoutController = async (req, res) => {
     const incomingToken = req.cookies.refreshToken;
 
     if (incomingToken) {
-      const decoded = verifyRefreshToken(incomingToken);
+      try {
+        const decoded = verifyRefreshToken(incomingToken);
 
-      // revoke refresh token
-      if (decoded?.id && decoded?.jti && decoded?.sessionId) {
-        await RefreshToken.findOneAndUpdate(
-          {
-            user: decoded.id,
-            session: decoded.sessionId,
-            jti: decoded.jti,
-            revoked: false,
-          },
-          { revoked: true }
-        );
-      }
+        if (decoded?.id && decoded?.jti && decoded?.sessionId) {
+          await RefreshToken.findOneAndUpdate(
+            {
+              user: decoded.id,
+              session: decoded.sessionId,
+              jti: decoded.jti,
+              revoked: false,
+            },
+            { revoked: true }
+          );
 
-      // deactivate session
-      if (decoded?.sessionId) {
-        await Session.findByIdAndUpdate(decoded.sessionId, { isActive: false });
+          await Session.findByIdAndUpdate(decoded.sessionId, {
+            isActive: false,
+          });
+        }
+      } catch {
+        // ignore invalid token, continue clearing cookies
       }
     }
 
+    // Clear refresh token cookie
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -152,11 +207,25 @@ export const logoutController = async (req, res) => {
       path: "/",
     });
 
+    // Clear access token cookie
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
 
     return res.status(200).json({ message: "Logged out successfully" });
-  } catch (error) {
-    // even if token invalid, still clear cookie
+  } catch {
+    // Always clear cookies even if error
     res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+
+    res.clearCookie("accessToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

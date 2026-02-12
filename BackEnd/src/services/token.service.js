@@ -83,14 +83,14 @@ export const createToken = async ({
     throw new Error("No doctors available in this department");
   }
 
-  // ✅ Normalize to IST day start (stored in DB as UTC equivalent)
+  //  Normalize to IST day start (stored in DB as UTC equivalent)
   const today = getStartOfISTDay(new Date());
   const dayStart = getStartOfISTDay(appointmentDate);
 
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
 
-  // ✅ Date validation (based on IST day)
+  //  Date validation (based on IST day)
   const diffDays = (dayStart - today) / (1000 * 60 * 60 * 24);
 
   if (diffDays < 0) throw new Error("Cannot book past dates");
@@ -98,7 +98,7 @@ export const createToken = async ({
     throw new Error(`Booking allowed only ${MAX_ADVANCE_DAYS} days ahead`);
   }
 
-  // 🔒 one active token per patient per IST day (range match)
+  //  one active token per patient per IST day (range match)
   const existing = await Token.findOne({
     patient: patientId,
     appointmentDate: { $gte: dayStart, $lt: dayEnd },
@@ -109,7 +109,7 @@ export const createToken = async ({
     throw new Error("Patient already has an active token for this day");
   }
 
-  // ✅ Priority control
+  //  Priority control
   let finalPriority = "NORMAL";
   if (
     createdByRole === "ADMIN" &&
@@ -118,10 +118,10 @@ export const createToken = async ({
     finalPriority = requestedPriority;
   }
 
-  // 🔁 safe tokenNumber generation with retry
+  //  safe tokenNumber generation with retry
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      // ✅ Find last token for this department in the same IST day
+      // Find last token for this department in the same IST day
       const lastToken = await Token.findOne({
         department: departmentId,
         appointmentDate: { $gte: dayStart, $lt: dayEnd },
@@ -132,7 +132,7 @@ export const createToken = async ({
 
       const nextTokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
 
-      // ✅ Create token with appointmentDate stored as dayStart (consistent)
+      //  Create token with appointmentDate stored as dayStart (consistent)
       const token = await Token.create({
         tokenNumber: nextTokenNumber,
         patient: patientId,
@@ -142,7 +142,7 @@ export const createToken = async ({
         appointmentDate: dayStart,
       });
 
-      // ✅ Recalculate queue only if booking is for today
+      //  Recalculate queue only if booking is for today
       if (dayStart.getTime() === today.getTime()) {
         await recalculateQueuePositions(departmentId);
       }
@@ -226,21 +226,21 @@ export const getNextToken = async (departmentId, doctorId) => {
 export const completeToken = async (tokenId) => {
   const today = getStartOfISTDay();
 
-  // 1️⃣ Load token (single source of truth)
+  //  Load token (single source of truth)
   const token = await Token.findById(tokenId);
   if (!token) throw new Error("Token not found");
 
-  // 2️⃣ Ensure token is for today
+  //  Ensure token is for today
   if (token.appointmentDate.getTime() !== today.getTime()) {
     throw new Error("Cannot complete token not scheduled for today");
   }
 
-  // 3️⃣ Ensure correct state
+  //  Ensure correct state
   if (!isTransitionAllowed(token.status, "COMPLETED")) {
     throw new Error("Invalid token state transition");
   }
 
-  // 4️⃣ HARD VALIDATION: visit must exist for THIS token & department
+  //  HARD VALIDATION: visit must exist for THIS token & department
   const visitExists = await Visit.exists({
     token: token._id,                 // same token
     department: token.department,     // same department
@@ -252,7 +252,7 @@ export const completeToken = async (tokenId) => {
     );
   }
 
-  // 5️⃣ Complete token
+  //  Complete token
   token.status = "COMPLETED";
   token.completedAt = new Date();
   await token.save();
@@ -490,7 +490,7 @@ export const recalculateQueuePositions = async (departmentId) => {
 
   const slotDurationMinutes = department?.slotDurationMinutes || 10;
 
-  // 1️⃣ Fetch all waiting tokens for today + department
+  //  Fetch all waiting tokens for today + department
   const tokens = await Token.find({
   department: departmentId,
   appointmentDate: today,
@@ -503,7 +503,7 @@ export const recalculateQueuePositions = async (departmentId) => {
   if (!tokens.length) return;
 
 
-  // 3️⃣ Emit waitingCount to each user privately
+  //  Emit waitingCount to each user privately
   tokens.forEach((token, index) => {
     const waitingTime = calculateWaitingTime({
       patientsAhead: index,

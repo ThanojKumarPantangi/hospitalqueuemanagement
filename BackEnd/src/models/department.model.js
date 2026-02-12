@@ -18,7 +18,7 @@ const departmentSchema = new mongoose.Schema(
       default: 10,
     },
 
-    // 💰 Consultation fee (ADMIN CONTROLLED)
+    // Consultation fee (ADMIN CONTROLLED)
     consultationFee: {
       type: Number,
       required: true,

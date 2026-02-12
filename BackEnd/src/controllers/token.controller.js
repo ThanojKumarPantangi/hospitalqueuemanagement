@@ -22,7 +22,7 @@ export const createTokenController = async (req, res) => {
 
     let finalPatientId = req.user._id;
 
-    // ✅ Admin can book for any patient
+    // Admin can book for any patient
     if (req.user.role === "ADMIN") {
       if (!patientId) {
         return res.status(400).json({ message: "patientId is required for admin booking" });
@@ -30,7 +30,7 @@ export const createTokenController = async (req, res) => {
       finalPatientId = patientId;
     }
 
-    // ✅ Patient must be phone verified (admin booking also checks patient)
+    // Patient must be phone verified (admin booking also checks patient)
     const patient = await User.findById(finalPatientId).select(
       "_id name email phone role isActive isPhoneVerified"
     );
@@ -51,32 +51,32 @@ export const createTokenController = async (req, res) => {
       appointmentDate,
     });
 
-    // ✅ Fast response
+    // Fast response
     res.status(201).json({
       message: "Token created successfully",
       token,
     });
 
-    // ✅ Email after response 
-    try {
-      const dept = await Department.findById(departmentId).lean();
+    //  Email after response 
+    // try {
+    //   const dept = await Department.findById(departmentId).lean();
 
-      if (patient?.email) {
-        await sendEmail({
-          to: patient.email,
-          subject: `Token Confirmed - ${dept?.name || "Department"} | Smart Q`,
-          html: tokenBookedTemplate({
-            name: patient.name,
-            priority,
-            tokenNumber: token.tokenNumber,
-            departmentName: dept?.name || "Unknown Department",
-            appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),
-          }),
-        });
-      }
-    } catch (emailErr) {
-      console.log("Token confirmation email failed:", emailErr.message);
-    }
+    //   if (patient?.email) {
+    //     await sendEmail({
+    //       to: patient.email,
+    //       subject: `Token Confirmed - ${dept?.name || "Department"} | Smart Q`,
+    //       html: tokenBookedTemplate({
+    //         name: patient.name,
+    //         priority,
+    //         tokenNumber: token.tokenNumber,
+    //         departmentName: dept?.name || "Unknown Department",
+    //         appointmentDate: new Date(token.appointmentDate).toLocaleDateString(),
+    //       }),
+    //     });
+    //   }
+    // } catch (emailErr) {
+    //   console.log("Token confirmation email failed:", emailErr.message);
+    // }
   } catch (error) {
     return res.status(400).json({
       message: error.message,

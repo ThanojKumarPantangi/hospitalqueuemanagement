@@ -2,7 +2,7 @@ import DoctorProfile from "../models/doctorProfile.model.js";
 import User from "../models/user.model.js";
 
 export const fetchDoctorProfileByUserId = async (userId) => {
-  // 1️⃣ Ensure user exists
+  // Ensure user exists
   const user = await User.findById(userId)
     .select("name role doctorRollNo isVerified isAvailable isActive email phone");
 
@@ -10,12 +10,12 @@ export const fetchDoctorProfileByUserId = async (userId) => {
     throw new Error("User not found");
   }
 
-  // 2️⃣ Ensure user is a doctor
+  // Ensure user is a doctor
   if (user.role !== "DOCTOR") {
     throw new Error("User is not a doctor");
   }
 
-  // 3️⃣ Fetch doctor profile with department
+  // Fetch doctor profile with department
   const profile = await DoctorProfile.findOne({ user: userId })
     .populate("department", "name consultationFee slotDurationMinutes")
     .lean();
@@ -56,13 +56,13 @@ export const updateDoctorProfileByRole = async ({
   targetUserId,
   payload,
 }) => {
-  // 1️⃣ Validate target user
+  // 1Validate target user
   const user = await User.findById(targetUserId).select("role");
   if (!user || user.role !== "DOCTOR") {
     throw new Error("Target user is not a doctor");
   }
 
-  // 2️⃣ Ownership check
+  //  Ownership check
   if (
     actor.role === "DOCTOR" &&
     actor._id.toString() !== targetUserId.toString()
@@ -70,10 +70,10 @@ export const updateDoctorProfileByRole = async ({
     throw new Error("Doctors can update only their own profile");
   }
 
-  // 3️⃣ Find profile
+  // Find profile
   let profile = await DoctorProfile.findOne({ user: targetUserId });
 
-  // 4️⃣ CREATE → ADMIN ONLY
+  //  CREATE → ADMIN ONLY
   if (!profile) {
     if (actor.role !== "ADMIN") {
       throw new Error("Only admin can create doctor profile");
@@ -99,7 +99,7 @@ export const updateDoctorProfileByRole = async ({
     return profile;
   }
 
-  // 5️⃣ UPDATE
+  //  UPDATE
   const allowedFields =
     actor.role === "ADMIN" ? ADMIN_ALLOWED_FIELDS : DOCTOR_ALLOWED_FIELDS;
 
@@ -114,7 +114,7 @@ export const updateDoctorProfileByRole = async ({
     throw new Error("No permitted fields to update");
   }
 
-  // ✅ 5.1 Department change validation ONLY when department is changing
+  // Department change validation ONLY when department is changing
   if (
     updateData.department !== undefined &&
     updateData.department?.toString() !== profile.department?.toString()
@@ -129,7 +129,7 @@ export const updateDoctorProfileByRole = async ({
     }
   }
 
-  // 6️⃣ Validate OPD timings
+  //  Validate OPD timings
   if (updateData.opdTimings) {
     for (const slot of updateData.opdTimings) {
       if (!slot.startTime || !slot.endTime) {
@@ -141,7 +141,7 @@ export const updateDoctorProfileByRole = async ({
     }
   }
 
-  // 7️⃣ Apply update
+  //  Apply update
   profile = await DoctorProfile.findOneAndUpdate(
     { user: targetUserId },
     { $set: updateData },
@@ -155,7 +155,7 @@ export const fetchPublicDoctors = async ({
   department,
   specialization,
 }) => {
-  // 1️⃣ Base user filter (public visibility)
+  // Base user filter (public visibility)
   const userFilter = {
     role: "DOCTOR",
     isActive: true,
@@ -170,7 +170,7 @@ export const fetchPublicDoctors = async ({
 
   const userIds = users.map(u => u._id);
 
-  // 2️⃣ Profile filter (OPERATIONAL)
+  //  Profile filter (OPERATIONAL)
   const profileFilter = {
     user: { $in: userIds },
   };
@@ -183,7 +183,7 @@ export const fetchPublicDoctors = async ({
     profileFilter.specialization = specialization;
   }
 
-  // 3️⃣ Fetch profiles with department
+  //  Fetch profiles with department
   const profiles = await DoctorProfile.find(profileFilter)
     .populate("department", "name consultationFee")
     .select("user specialization experienceYears department")
@@ -193,7 +193,7 @@ export const fetchPublicDoctors = async ({
     profiles.map(p => [p.user.toString(), p])
   );
 
-  // 4️⃣ Merge user + profile data
+  //  Merge user + profile data
   return users
     .map(u => {
       const profile = profileMap.get(u._id.toString());

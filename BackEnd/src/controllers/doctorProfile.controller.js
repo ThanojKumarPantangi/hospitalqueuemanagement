@@ -5,7 +5,7 @@ import {
 } from "../services/doctorProfile.service.js";
 
 /**
- * 👨‍⚕️ Doctor → own profile
+ * Doctor → own profile
  */
 export const getMyDoctorProfile = async (req, res) => {
   try {
@@ -31,7 +31,7 @@ export const getMyDoctorProfile = async (req, res) => {
 };
 
 /**
- * 👨‍💼 Admin → any doctor profile
+ *  Admin → any doctor profile
  */
 export const getDoctorProfileById = async (req, res) => {
   try {
@@ -51,7 +51,7 @@ export const getDoctorProfileById = async (req, res) => {
 };
 
 /**
- * 👨‍⚕️ Doctor updates own profile
+ * Doctor updates own profile
  */
 
 export const updateMyDoctorProfile = async (req, res) => {
@@ -82,7 +82,7 @@ export const updateMyDoctorProfile = async (req, res) => {
 };
 
 /**
- * 👨‍💼 Admin updates any doctor profile
+ * Admin updates any doctor profile
  */
 export const adminUpdateDoctorProfile = async (req, res) => {
   try {

@@ -5,6 +5,9 @@ import PasswordReset from "../models/passwordReset.model.js";
 import { revokeAllUserSessions } from "../services/sessionRevoke.service.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { resetPasswordTemplate } from "../emailTemplates/resetPassword.template.js";
+
+
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
 /**
  * Change Password
  * Requires old password
@@ -27,10 +30,10 @@ export const changePasswordController = async (req, res) => {
       return res.status(400).json({ message: "Old password is incorrect" });
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
     await user.save();
 
-    // 🔐 LOGOUT FROM ALL DEVICES
+    // LOGOUT FROM ALL DEVICES
     await revokeAllUserSessions(user._id);
     res.clearCookie("refreshToken", {
       httpOnly: true,
@@ -71,7 +74,7 @@ export const changePhoneController = async (req, res) => {
     user.isPhoneVerified = false;
     await user.save();
 
-    // 🔐 LOGOUT FROM ALL DEVICES
+    // LOGOUT FROM ALL DEVICES
     await revokeAllUserSessions(user._id);
 
     res.clearCookie("refreshToken", {
@@ -99,7 +102,7 @@ export const forgotPasswordController = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-    // 🔐 do not reveal if email exists
+    // do not reveal if email exists
     if (!user) {
       return res.json({
         message: "If the email exists, a reset link has been sent.",
@@ -178,10 +181,10 @@ export const resetPasswordController = async (req, res) => {
     await resetDoc.save();
 
     // update password
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = await bcrypt.hash(newPassword,BCRYPT_ROUNDS);
     await user.save();
 
-    // 🔥 revoke all sessions + refresh tokens (best security)
+    // revoke all sessions + refresh tokens (best security)
     await revokeAllUserSessions(user._id);
 
     return res.json({

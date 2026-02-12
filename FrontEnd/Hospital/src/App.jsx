@@ -8,6 +8,8 @@ import DoctorSignup from "./pages/auth/DoctorSignup";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import OtpVerify from "./pages/auth/OtpVerify";
+import VerifyMfa from "./pages/auth/VerifyMfa";
+import SetupMfa from "./pages/auth/SetupMfa";
 import Home from "./pages/main/HospitalRolesLanding.jsx";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -50,6 +52,8 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/verify-otp" element={<OtpVerify />} />
         <Route path="/doctor-signup" element={<DoctorSignup />} />
+        <Route path="/setup-mfa" element={<SetupMfa />} />
+        <Route path="/verify-mfa" element={<VerifyMfa />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
       </Route>

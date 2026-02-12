@@ -37,6 +37,11 @@ const sessionSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    
+    absoluteExpiresAt: {
+      type: Date,
+      required: true
+    },
 
     lastSeenAt: {
       type: Date,

@@ -4,21 +4,19 @@ import Session from "../models/session.model.js";
 
 const authMiddleware = async (req, res, next) => {
   try {
-    const header = req.headers.authorization;
-    if (!header?.startsWith("Bearer ")) {
+    // Read access token from HttpOnly cookie
+    const token = req.cookies?.accessToken;
+
+    if (!token) {
       return res.status(401).json({ message: "No access token" });
     }
 
-    const token = header.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-
-    /**
-     * 🔐 SESSION VALIDATION (NEW)
-     */
 
     if (!decoded?.id || !decoded?.sessionId) {
       return res.status(401).json({ message: "Invalid token payload" });
     }
+
     const session = await Session.findById(decoded.sessionId);
     if (!session || !session.isActive) {
       return res.status(401).json({
@@ -31,19 +29,17 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Update activity timestamp (non-blocking)
     Session.updateOne(
       { _id: session._id },
       { lastSeenAt: new Date() }
     ).catch(() => {});
-
 
     req.user = user;
     req.sessionId = decoded.sessionId;
 
     next();
   } catch {
-    res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
 

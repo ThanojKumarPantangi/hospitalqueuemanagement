@@ -5,6 +5,8 @@ import User from "../models/user.model.js";
 
 dotenv.config({ path: '../.env' });
 
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
+
 if (!process.env.MONGO_URI) {
   console.error("MONGO_URI not set");
   process.exit(1);
@@ -18,7 +20,7 @@ if (existingAdmin) {
   process.exit(0);
 }
 
-const passwordHash = await bcrypt.hash("Admin@123", 10);
+const passwordHash = await bcrypt.hash("Admin@123", BCRYPT_ROUNDS);
 await User.create({
   name: "Super Admin",
   email: "admin@hospital.com",

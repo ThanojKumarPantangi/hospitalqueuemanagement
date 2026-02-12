@@ -12,7 +12,7 @@ import roleMiddleware from "../middlewares/role.middleware.js";
 const router = express.Router();
 
 /**
- * 👨‍⚕️ Doctor → get own profile
+ *  Doctor → get own profile
  */
 router.get(
   "/me",
@@ -22,7 +22,7 @@ router.get(
 );
 
 /**
- * 👨‍⚕️ PATIENT → get public doctors list
+ *  PATIENT → get public doctors list
  */
 router.get(
   "/doctors",
@@ -32,7 +32,7 @@ router.get(
 );
 
 /**
- * 👨‍⚕️ Doctor → save own profile (create/update)
+ *  Doctor → save own profile (create/update)
  */
 router.post(
   "/me",
@@ -42,7 +42,7 @@ router.post(
 );
 
 /**
- * 👨‍💼 Admin → save any doctor profile
+ *  Admin → save any doctor profile
  */
 router.post(
   "/:userId",
@@ -52,7 +52,7 @@ router.post(
 );
 
 /**
- * 👨‍💼 Admin → get any doctor profile by userId
+ *  Admin → get any doctor profile by userId
  */
 router.get(
   "/:userId",

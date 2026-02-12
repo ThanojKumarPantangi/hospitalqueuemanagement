@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import Message from "../models/message.model.js";
 import Session from "../models/session.model.js";
+import cookie from "cookie";
 import {
   addSocketToSession,
   removeSocketFromSession,
@@ -33,13 +34,24 @@ export const initSocket = (server) => {
   ============================ */
   io.use(async (socket, next) => {
     try {
-      const token =
-        socket.handshake.auth?.token ||
-        socket.handshake.headers?.authorization?.split(" ")[1];
+      const rawCookie = socket.handshake.headers.cookie;
 
-      if (!token) return next(new Error("Authentication error"));
+      if (!rawCookie) {
+        return next(new Error("Authentication error"));
+      }
+
+      const parsed = cookie.parse(rawCookie);
+      const token = parsed.accessToken;
+
+      if (!token) {
+        return next(new Error("No access token"));
+      }
 
       const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+
+      if (!decoded?.id || !decoded?.sessionId) {
+        return next(new Error("Invalid token payload"));
+      }
 
       // 🔐 Session validation
       const session = await Session.findById(decoded.sessionId);
@@ -97,7 +109,7 @@ export const initSocket = (server) => {
        (Doctors / Patients only)
     ============================ */
     socket.on("join-department", async (departmentId) => {
-      if (!departmentId || role === "admin") return;
+      if (!departmentId || role === "ADMIN") return;
 
       if (
         socket.currentDepartment &&
@@ -130,7 +142,7 @@ export const initSocket = (server) => {
     });
 
     socket.on("leave-department", (departmentId) => {
-      if (!departmentId || role === "admin") return;
+      if (!departmentId || role === "ADMIN") return;
 
       socket.leave(departmentId);
       if (socket.currentDepartment === departmentId) {

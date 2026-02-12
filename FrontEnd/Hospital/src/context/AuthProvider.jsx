@@ -1,98 +1,84 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
 import { AuthContext } from "./AuthContext";
 import api from "../api/axios";
-import { jwtDecode } from "jwt-decode"; // default import
 import { useSocket } from "../hooks/useSocket";
+import { useLocation } from "react-router-dom";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const location = useLocation();
   const { connectSocket, disconnectSocket } = useSocket();
+  const location = useLocation();
 
-  const setUserFromToken = (token) => {
+  const fetchUser = useCallback(async () => {
     try {
-      const decoded = jwtDecode(token);
-      setUser({
-        id: decoded.id,
-        role: decoded.role,
-        name: decoded.name,
-      });
-    } catch (e) {
-      console.warn("Invalid token in setUserFromToken:", e);
+      const res = await api.get("/api/auth/me");
+      setUser(res.data);
+    } catch {
       setUser(null);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
-  const login = (accessToken) => {
-    localStorage.setItem("accessToken", accessToken);
-    setUserFromToken(accessToken);
-
-    // connect socket after token saved
-    connectSocket();
+  const login = async () => {
+    await fetchUser();
   };
 
   const logout = async () => {
     try {
       await api.post("/api/auth/logout");
     } catch {
-      // ignore backend failure
-    } finally {
-      disconnectSocket();
-      setUser(null);
-      localStorage.removeItem("accessToken");
+      //
     }
+
+    setUser(null);
+    disconnectSocket();
   };
 
   useEffect(() => {
-    if (["/login", "/signup", "/logout", "/verify-otp"].includes(location.pathname)) {
+    const pathname = location.pathname;
+
+    const publicRoutes = [
+      "/login",
+      "/signup",
+      "/doctor-signup",
+      "/forgot-password",
+      "/verify-otp",
+    ];
+
+    const mfaRoutes = [
+      "/setup-mfa",
+      "/verify-mfa",
+    ];
+
+    const isPublic = publicRoutes.includes(pathname);
+    const isMfaStage = mfaRoutes.includes(pathname);
+
+    // During MFA stage → DO NOT validate session
+    if (isPublic || isMfaStage) {
       setLoading(false);
       return;
     }
 
-    const initAuth = async () => {
-      const token = localStorage.getItem("accessToken");
+    // Only validate session for protected routes
+    fetchUser();
 
-      if (token) {
-        try {
-          const decoded = jwtDecode(token);
-          const now = Date.now() / 1000;
-          if (decoded.exp > now) {
-            setUserFromToken(token);
-            connectSocket(); // <-- connect with existing token
-            setLoading(false);
-            return;
-          }
-        } catch (e) {
-          // fall through to refresh
-        }
-      }
+  }, [fetchUser, location.pathname]);
 
-      try {
-        const res = await api.post("/api/auth/refresh");
-        const newToken = res.data.accessToken;
-        if (newToken) {
-          localStorage.setItem("accessToken", newToken);
-          setUserFromToken(newToken);
-          connectSocket(); // <- connect after refresh
-        } else {
-          localStorage.removeItem("accessToken");
-          setUser(null);
-        }
-      } catch (e) {
-        localStorage.removeItem("accessToken");
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initAuth();
-  }, [location.pathname, connectSocket, disconnectSocket]);
+  // Socket depends strictly on authenticated user
+  useEffect(() => {
+    if (user) {
+      connectSocket();
+    } else {
+      disconnectSocket();
+    }
+  }, [user, connectSocket, disconnectSocket]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, loading, login, logout, setUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

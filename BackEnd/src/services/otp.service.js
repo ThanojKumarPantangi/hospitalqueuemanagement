@@ -96,13 +96,13 @@ export const verifyOTP = async (email, otp) => {
     throw new Error("Invalid OTP");
   }
 
-  // ✅ Mark phone verified using EMAIL lookup
+  //  Mark phone verified using EMAIL lookup
   await User.findOneAndUpdate(
     { email },
     { isPhoneVerified: true }
   );
 
-  // ✅ Clean up OTPs for this user
+  //  Clean up OTPs for this user
   await OTP.deleteMany({ email });
 
   return true;

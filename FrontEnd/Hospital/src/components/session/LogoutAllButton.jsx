@@ -19,7 +19,6 @@ export default function LogoutAllButton() {
     try {
       await logoutAllSessionsApi();
       setIsPending(false);
-      localStorage.removeItem("accessToken");
       navigate("/login");
     } catch (error) {
       console.error("Logout failed", error);

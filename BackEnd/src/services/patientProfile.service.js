@@ -75,10 +75,10 @@ export const updatePatientProfile = async (userId, updateData) => {
   if (updateData.emergencyContact) profileUpdates.emergencyContact = updateData.emergencyContact;
   if (updateData.address) profileUpdates.address = updateData.address;
 
-  // 🔍 check if profile already exists
+  //  check if profile already exists
   const existingProfile = await PatientProfile.findOne({ userId });
 
-  // 🟢 FIRST TIME — create ONLY when user saves modal
+  //  FIRST TIME — create ONLY when user saves modal
   if (!existingProfile) {
     const profile = await PatientProfile.create({
       userId,
@@ -87,7 +87,7 @@ export const updatePatientProfile = async (userId, updateData) => {
     return profile;
   }
 
-  // 🔵 UPDATE existing profile
+  //  UPDATE existing profile
   const updatedProfile = await PatientProfile.findOneAndUpdate(
     { userId },
     { $set: profileUpdates },

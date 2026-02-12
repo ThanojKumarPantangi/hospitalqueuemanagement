@@ -24,7 +24,6 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
-
     phone: {
       type: String,
       unique: true,
@@ -33,7 +32,6 @@ const userSchema = new mongoose.Schema(
         return this.role !== "DOCTOR";
       },
     },
-
 
     role: {
       type: String,
@@ -54,6 +52,7 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
     isVerified: {
       type: Boolean,
       default: function () {
@@ -66,20 +65,58 @@ const userSchema = new mongoose.Schema(
       default: true,
     },
 
-    departments: 
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Department",
-      },
+    departments: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+    },
+
     isAvailable: {
       type: Boolean,
       default: true,
     },
+
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+
+    mfaEnabled: {
+      type: Boolean,
+      default: false,
+    },
+
+    mfaSecret: {
+      type: String,
+      select: false,
+    },
+
+    mfaTempSecret: {
+      type: String,
+      select: false,
+    },
+
+    failedMfaAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+
+    mfaLockedUntil: {
+      type: Date,
+      select: false,
+    },
+
+    mfaTempTokenId: {
+    type: String,
+    select: false,
+  },
+
+
   },
   { timestamps: true }
 );
 
-// 🔹 Doctor dashboard stats
+
 userSchema.index({
   role: 1,
   isVerified: 1,

@@ -84,9 +84,6 @@ const ResetPassword = () => {
         message: res?.data?.message || "Password reset successful",
       });
 
-      // remove access token just in case
-      localStorage.removeItem("accessToken");
-
       // go login
       navigate("/login");
     } catch (err) {
