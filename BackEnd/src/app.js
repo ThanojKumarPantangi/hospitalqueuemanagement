@@ -42,7 +42,7 @@ app.use(
   })
 );
 
-// app.use(globalLimiter);
+app.use(globalLimiter);
 
 /* ------------------ Security: Mongo sanitize ------------------ */
 app.use((req, res, next) => {
@@ -58,9 +58,8 @@ app.use((req, res, next) => {
   next();
 });
 
-//  authLimiter, 
 /* ------------------ Routes ------------------ */
-app.use("/api/auth",authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 // ,tokenLimiter
 app.use("/api/tokens",tokenRoutes);
 app.use("/api/visits", visitRoutes);

@@ -2,7 +2,7 @@ import { loginService,signupService,doctorSignupService } from "../services/auth
 import {verifyRefreshToken} from "../utils/jwt.util.js";
 import { rotateRefreshToken } from "../services/tokenRotation.service.js";
 import RefreshToken from "../models/refreshToken.model.js";
-
+import { getCookieOptions } from "../utils/cookie.util.js";
 
 export const login = async (req, res) => {
   try {
@@ -29,21 +29,18 @@ export const login = async (req, res) => {
     // Normal login (PATIENT)
     const { accessToken, refreshToken, user } = result;
 
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 15 * 60 * 1000,
-    });
+    res.cookie(
+      "accessToken",
+      accessToken,
+      getCookieOptions(15 * 60 * 1000)
+    );
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(
+      "refreshToken",
+      refreshToken,
+      getCookieOptions(7 * 24 * 60 * 60 * 1000)
+    );
+
 
     return res.json({
       message: "Login successful",
@@ -129,23 +126,18 @@ export const refreshTokenController = async (req, res) => {
 
     const tokens = await rotateRefreshToken(token);
 
-    // Set new access token cookie
-    res.cookie("accessToken", tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 15 * 60 * 1000,
-    });
+    res.cookie(
+      "accessToken",
+      tokens.accessToken,
+      getCookieOptions(15 * 60 * 1000)
+    );
 
-    // Set new refresh token cookie
-    res.cookie("refreshToken", tokens.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(
+      "refreshToken",
+      tokens.refreshToken,
+      getCookieOptions(7 * 24 * 60 * 60 * 1000)
+    );
+
 
     return res.json({ success: true });
   } catch (error) {
@@ -199,38 +191,14 @@ export const logoutController = async (req, res) => {
       }
     }
 
-    // Clear refresh token cookie
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
-
-    // Clear access token cookie
-    res.clearCookie("accessToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
+    res.clearCookie("accessToken", getCookieOptions());
+    res.clearCookie("refreshToken", getCookieOptions());
 
     return res.status(200).json({ message: "Logged out successfully" });
   } catch {
-    // Always clear cookies even if error
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
-
-    res.clearCookie("accessToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
+    
+    res.clearCookie("accessToken", getCookieOptions());
+    res.clearCookie("refreshToken", getCookieOptions());
 
     return res.status(200).json({ message: "Logged out" });
   }
