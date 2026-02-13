@@ -10,6 +10,7 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import OtpVerify from "./pages/auth/OtpVerify";
 import VerifyMfa from "./pages/auth/VerifyMfa";
 import SetupMfa from "./pages/auth/SetupMfa";
+import ResetMfa from "./pages/auth/ResetMfa.jsx";
 import Home from "./pages/main/HospitalRolesLanding.jsx";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -35,6 +36,7 @@ import DepartmentManagement from "./pages/admin/Departments";
 import QueueMonitor from "./pages/admin/QueueMonitor";
 import AdminPatientQrScanner from "./pages/admin/AdminPatientQrScanner.jsx";
 import AdminInbox from "./pages/admin/AdminInbox.jsx";
+import AdminResetMfa from "./pages/admin/AdminResetMfa.jsx";
 import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
 import AdminMessagingPanel from "./pages/admin/AdminMessagingPanel.jsx";
 
@@ -54,6 +56,7 @@ function App() {
         <Route path="/doctor-signup" element={<DoctorSignup />} />
         <Route path="/setup-mfa" element={<SetupMfa />} />
         <Route path="/verify-mfa" element={<VerifyMfa />} />
+        <Route path="/reset-mfa" element={<ResetMfa />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
@@ -99,6 +102,7 @@ function App() {
               <Route path="settings" element={<ChangePasswordUI />} />
               <Route path="messaging" element={<AdminMessagingPanel />} />
               <Route path="inbox" element={<AdminInbox />} />
+              <Route path="reset-mfa" element={<AdminResetMfa />} />
             </Route>
           </Route>
         </Route>

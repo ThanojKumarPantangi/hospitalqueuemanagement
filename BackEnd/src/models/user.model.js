@@ -90,6 +90,12 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
+    mfaRecoveryCodes: [
+      {
+        type: String, 
+      },
+    ],
+
     mfaTempSecret: {
       type: String,
       select: false,
@@ -107,11 +113,9 @@ const userSchema = new mongoose.Schema(
     },
 
     mfaTempTokenId: {
-    type: String,
-    select: false,
-  },
-
-
+      type: String,
+      select: false,
+    },
   },
   { timestamps: true }
 );

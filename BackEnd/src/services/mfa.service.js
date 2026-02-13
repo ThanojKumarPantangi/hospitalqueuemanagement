@@ -76,12 +76,13 @@ export const verifyMfaService = async (tempToken, code, req) => {
     throw new Error("MFA temporarily locked. Try later.");
   }
 
-  const isValid = speakeasy.totp({
+  const isValid = speakeasy.totp.verify({
     secret: user.mfaSecret,
     encoding: "base32",
     token: code,
     window: 1,
   });
+
 
   if (!isValid) {
     user.failedMfaAttempts = (user.failedMfaAttempts || 0) + 1;

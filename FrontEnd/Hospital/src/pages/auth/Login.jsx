@@ -330,6 +330,8 @@ const Login = () => {
         }
       );
 
+      sessionStorage.setItem("mfaEmail",email.trim())
+
       //MFA Setup Required
       if (res.data?.mfaSetupRequired) {
         sessionStorage.setItem("mfaTempToken", res.data.tempToken);

@@ -485,7 +485,7 @@ export const createAdminController = async (req, res) => {
 
 export const getDepartmentsStatus = async (req, res) => {
   try {
-    // ✅ IST day range
+    //  IST day range
     const dayStart = getStartOfISTDay(new Date());
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
@@ -698,6 +698,41 @@ export const lookupUserByPhoneOrEmail = async (req, res) => {
     console.error("lookupUserByPhoneOrEmail error:", error);
     return res.status(500).json({
       message: "Server error",
+    });
+  }
+};
+
+export const getUserByIdentifierController = async (req, res) => {
+  try {
+    const { identifier } = req.query;
+
+    if (!identifier) {
+      return res.status(400).json({
+        message: "Identifier is required",
+      });
+    }
+
+    // email OR phone lookup
+    const user = await User.findOne({
+      $or: [
+        { email: identifier },
+        { phone: identifier },
+      ],
+    }).select("_id name email phone role");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      user,
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to fetch user",
     });
   }
 };

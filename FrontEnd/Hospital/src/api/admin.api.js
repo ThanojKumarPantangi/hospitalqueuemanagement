@@ -81,3 +81,7 @@ export const updateDoctorDepartmentsApi=(doctorId,payload)=>{
 export const lookupUserByPhoneOrEmailApi = (payload) => {
   return api.get("/api/admin/lookup", { params: payload });
 };
+
+export const getUserByIdentifierApi = (identifier) => {
+  return api.get(`/api/admin/user?identifier=${identifier}`);
+};

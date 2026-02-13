@@ -32,6 +32,18 @@ export const verifymfaApi = (data, config = {}) => {
   return api.post("/api/auth/verify-mfa", data, config);
 };
 
+export const recoveryMfaApi = (data) => {
+  return api.post("/api/auth/recover-mfa",data);
+};
+
+export const resetMfaApi = (userId) => {
+  return api.post(`/api/auth/admin/reset-mfa/${userId}`);
+}
+
+export const recoveryprevewApi = (data) => {
+  return api.post("/api/auth/recovery-preview", data);
+};
+
 
 export const changePasswordControllerApi = (data) => {
   return api.patch("/api/users/change-password", data);

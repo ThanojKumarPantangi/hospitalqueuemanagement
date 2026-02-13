@@ -21,6 +21,7 @@ import {
   updateDoctorDepartments,
   verifyPatientQrController,
   lookupUserByPhoneOrEmail,
+  getUserByIdentifierController,
 } from "../controllers/admin.controller.js";
 
 const router = express.Router();
@@ -142,5 +143,13 @@ router.get(
   roleMiddleware("ADMIN"),
   lookupUserByPhoneOrEmail
 );
+
+router.get(
+  "/user",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  getUserByIdentifierController
+);
+
 
 export default router;

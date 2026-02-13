@@ -15,3 +15,10 @@ export const generateRefreshToken = (payload) => {
 export const verifyRefreshToken = (token) => {
   return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 };
+
+export const generateTokens = (payload) => {
+  return {
+    accessToken: generateAccessToken(payload),
+    refreshToken: generateRefreshToken(payload),
+  };
+};
