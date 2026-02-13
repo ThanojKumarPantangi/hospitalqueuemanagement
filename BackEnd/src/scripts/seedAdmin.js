@@ -29,6 +29,9 @@ await User.create({
   role: "ADMIN",
   isPhoneVerified: true,
   isActive: true,
+  failedLoginAttempts:0,
+  mfaEnabled:false,
+  mfaLockedUntil:null,
 });
 
 console.log("Admin created");
