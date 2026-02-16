@@ -44,7 +44,7 @@ export const initSocket = (server) => {
       // const token = parsed.accessToken;
       
       const token = socket.handshake.auth.token;
-
+      console.log(token);
       if (!token) {
         return next(new Error("No access token"));
       }
