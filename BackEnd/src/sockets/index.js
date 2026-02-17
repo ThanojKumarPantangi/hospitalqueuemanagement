@@ -34,17 +34,15 @@ export const initSocket = (server) => {
   ============================ */
   io.use(async (socket, next) => {
     try {
-      // const rawCookie = socket.handshake.headers.cookie;
+      const rawCookie = socket.handshake.headers.cookie;
 
-      // if (!rawCookie) {
-      //   return next(new Error("Authentication error"));
-      // }
+      if (!rawCookie) {
+        return next(new Error("Authentication error"));
+      }
 
-      // const parsed = cookie.parse(rawCookie);
-      // const token = parsed.accessToken;
+      const parsed = cookie.parse(rawCookie);
+      const token = parsed.accessToken;
       
-      const token = socket.handshake.auth.token;
-      console.log(token);
       if (!token) {
         return next(new Error("No access token"));
       }
