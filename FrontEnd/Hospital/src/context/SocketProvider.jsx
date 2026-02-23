@@ -7,7 +7,7 @@ export const SocketProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    const socket = io("https://hospitalqueuemanagement.onrender.com", {
+    const socket = io(import.meta.env.VITE_API_URL, {
       withCredentials: true,
       autoConnect: false,
       transports: ["websocket"],

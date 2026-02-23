@@ -53,7 +53,7 @@ export const initSocket = (server) => {
         return next(new Error("Invalid token payload"));
       }
 
-      // 🔐 Session validation
+      // Session validation
       const session = await Session.findById(decoded.sessionId);
       if (!session || !session.isActive) {
         return next(new Error("Session expired"));
