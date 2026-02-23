@@ -13,6 +13,7 @@ import {
   Menu,
   Mail,
   Inbox,
+  RefreshCcw,
   X
 } from "lucide-react";
 import HospitalIcon from "../icon/HospitalIcon"; // Assuming you have this
@@ -31,6 +32,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     { name: "Messsage", path: "/admin/messaging", icon:Mail },
     {name:"Inbox",path:"/admin/inbox", icon:Inbox},
     { name: "Analytics", path: "/admin/analytics", icon:BarChart3 },
+    { name: "Reset", path: "/admin/reset-mfa", icon:RefreshCcw },
     { type: "divider" },
     { name: "Settings", path: "/admin/settings", icon: Settings },
   ];
