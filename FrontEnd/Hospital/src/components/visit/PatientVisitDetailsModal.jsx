@@ -1,8 +1,7 @@
-import React, { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
   X,
-  User,
   UserCheck,
   AlertTriangle,
   Calendar,
@@ -12,12 +11,10 @@ import {
   Pill,
   FileText,
   BadgeCheck,
-  Sparkles,
   Stethoscope,
   ChevronDown,
   Building2,
   BadgeIndianRupee,
-  MapPin,
   Thermometer,
   Heart
 } from "lucide-react";
@@ -423,6 +420,7 @@ const PatientVisitDetailsModal = ({
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                disabled
                 onClick={() => window.print()}
                 className="w-full flex items-center justify-center gap-2 py-3.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-200 text-white dark:text-slate-900 rounded-xl font-bold text-sm transition-all shadow-lg shadow-slate-200 dark:shadow-none"
               >

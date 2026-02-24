@@ -239,6 +239,9 @@ const VerifyMfa = () => {
             case "DOCTOR":
             navigate("/doctor/dashboard");
             break;
+            case "PATIENT":
+            navigate("/patient/dashboard");
+            break;
             default:
             navigate("/");
         }

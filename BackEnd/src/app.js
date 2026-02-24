@@ -1,10 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config({ path: "./src/.env" });
 import express from "express";
 import sanitize from "mongo-sanitize";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-
-import dotenv from "dotenv";
-dotenv.config({ path: "./src/.env" });
+import redis  from "./config/redisClient.js";
 
 
 import authRoutes from "./routes/auth.routes.js";
@@ -22,12 +22,7 @@ import userRoutes from "./routes/user.routes.js";
 import patientProfileRoutes from "./routes/patientProfile.routes.js";
 
 
-
-import {
-  globalLimiter,
-  authLimiter,
-  tokenLimiter,
-} from "./middlewares/rateLimiter.middleware.js";
+import {globalLimiter,authLimiter} from "./middlewares/rateLimiter.middleware.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -42,7 +37,7 @@ app.use(
   })
 );
 
-// app.use(globalLimiter);
+app.use(globalLimiter);
 
 /* ------------------ Security: Mongo sanitize ------------------ */
 app.use((req, res, next) => {
@@ -57,10 +52,9 @@ app.use((req, res, next) => {
   }
   next();
 });
-// authLimiter,
+
 /* ------------------ Routes ------------------ */
-app.use("/api/auth",  authRoutes);
-// ,tokenLimiter
+app.use("/api/auth",authLimiter,authRoutes);
 app.use("/api/tokens",tokenRoutes);
 app.use("/api/visits", visitRoutes);
 app.use("/api/admin", adminRoutes);
@@ -71,15 +65,41 @@ app.use("/api/departments", departmentRoutes);
 app.use("/api/doctorProfile", doctorRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/sessions", sessionRoutes);
-app.use("/api/users",tokenLimiter,userRoutes);
+app.use("/api/users",userRoutes);
 app.use("/api/patient-profile", patientProfileRoutes)
-
-
-
 
 /* ------------------ Health check ------------------ */
 app.get("/health", (req, res) => {
   res.json({ status: "OK" });
+});
+
+(async () => {
+  try {
+    await redis.set("healthcheck", "ok");
+    console.log("✅ Redis Connected");
+  } catch (err) {
+    console.error("❌ Redis Connection Failed", err);
+  }
+})();
+
+
+/* ------------------ Redis Test ------------------ */
+app.get("/redis-test", async (req, res) => {
+  try {
+    await redis.set("test", "Redis is working!");
+    const value = await redis.get("test");
+
+    res.json({
+      success: true,
+      message: value,
+    });
+  } catch (error) {
+    console.error("Redis Error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Redis connection failed",
+    });
+  }
 });
 
 export default app;

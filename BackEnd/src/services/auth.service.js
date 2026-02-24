@@ -125,7 +125,7 @@ export const loginService = async (email, password, req) => {
     }
   }
 
-  if (user.role === "ADMIN" || user.role === "DOCTOR") {
+  if (user.role === "ADMIN" || user.role === "DOCTOR" || user.role==="PATIENT") {
 
     const deviceId = req.headers["x-device-id"] || null;
     const tempJti = uuidv4();
