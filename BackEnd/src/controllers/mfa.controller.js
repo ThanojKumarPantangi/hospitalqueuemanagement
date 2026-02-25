@@ -2,6 +2,7 @@ import { verifyMfaService } from "../services/mfa.service.js";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import User from "../models/user.model.js";
+import UserSecurity from "../models/userSecurity.model.js";
 import Session from "../models/session.model.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import jwt from "jsonwebtoken";
@@ -60,7 +61,7 @@ export const setupMfaController = async (req, res) => {
     const deviceId = req.headers["x-device-id"] || null;
 
     if (!tempToken) {
-      return res.status(400).json({ message: "Invalid MFA session" });
+      return res.status(400).json({ message: "Invalid MFA session 1" });
     }
 
     let decoded;
@@ -70,33 +71,40 @@ export const setupMfaController = async (req, res) => {
       if (err.name === "TokenExpiredError") {
         return res.status(401).json({ message: "MFA session expired" });
       }
-      return res.status(401).json({ message: "Invalid MFA session" });
+      return res.status(401).json({ message: "Invalid MFA session 2" });
     }
 
-    // Validate token structure + device binding
     if (
       !decoded?.id ||
       decoded.type !== "MFA_PENDING" ||
       decoded.deviceId !== deviceId
     ) {
-      return res.status(401).json({ message: "Invalid MFA session" });
+      return res.status(401).json({ message: "Invalid MFA session 3" });
     }
 
-    const user = await User.findById(decoded.id)
-      .select("+mfaTempSecret +mfaTempTokenId +mfaEnabled");
-
-    if (!user || user.mfaTempTokenId !== decoded.jti) {
-      return res.status(401).json({ message: "Invalid MFA session" });
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ message: "Invalid MFA session 4" });
     }
 
-    if (user.mfaEnabled) {
+    let security = await UserSecurity.findOne({ user: user._id });
+
+    if (!security) {
+      security = await UserSecurity.create({ user: user._id });
+    }
+    
+    if (security.mfaTempTokenId !== decoded.jti) {
+      return res.status(401).json({ message: "Invalid MFA session 5" });
+    }
+
+    if (security.mfaEnabled) {
       return res.status(400).json({ message: "MFA already enabled" });
     }
 
-    // If setup already started → return existing QR again
-    if (user.mfaTempSecret) {
+    // If setup already started → return same QR
+    if (security.mfaTempSecret) {
       const otpauthUrl = speakeasy.otpauthURL({
-        secret: user.mfaTempSecret,
+        secret: security.mfaTempSecret,
         label: `SmartQ (${user.email})`,
         issuer: "SmartQ",
         encoding: "base32",
@@ -104,25 +112,25 @@ export const setupMfaController = async (req, res) => {
 
       const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
 
-      return res.status(200).json({
+      return res.json({
         qrCode: qrCodeDataUrl,
-        manualCode: user.mfaTempSecret,
+        manualCode: security.mfaTempSecret,
       });
     }
 
-    // Generate new secret
+    // generate new secret
     const secret = speakeasy.generateSecret({
       name: `SmartQ (${user.email})`,
       issuer: "SmartQ",
       length: 20,
     });
 
-    user.mfaTempSecret = secret.base32;
-    await user.save();
+    security.mfaTempSecret = secret.base32;
+    await security.save();
 
     const qrCodeDataUrl = await QRCode.toDataURL(secret.otpauth_url);
 
-    return res.status(200).json({
+    return res.json({
       qrCode: qrCodeDataUrl,
       manualCode: secret.base32,
     });
@@ -146,10 +154,7 @@ export const confirmMfaController = async (req, res) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(
-        tempToken,
-        process.env.MFA_TEMP_SECRET
-      );
+      decoded = jwt.verify(tempToken, process.env.MFA_TEMP_SECRET);
     } catch {
       return res.status(401).json({
         message: "MFA session expired",
@@ -166,16 +171,20 @@ export const confirmMfaController = async (req, res) => {
       });
     }
 
-    const user = await User.findById(decoded.id)
-      .select("+mfaTempSecret +mfaTempTokenId");
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ message: "Invalid MFA session" });
+    }
 
-    if (!user || user.mfaTempTokenId !== decoded.jti) {
+    const security = await UserSecurity.findOne({ user: user._id });
+
+    if (!security || security.mfaTempTokenId !== decoded.jti) {
       return res.status(401).json({
         message: "Invalid MFA session",
       });
     }
 
-    if (!user.mfaTempSecret) {
+    if (!security.mfaTempSecret) {
       return res.status(400).json({
         message: "MFA not initialized",
       });
@@ -186,7 +195,7 @@ export const confirmMfaController = async (req, res) => {
     =============================== */
 
     const verified = speakeasy.totp.verify({
-      secret: user.mfaTempSecret,
+      secret: security.mfaTempSecret,
       encoding: "base32",
       token: code,
       window: 1,
@@ -202,10 +211,10 @@ export const confirmMfaController = async (req, res) => {
        ENABLE MFA
     =============================== */
 
-    user.mfaSecret = user.mfaTempSecret;
-    user.mfaTempSecret = undefined;
-    user.mfaEnabled = true;
-    user.mfaTempTokenId = undefined;
+    security.mfaSecret = security.mfaTempSecret;
+    security.mfaTempSecret = undefined;
+    security.mfaEnabled = true;
+    security.mfaTempTokenId = undefined;
 
     /* ===============================
        GENERATE RECOVERY CODES
@@ -214,13 +223,12 @@ export const confirmMfaController = async (req, res) => {
     const { plainCodes, hashedCodes } =
       await generateRecoveryCodes(5);
 
-    user.mfaRecoveryCodes = hashedCodes;
+    security.mfaRecoveryCodes = hashedCodes;
 
-    await user.save();
+    await security.save();
 
     /* ===============================
-       CREATE RECOVERY PREVIEW JWT
-       (short-lived)
+       CREATE RECOVERY PREVIEW TOKEN
     =============================== */
 
     const recoveryPreviewToken = jwt.sign(
@@ -230,14 +238,8 @@ export const confirmMfaController = async (req, res) => {
         recoveryCodes: plainCodes,
       },
       process.env.MFA_TEMP_SECRET,
-      {
-        expiresIn: "5m", // important
-      }
+      { expiresIn: "5m" }
     );
-
-    /* ===============================
-       RETURN TOKEN (not raw codes)
-    =============================== */
 
     return res.json({
       message: "MFA enabled successfully",
@@ -286,11 +288,12 @@ export const recoverMfaController = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "Invalid request" });
 
-    if (!user || !user.mfaEnabled) {
-      return res.status(400).json({
-        message: "Invalid request",
-      });
+    const security = await UserSecurity.findOne({ user: user._id });
+
+    if (!security || !security.mfaEnabled) {
+      return res.status(400).json({ message: "Invalid request" });
     }
 
     /* ===============================
@@ -298,10 +301,10 @@ export const recoverMfaController = async (req, res) => {
     =============================== */
     let matchedIndex = -1;
 
-    for (let i = 0; i < user.mfaRecoveryCodes.length; i++) {
+    for (let i = 0; i < security.mfaRecoveryCodes.length; i++) {
       const isMatch = await bcrypt.compare(
         recoveryCode,
-        user.mfaRecoveryCodes[i]
+        security.mfaRecoveryCodes[i]
       );
 
       if (isMatch) {
@@ -319,11 +322,11 @@ export const recoverMfaController = async (req, res) => {
     /* ===============================
       RESET MFA
     =============================== */
-    user.mfaRecoveryCodes = [];
-    user.mfaEnabled = false;
-    user.mfaSecret = null;
+    security.mfaRecoveryCodes = [];
+    security.mfaEnabled = false;
+    security.mfaSecret = null;
 
-    await user.save();
+    await security.save();
 
     /* ===============================
       INVALIDATE OLD SESSIONS
@@ -396,11 +399,14 @@ export const adminResetMfaController = async (req, res) => {
     /* ===============================
        RESET MFA
     =============================== */
-    user.mfaEnabled = false;
-    user.mfaSecret = null;
-    user.mfaRecoveryCodes = [];
+    const security = await UserSecurity.findOne({ user: user._id });
 
-    await user.save();
+    if (security) {
+      security.mfaEnabled = false;
+      security.mfaSecret = null;
+      security.mfaRecoveryCodes = [];
+      await security.save();
+    }
 
     /* ===============================
         FORCE LOGOUT (SESSION KILL)
@@ -433,5 +439,72 @@ export const adminResetMfaController = async (req, res) => {
     return res.status(500).json({
       message: "Failed to reset MFA",
     });
+  }
+};
+
+export const toggleTwoStepController = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await User.findById(userId).select("+password");
+    if (!user || user.role !== "PATIENT") {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+
+    const security = await UserSecurity.findOne({ user: userId });
+    if (!security) {
+      return res.status(404).json({ message: "Security record missing" });
+    }
+
+    const { password } = req.body || {};
+
+    // ================= DISABLE =================
+    if (security.twoStepEnabled) {
+      if (!password) {
+        return res.status(400).json({
+          message: "Password required",
+          enabled: true,
+        });
+      }
+
+      if (!user.password) {
+        return res.status(500).json({
+          message: "User password missing",
+        });
+      }
+
+      const passwordMatch = await bcrypt.compare(password, user.password);
+
+      if (!passwordMatch) {
+        return res.status(401).json({
+          message: "Incorrect password",
+          enabled: true,
+        });
+      }
+
+      security.twoStepEnabled = false;
+      security.mfaEnabled = false;
+      security.mfaSecret = null;
+      security.mfaRecoveryCodes = [];
+
+      await security.save();
+
+      return res.json({
+        message: "Two-step verification disabled",
+        enabled: false,
+      });
+    }
+
+    // ================= ENABLE =================
+    security.twoStepEnabled = true;
+    await security.save();
+
+    return res.json({
+      message: "Complete setup to enable two-step verification",
+      enabled: true,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update two-step verification" });
   }
 };

@@ -16,6 +16,11 @@ import {
   Lock,
   Smartphone,
   Search,
+  Wifi,
+  MessageSquareWarning,
+  Megaphone,
+  Fingerprint,
+  MonitorSmartphone,
 } from "lucide-react";
 
 const rolesData = [
@@ -245,7 +250,7 @@ export default function HospitalRolesLanding() {
               className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-black/5 px-3 py-1 text-xs text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
             >
               <Lock className="h-4 w-4" />
-              Role-based access • Live queue updates • Faster workflow
+              Role-based access • MFA security • Live queue updates • Real-time alerts
             </motion.p>
 
             <motion.h1
@@ -439,6 +444,72 @@ export default function HospitalRolesLanding() {
               icon: Smartphone,
               title: "Mobile Friendly UI",
               desc: "Works well on phone, tablet, and desktop.",
+            },
+          ].map((f) => {
+            const Icon = f.icon;
+            return (
+              <div
+                key={f.title}
+                className="rounded-3xl border border-black/10 bg-white/70 p-5 hover:bg-white transition dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+              >
+                <div className="h-10 w-10 rounded-2xl bg-black/5 border border-black/10 dark:bg-white/10 dark:border-white/10 grid place-items-center">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <p className="mt-4 text-base font-semibold">{f.title}</p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  {f.desc}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Advanced Platform Features */}
+      <section className="mx-auto max-w-6xl px-4 pb-16">
+        <div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Security & Real-Time Platform
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold md:text-3xl">
+            Built for Security, Transparency & Live Operations
+          </h2>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+            Advanced capabilities ensure secure access, real-time updates, and smooth hospital communication.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {[
+            {
+              icon: Fingerprint,
+              title: "Multi-Factor Authentication",
+              desc: "Secure accounts with authenticator-based verification for patients, doctors, and admins.",
+            },
+            {
+              icon: MonitorSmartphone,
+              title: "Session & Device Tracking",
+              desc: "View active sessions and logout unknown devices to protect account access.",
+            },
+            {
+              icon: Wifi,
+              title: "Live Queue via WebSockets",
+              desc: "Instant token updates with real-time sync across reception, doctors, and patient displays.",
+            },
+            {
+              icon: Megaphone,
+              title: "Live Announcements",
+              desc: "Broadcast global or department-specific announcements instantly.",
+            },
+            {
+              icon: MessageSquareWarning,
+              title: "Issue Raise & Support",
+              desc: "Report problems directly from the system for quick technical resolution.",
+            },
+            {
+              icon: Bell,
+              title: "Smart Turn Alerts",
+              desc: "Patients receive alerts when their token is approaching.",
             },
           ].map((f) => {
             const Icon = f.icon;

@@ -48,3 +48,7 @@ export const recoveryprevewApi = (data) => {
 export const changePasswordControllerApi = (data) => {
   return api.patch("/api/users/change-password", data);
 };
+
+export const toggleTwoStepControllerApi=(data)=>{
+  return api.post("/api/auth/toggle-mfa",data)
+}

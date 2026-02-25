@@ -1,7 +1,7 @@
 import Session from "../models/session.model.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import { forceLogoutSession } from "../sockets/forceLogout.js"; // adjust path if needed
-
+import userSecurityModel from "../models/userSecurity.model.js";
 /**
  * GET all active sessions for logged-in patient
  */
@@ -11,17 +11,24 @@ export const getMyActiveSessions = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    const sessions = await Session.find({
-      user: req.user._id,
-      isActive: true,
-    })
-      .sort({ lastSeenAt: -1 })
-      .select("-__v");
+    const [sessions, security] = await Promise.all([
+      Session.find({
+        user: req.user._id,
+        isActive: true,
+      })
+        .sort({ lastSeenAt: -1 })
+        .select("-__v"),
+
+      userSecurityModel.findOne({ user: req.user._id })
+        .select("twoStepEnabled")
+    ]);
 
     return res.json({
       currentSessionId: req.sessionId || null,
+      twoStepEnabled: security?.twoStepEnabled ?? false,
       sessions,
     });
+
   } catch (err) {
     return res.status(500).json({ message: "Failed to fetch sessions" });
   }

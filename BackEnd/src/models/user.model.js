@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
       required: function () {
         return this.role !== "DOCTOR";
       },
-      select: false,
+      select: false, // never returned unless explicitly requested
     },
 
     phone: {
@@ -74,53 +74,12 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-
-    failedLoginAttempts: {
-      type: Number,
-      default: 0,
-    },
-
-    mfaEnabled: {
-      type: Boolean,
-      default: false,
-    },
-
-    mfaSecret: {
-      type: String,
-      select: false,
-    },
-
-    mfaRecoveryCodes: [
-      {
-        type: String, 
-      },
-    ],
-
-    mfaTempSecret: {
-      type: String,
-      select: false,
-    },
-
-    failedMfaAttempts: {
-      type: Number,
-      default: 0,
-      select: false,
-    },
-
-    mfaLockedUntil: {
-      type: Date,
-      select: false,
-    },
-
-    mfaTempTokenId: {
-      type: String,
-      select: false,
-    },
   },
   { timestamps: true }
 );
 
 
+//  Index for fast doctor & staff filtering
 userSchema.index({
   role: 1,
   isVerified: 1,
@@ -128,6 +87,7 @@ userSchema.index({
   isAvailable: 1,
 });
 
+//  Department filtering
 userSchema.index({
   role: 1,
   departments: 1,

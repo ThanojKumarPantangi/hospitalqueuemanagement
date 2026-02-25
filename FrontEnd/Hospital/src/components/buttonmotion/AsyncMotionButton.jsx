@@ -1,5 +1,4 @@
 import { motion, AnimatePresence } from "framer-motion";
-
 const variants = {
   idle: { scale: 1, opacity: 1 },
   pressed: { scale: 0.95 },

@@ -3,6 +3,7 @@ import speakeasy from "speakeasy";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import User from "../models/user.model.js";
+import UserSecurity from "../models/userSecurity.model.js";
 import Session from "../models/session.model.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util.js";
@@ -60,57 +61,76 @@ export const verifyMfaService = async (tempToken, code, req) => {
     throw new Error("Invalid MFA session");
   }
 
-  const user = await User.findById(decoded.id)
-    .select("+mfaSecret +failedMfaAttempts +mfaLockedUntil +mfaTempTokenId");
+  const user = await User.findById(decoded.id);
 
-  if (!user || user.mfaTempTokenId !== decoded.jti) {
+  if (!user) {
     throw new Error("Invalid MFA session");
   }
 
-  if (!user.mfaEnabled || !user.mfaSecret) {
+  const security = await UserSecurity.findOne({ user: user._id });
+
+  if (!security || security.mfaTempTokenId !== decoded.jti) {
+    throw new Error("Invalid MFA session");
+  }
+
+  if (!security.mfaEnabled || !security.mfaSecret) {
     throw new Error("MFA not fully enabled");
   }
 
-  //  Lock check
-  if (user.mfaLockedUntil && user.mfaLockedUntil > new Date()) {
+  /* ===============================
+     LOCK CHECK
+  =============================== */
+
+  if (security.mfaLockedUntil && security.mfaLockedUntil > new Date()) {
     throw new Error("MFA temporarily locked. Try later.");
   }
 
   const isValid = speakeasy.totp.verify({
-    secret: user.mfaSecret,
+    secret: security.mfaSecret,
     encoding: "base32",
     token: code,
     window: 1,
   });
 
+  /* ===============================
+     INVALID CODE HANDLING
+  =============================== */
 
   if (!isValid) {
-    user.failedMfaAttempts = (user.failedMfaAttempts || 0) + 1;
+    security.failedMfaAttempts = (security.failedMfaAttempts || 0) + 1;
 
-    const attempts = user.failedMfaAttempts;
+    const attempts = security.failedMfaAttempts;
+
     const delay = Math.min(1000 * Math.pow(2, attempts - 1), 30000);
-    await user.save();
+
+    await security.save();
 
     await new Promise(resolve => setTimeout(resolve, delay));
 
     if (attempts >= 5) {
-      user.mfaLockedUntil = new Date(Date.now() + 10 * 60 * 1000);
-      user.failedMfaAttempts = 0;
-      await user.save();
+      security.mfaLockedUntil = new Date(Date.now() + 10 * 60 * 1000);
+      security.failedMfaAttempts = 0;
+      await security.save();
       throw new Error("Too many failed attempts. MFA locked for 10 minutes.");
     }
 
     throw new Error("Invalid MFA code");
   }
 
-  user.failedMfaAttempts = 0;
-  user.mfaLockedUntil = undefined;
+  /* ===============================
+     SUCCESS → RESET SECURITY STATE
+  =============================== */
 
-  user.mfaTempTokenId = undefined;
+  security.failedMfaAttempts = 0;
+  security.mfaLockedUntil = undefined;
+  security.mfaTempTokenId = undefined;
 
-  await user.save();
+  await security.save();
 
-  
+  /* ===============================
+     SESSION INVALIDATION
+  =============================== */
+
   await Session.updateMany(
     { user: user._id, isActive: true },
     { isActive: false }
@@ -120,6 +140,10 @@ export const verifyMfaService = async (tempToken, code, req) => {
     { user: user._id, revoked: false },
     { revoked: true }
   );
+
+  /* ===============================
+     SESSION CREATION
+  =============================== */
 
   const ip =
     req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
@@ -149,13 +173,17 @@ export const verifyMfaService = async (tempToken, code, req) => {
     absoluteExpiresAt: absoluteExpiry,
   });
 
-    getLocationFromIp(cleanIp)
-      .then((location) => {
-        if (location) {
-          Session.findByIdAndUpdate(session._id, { location }).catch(() => {});
-        }
-      })
-      .catch(() => {});
+  getLocationFromIp(cleanIp)
+    .then((location) => {
+      if (location) {
+        Session.findByIdAndUpdate(session._id, { location }).catch(() => {});
+      }
+    })
+    .catch(() => {});
+
+  /* ===============================
+     TOKEN GENERATION
+  =============================== */
 
   const accessPayload = {
     id: user._id,

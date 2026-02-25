@@ -1,12 +1,13 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
+import UserSecurity from "../models/userSecurity.model.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import { generateAccessToken,generateRefreshToken } from "../utils/jwt.util.js";
 import Session from "../models/session.model.js";
 import Device from "../models/device.model.js";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
-import jwt from "jsonwebtoken";
+
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
 
@@ -46,13 +47,23 @@ export const loginService = async (email, password, req) => {
   const user = await User.findOne({ email: normalizedEmail }).select("+password");
   if (!user) throw new Error("Invalid Credentials");
 
+  // fetch security doc
+  let security = await UserSecurity.findOne({ user: user._id });
+  if (!security) {
+    security = await UserSecurity.create({ user: user._id });
+  }
+
   const passwordMatch = await bcrypt.compare(password, user.password);
 
-  if (!passwordMatch) {
-    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-    await user.save();
+  /* ===============================
+     PASSWORD FAILURE HANDLING
+  =============================== */
 
-    const attempts = user.failedLoginAttempts;
+  if (!passwordMatch) {
+    security.failedLoginAttempts = (security.failedLoginAttempts || 0) + 1;
+    await security.save();
+
+    const attempts = security.failedLoginAttempts;
 
     let delay;
     if (user.role === "ADMIN") {
@@ -67,9 +78,10 @@ export const loginService = async (email, password, req) => {
     throw new Error("Invalid Credentials");
   }
 
-  if (user.failedLoginAttempts > 0) {
-    user.failedLoginAttempts = 0;
-    await user.save();
+  // reset attempts on success
+  if (security.failedLoginAttempts > 0) {
+    security.failedLoginAttempts = 0;
+    await security.save();
   }
 
   if (!user.isPhoneVerified) throw new Error("Phone number not verified");
@@ -96,13 +108,8 @@ export const loginService = async (email, password, req) => {
       deviceId,
     });
 
-    if (!existingDevice) {
-      riskScore += 40;
-    } else {
-      if (existingDevice.lastIp !== cleanIp) {
-        riskScore += 20;
-      }
-    }
+    if (!existingDevice) riskScore += 40;
+    else if (existingDevice.lastIp !== cleanIp) riskScore += 20;
   }
 
   if (riskScore >= 70 && user.role === "ADMIN") {
@@ -125,8 +132,11 @@ export const loginService = async (email, password, req) => {
     }
   }
 
-  if (user.role === "ADMIN" || user.role === "DOCTOR" || user.role==="PATIENT") {
-
+  /* ===============================
+     MFA FLOW
+  =============================== */
+  const requiresMfa =user.role === "ADMIN"||user.role === "DOCTOR"||(user.role === "PATIENT" && security.twoStepEnabled);
+  if (requiresMfa) {
     const deviceId = req.headers["x-device-id"] || null;
     const tempJti = uuidv4();
 
@@ -141,10 +151,10 @@ export const loginService = async (email, password, req) => {
       { expiresIn: "5m" }
     );
 
-    user.mfaTempTokenId = tempJti;
-    await user.save();
+    security.mfaTempTokenId = tempJti;
+    await security.save();
 
-    if (!user.mfaEnabled) {
+    if (!security.mfaEnabled) {
       return {
         mfaSetupRequired: true,
         tempToken,
@@ -156,6 +166,10 @@ export const loginService = async (email, password, req) => {
       tempToken,
     };
   }
+
+  /* ===============================
+     SESSION CREATION (PATIENT FLOW)
+  =============================== */
 
   let absoluteExpiry;
   if (user.role === "DOCTOR") {
@@ -237,13 +251,18 @@ export const signupService = async ({
   const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
   const user = await User.create({
-    name:name.trim().toLowerCase(),
+    name: name.trim().toLowerCase(),
     email: email.trim().toLowerCase(),
     phone,
     password: hashedPassword,
     role: "PATIENT",
     isPhoneVerified: false,
     isActive: true,
+  });
+
+  //create security state
+  await UserSecurity.create({
+    user: user._id,
   });
 
   return user;
@@ -273,10 +292,17 @@ export const doctorSignupService = async ({
 
   doctor.phone = phone;
   doctor.password = hashedPassword;
-  doctor.isPhoneVerified = false; 
+  doctor.isPhoneVerified = false;
   doctor.isActive = true;
 
   await doctor.save();
+
+  // ensure security document exists
+  const existingSecurity = await UserSecurity.findOne({ user: doctor._id });
+
+  if (!existingSecurity) {
+    await UserSecurity.create({ user: doctor._id });
+  }
 
   return doctor;
 };

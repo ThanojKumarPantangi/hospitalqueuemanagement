@@ -22,7 +22,7 @@ import userRoutes from "./routes/user.routes.js";
 import patientProfileRoutes from "./routes/patientProfile.routes.js";
 
 
-import {globalLimiter,authLimiter} from "./middlewares/rateLimiter.middleware.js";
+import {globalLimiter} from "./middlewares/rateLimiter.middleware.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -54,7 +54,7 @@ app.use((req, res, next) => {
 });
 
 /* ------------------ Routes ------------------ */
-app.use("/api/auth",authLimiter,authRoutes);
+app.use("/api/auth",authRoutes);
 app.use("/api/tokens",tokenRoutes);
 app.use("/api/visits", visitRoutes);
 app.use("/api/admin", adminRoutes);
@@ -73,14 +73,14 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
-(async () => {
-  try {
-    await redis.set("healthcheck", "ok");
-    console.log("✅ Redis Connected");
-  } catch (err) {
-    console.error("❌ Redis Connection Failed", err);
-  }
-})();
+// (async () => {
+//   try {
+//     await redis.set("healthcheck", "ok");
+//     console.log("✅ Redis Connected");
+//   } catch (err) {
+//     console.error("❌ Redis Connection Failed", err);
+//   }
+// })();
 
 
 /* ------------------ Redis Test ------------------ */
