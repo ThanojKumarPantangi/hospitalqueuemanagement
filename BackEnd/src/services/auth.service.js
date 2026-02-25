@@ -7,7 +7,7 @@ import Session from "../models/session.model.js";
 import Device from "../models/device.model.js";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
-
+import jwt from "jsonwebtoken";
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
 
