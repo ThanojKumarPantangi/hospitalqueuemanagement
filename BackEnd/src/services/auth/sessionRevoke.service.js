@@ -1,6 +1,6 @@
-import Session from "../models/session.model.js";
-import RefreshToken from "../models/refreshToken.model.js";
-import { forceLogoutSession } from "../sockets/forceLogout.js";
+import Session from "../../models/session.model.js";
+import RefreshToken from "../../models/refreshToken.model.js";
+import { forceLogoutSession } from "../../sockets/forceLogout.js";
 
 export const revokeAllUserSessions = async (userId) => {
   // find active sessions

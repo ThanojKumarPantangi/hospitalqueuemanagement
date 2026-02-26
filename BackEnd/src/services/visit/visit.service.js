@@ -1,5 +1,5 @@
-import Visit from "../models/visit.model.js";
-import Token from "../models/token.model.js";
+import Visit from "../../models/visit.model.js";
+import Token from "../../models/token.model.js";
 
 export const createVisit = async ({
   tokenId,

@@ -10,7 +10,7 @@ import {createToken,
   getExpectedTokenNumber,
   getPatientTokenHistory,
   getDoctorQueueSummary,
-} from "../services/token.service.js";
+} from "../services/token/token.service.js";
 
 import { sendEmail } from "../utils/sendEmail.js";
 import { tokenBookedTemplate } from "../emailTemplates/tokenBookedTemplate.js";

@@ -2,7 +2,7 @@ import {
   fetchDoctorProfileByUserId,
   updateDoctorProfileByRole,
   fetchPublicDoctors,
-} from "../services/doctorProfile.service.js";
+} from "../services/users/doctorProfile.service.js";
 
 /**
  * Doctor → own profile

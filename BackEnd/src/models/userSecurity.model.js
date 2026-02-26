@@ -48,6 +48,18 @@ const userSecuritySchema = new mongoose.Schema(
     mfaLockedUntil: {
       type: Date,
     },
+
+    lastLoginIp: {
+      type: String,
+    },
+
+    lastLoginCountry: {
+      type: String,
+    },
+
+    lastLoginAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import User from "../models/user.model.js";
+import User from "../../models/user.model.js";
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
 

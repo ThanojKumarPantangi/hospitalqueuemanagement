@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import User from "../models/user.model.js";
-
+import UserSecurity from "../models/userSecurity.model.js";
 dotenv.config({ path: '../.env' });
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
@@ -21,7 +21,7 @@ if (existingAdmin) {
 }
 
 const passwordHash = await bcrypt.hash("Admin@123", BCRYPT_ROUNDS);
-await User.create({
+const user=await User.create({
   name: "Super Admin",
   email: "admin@hospital.com",
   phone: "9999999999",
@@ -29,9 +29,10 @@ await User.create({
   role: "ADMIN",
   isPhoneVerified: true,
   isActive: true,
-  failedLoginAttempts:0,
-  mfaEnabled:false,
-  mfaLockedUntil:null,
+});
+
+await UserSecurity.create({
+  user: user._id,
 });
 
 console.log("Admin created");

@@ -1,7 +1,7 @@
 import Department from "../models/department.model.js";
 import User from "../models/user.model.js";
 import Token from "../models/token.model.js";
-import { createAdminService } from "../services/admin.service.js";
+import { createAdminService } from "../services/users/admin.service.js";
 import { verifyPatientQrToken } from "../utils/patientQr.util.js";
 
 const getStartOfISTDay = (date = new Date()) => {

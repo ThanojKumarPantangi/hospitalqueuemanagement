@@ -1,4 +1,4 @@
-import { verifyMfaService } from "../services/mfa.service.js";
+import { verifyMfaService } from "../services/auth/mfa.service.js";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import User from "../models/user.model.js";

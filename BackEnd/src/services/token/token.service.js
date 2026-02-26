@@ -1,14 +1,14 @@
-import Token from "../models/token.model.js";
-import Department from "../models/department.model.js";
-import User from "../models/user.model.js";
-import Visit from "../models/visit.model.js";
-import { getIO } from "../sockets/index.js";
+import Token from "../../models/token.model.js";
+import Department from "../../models/department.model.js";
+import User from "../../models/user.model.js";
+import Visit from "../../models/visit.model.js";
+import { getIO } from "../../sockets/index.js";
 
-import { calculateWaitingTime } from "../utils/waitingTime.util.js";
-import DoctorProfile from "../models/doctorProfile.model.js";
+import { calculateWaitingTime } from "../../utils/waitingTime.util.js";
+import DoctorProfile from "../../models/doctorProfile.model.js";
 
-import redis from "../config/redisClient.js";
-import { getQueueKey, getScore } from "../redis/queue.redis.js";
+import redis from "../../config/redisClient.js";
+import { getQueueKey, getScore } from "../../redis/queue.redis.js";
 
 /* ===================== CONSTANTS ===================== */
 

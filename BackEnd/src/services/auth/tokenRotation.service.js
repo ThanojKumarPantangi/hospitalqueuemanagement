@@ -1,11 +1,11 @@
 import { v4 as uuidv4 } from "uuid";
-import RefreshToken from "../models/refreshToken.model.js";
-import Session from "../models/session.model.js";
+import RefreshToken from "../../models/refreshToken.model.js";
+import Session from "../../models/session.model.js";
 import {
   verifyRefreshToken,
   generateAccessToken,
   generateRefreshToken,
-} from "../utils/jwt.util.js";
+} from "../../utils/jwt.util.js";
 
 import crypto from "crypto";
 

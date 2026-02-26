@@ -1,7 +1,7 @@
 import {
   createVisit,
   getPatientVisitsService,
-} from "../services/visit.service.js";
+} from "../services/visit/visit.service.js";
 
 import Visit from "../models/visit.model.js";
 

@@ -1,4 +1,4 @@
-import { getPatientProfileByUserId,getPatientProfileForDoctor,updatePatientProfile} from "../services/patientProfile.service.js";
+import { getPatientProfileByUserId,getPatientProfileForDoctor,updatePatientProfile} from "../services/users/patientProfile.service.js";
 import QRCode from "qrcode";
 import { generatePatientQrToken } from "../utils/patientQr.util.js";
 

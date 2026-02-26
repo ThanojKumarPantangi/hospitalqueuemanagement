@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import {Bell,Timer,UserCheck,QrCode,Ticket,ChevronRight,RefreshCcw,
-        MapPin,} from 'lucide-react';
+import {Bell,Timer,UserCheck,QrCode,Ticket,ChevronRight,RefreshCcw,MapPin,} from 'lucide-react';
 import { useEffect, useState,useRef } from 'react';
 import Navbar from '../../components/Navbar/PatientNavbar';
 import AnimatedQuote from '../../components/animation/AnimatedQuote';

@@ -2,44 +2,17 @@ import jwt from "jsonwebtoken";
 import speakeasy from "speakeasy";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
-import User from "../models/user.model.js";
-import UserSecurity from "../models/userSecurity.model.js";
-import Session from "../models/session.model.js";
-import RefreshToken from "../models/refreshToken.model.js";
-import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util.js";
+import User from "../../models/user.model.js";
+import UserSecurity from "../../models/userSecurity.model.js";
+import Session from "../../models/session.model.js";
+import RefreshToken from "../../models/refreshToken.model.js";
+import Device from "../../models/device.model.js";
+import { generateAccessToken, generateRefreshToken } from "../../utils/jwt.util.js";
+import { getLocationFromIp } from "../../utils/geo.util.js";
+import { updateDeviceRecord } from "./deviceSecurity.service.js";
 
-const getLocationFromIp = async (ip) => {
-  try {
-    if (!ip) return null;
-    if (ip === "::1" || ip === "127.0.0.1") return null;
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000); // 2s timeout
-
-    const res = await fetch(`https://ipwho.is/${ip}`, {
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    if (!data?.success) return null;
-
-    return {
-      city: data.city || null,
-      region: data.region || null,
-      country: data.country || null,
-      timezone: data.timezone?.id || null,
-    };
-  } catch {
-    return null;
-  }
-};
 
 export const verifyMfaService = async (tempToken, code, req) => {
-
   if (!tempToken || !code) {
     throw new Error("Invalid MFA request");
   }
@@ -62,13 +35,11 @@ export const verifyMfaService = async (tempToken, code, req) => {
   }
 
   const user = await User.findById(decoded.id);
-
   if (!user) {
     throw new Error("Invalid MFA session");
   }
 
   const security = await UserSecurity.findOne({ user: user._id });
-
   if (!security || security.mfaTempTokenId !== decoded.jti) {
     throw new Error("Invalid MFA session");
   }
@@ -77,10 +48,7 @@ export const verifyMfaService = async (tempToken, code, req) => {
     throw new Error("MFA not fully enabled");
   }
 
-  /* ===============================
-     LOCK CHECK
-  =============================== */
-
+  // LOCK CHECK
   if (security.mfaLockedUntil && security.mfaLockedUntil > new Date()) {
     throw new Error("MFA temporarily locked. Try later.");
   }
@@ -92,19 +60,13 @@ export const verifyMfaService = async (tempToken, code, req) => {
     window: 1,
   });
 
-  /* ===============================
-     INVALID CODE HANDLING
-  =============================== */
-
+  // INVALID CODE HANDLING
   if (!isValid) {
     security.failedMfaAttempts = (security.failedMfaAttempts || 0) + 1;
-
     const attempts = security.failedMfaAttempts;
 
     const delay = Math.min(1000 * Math.pow(2, attempts - 1), 30000);
-
     await security.save();
-
     await new Promise(resolve => setTimeout(resolve, delay));
 
     if (attempts >= 5) {
@@ -117,20 +79,52 @@ export const verifyMfaService = async (tempToken, code, req) => {
     throw new Error("Invalid MFA code");
   }
 
-  /* ===============================
-     SUCCESS → RESET SECURITY STATE
-  =============================== */
-
+  // SUCCESS → RESET MFA SECURITY STATE
   security.failedMfaAttempts = 0;
   security.mfaLockedUntil = undefined;
   security.mfaTempTokenId = undefined;
-
   await security.save();
 
-  /* ===============================
-     SESSION INVALIDATION
-  =============================== */
+  // Extract IP (Cloudflare priority)
+  const ip =
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.ip;
 
+  const cleanIp = ip?.startsWith("::ffff:")
+    ? ip.replace("::ffff:", "")
+    : ip;
+
+  // Get location immediately
+  const location = await getLocationFromIp(cleanIp);
+  const currentCountry = location?.country || null;
+
+  // Fetch existing device
+  let existingDevice = null;
+  if (deviceId) {
+    existingDevice = await Device.findOne({
+      user: user._id,
+      deviceId,
+    });
+  }
+
+  //  Trust device after MFA success
+  await updateDeviceRecord(
+    user,
+    deviceId,
+    cleanIp,
+    req.headers["user-agent"],
+    existingDevice,
+    currentCountry
+  );
+
+  //  Update account login memory
+  security.lastLoginIp = cleanIp;
+  security.lastLoginCountry = currentCountry;
+  security.lastLoginAt = new Date();
+  await security.save();
+
+  // SESSION INVALIDATION (keep your logic)
   await Session.updateMany(
     { user: user._id, isActive: true },
     { isActive: false }
@@ -141,19 +135,7 @@ export const verifyMfaService = async (tempToken, code, req) => {
     { revoked: true }
   );
 
-  /* ===============================
-     SESSION CREATION
-  =============================== */
-
-  const ip =
-    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-    req.socket?.remoteAddress ||
-    req.ip;
-
-  const cleanIp = ip?.startsWith("::ffff:")
-    ? ip.replace("::ffff:", "")
-    : ip;
-
+  // SESSION CREATION
   let absoluteExpiry;
   if (user.role === "DOCTOR") {
     absoluteExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
@@ -168,23 +150,12 @@ export const verifyMfaService = async (tempToken, code, req) => {
     role: user.role,
     device: req.headers["user-agent"]?.substring(0, 120),
     ipAddress: cleanIp,
-    location: null,
+    location,
     isActive: true,
     absoluteExpiresAt: absoluteExpiry,
   });
 
-  getLocationFromIp(cleanIp)
-    .then((location) => {
-      if (location) {
-        Session.findByIdAndUpdate(session._id, { location }).catch(() => {});
-      }
-    })
-    .catch(() => {});
-
-  /* ===============================
-     TOKEN GENERATION
-  =============================== */
-
+  // TOKEN GENERATION
   const accessPayload = {
     id: user._id,
     role: user.role,
@@ -219,4 +190,42 @@ export const verifyMfaService = async (tempToken, code, req) => {
   });
 
   return { accessToken, refreshToken, user };
+};
+
+// MFA Login Flow
+export const handleMfaFlow = async (
+  user,
+  security,
+  deviceId,
+  forceMfa = false
+) => {
+  const requiresMfa =
+    forceMfa ||
+    user.role === "ADMIN" ||
+    user.role === "DOCTOR" ||
+    (user.role === "PATIENT" && security.twoStepEnabled);
+
+  if (!requiresMfa) return null;
+
+  const tempJti = uuidv4();
+
+  const tempToken = jwt.sign(
+    {
+      id: user._id,
+      type: "MFA_PENDING",
+      deviceId,
+      jti: tempJti,
+    },
+    process.env.MFA_TEMP_SECRET,
+    { expiresIn: "5m" }
+  );
+
+  security.mfaTempTokenId = tempJti;
+  await security.save();
+
+  if (!security.mfaEnabled) {
+    return { mfaSetupRequired: true, tempToken };
+  }
+
+  return { mfaRequired: true, tempToken };
 };

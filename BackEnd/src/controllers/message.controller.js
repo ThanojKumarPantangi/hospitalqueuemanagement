@@ -13,7 +13,7 @@ import {
   getUserThreadsService,
   closeTicketService,
   previewRecipientsService
-} from "../services/message.service.js";
+} from "../services/communication/message.service.js";
 
 
 /* ============================

@@ -1,9 +1,9 @@
-import OTP from "../models/otp.model.js";
-import User from "../models/user.model.js";
+import OTP from "../../models/otp.model.js";
+import User from "../../models/user.model.js";
 import crypto from "crypto";
-import { sendSms2Factor } from "../utils/sendSms2factor.js";
-import { otpEmailTemplate } from "../emailTemplates/otpEmailTemplate.js";
-import { sendEmail } from "../utils/sendEmail.js";
+import { sendSms2Factor } from "../../utils/sendSms2factor.js";
+import { otpEmailTemplate } from "../../emailTemplates/otpEmailTemplate.js";
+import { sendEmail } from "../../utils/sendEmail.js";
 
 
 const OTP_EXPIRY_MINUTES = 5;

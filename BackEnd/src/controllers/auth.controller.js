@@ -1,6 +1,6 @@
-import { loginService,signupService,doctorSignupService } from "../services/auth.service.js";
+import { loginService,signupService,doctorSignupService } from "../services/auth/auth.service.js";
 import {verifyRefreshToken} from "../utils/jwt.util.js";
-import { rotateRefreshToken } from "../services/tokenRotation.service.js";
+import { rotateRefreshToken } from "../services/auth/tokenRotation.service.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import { getCookieOptions } from "../utils/cookie.util.js";
 

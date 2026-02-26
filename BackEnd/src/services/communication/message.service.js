@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import Message from "../models/message.model.js";
-import { getIO, getOnlineUserSockets } from "../sockets/index.js";
-import User from "../models/user.model.js";
-import Token from "../models/token.model.js";
+import Message from "../../models/message.model.js";
+import { getIO, getOnlineUserSockets } from "../../sockets/index.js";
+import User from "../../models/user.model.js";
+import Token from "../../models/token.model.js";
 
 const getStartOfISTDay = (date = new Date()) => {
   const d = new Date(date);

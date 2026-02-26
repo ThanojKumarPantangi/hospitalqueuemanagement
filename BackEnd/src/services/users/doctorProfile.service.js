@@ -1,5 +1,6 @@
-import DoctorProfile from "../models/doctorProfile.model.js";
-import User from "../models/user.model.js";
+import DoctorProfile from "../../models/doctorProfile.model.js";
+import User from "../../models/user.model.js";
+import Token from "../../models/token.model.js";
 
 export const fetchDoctorProfileByUserId = async (userId) => {
   // Ensure user exists

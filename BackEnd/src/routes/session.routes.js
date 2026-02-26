@@ -4,7 +4,9 @@ import roleMiddleware from "../middlewares/role.middleware.js";
 import {
   getMyActiveSessions,
   logoutSessionById,
-  logoutAllMySessions
+  logoutAllMySessions,
+  getSecurityEvents,
+  markSecurityEventAsRead,
 } from "../controllers/session.controller.js";
 
 const router = express.Router();
@@ -26,5 +28,27 @@ router.post("/logout-all",
     roleMiddleware("PATIENT"),
     logoutAllMySessions
 );
+
+router.get(
+    "/security-events", 
+    authMiddleware,
+    roleMiddleware("PATIENT","ADMIN","DOCTOR"), 
+    getSecurityEvents
+);
+
+router.patch(
+  "/security-events/:id/read",
+  authMiddleware,
+  roleMiddleware("PATIENT","ADMIN","DOCTOR"),
+  markSecurityEventAsRead
+);
+
+router.patch(
+  "/security-events/mark-all-read",
+  authMiddleware,
+  roleMiddleware("PATIENT","ADMIN","DOCTOR"),
+  markSecurityEventAsRead
+);
+
 
 export default router;

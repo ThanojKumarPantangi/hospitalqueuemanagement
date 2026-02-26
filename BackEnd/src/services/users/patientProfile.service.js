@@ -1,5 +1,5 @@
-import PatientProfile from "../models/patientProfile.model.js";
-import User from "../models/user.model.js";
+import PatientProfile from "../../models/patientProfile.model.js";
+import User from "../../models/user.model.js";
 
 export const getPatientProfileByUserId = async (userId) => {
   const user = await User.findById(userId)
