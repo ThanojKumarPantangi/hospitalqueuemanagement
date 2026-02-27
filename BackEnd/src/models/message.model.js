@@ -81,6 +81,10 @@ const messageSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
 
     /* ============================
        METADATA (EXTENSIBLE)
@@ -99,5 +103,6 @@ const messageSchema = new mongoose.Schema(
 messageSchema.index({ threadId: 1, createdAt: 1 });
 messageSchema.index({ toUser: 1, readAt: 1 });
 messageSchema.index({ category: 1, createdAt: -1 });
+messageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model("Message", messageSchema);

@@ -5,88 +5,60 @@ import PasswordReset from "../models/passwordReset.model.js";
 import Message from "../models/message.model.js";
 
 /* ============================
-   IST DAY HELPER
-============================ */
-const getStartOfISTDay = (date = new Date()) => {
-  const d = new Date(date);
-
-  // Convert to IST (+5:30)
-  const istOffsetMs = 5.5 * 60 * 60 * 1000;
-  const istDate = new Date(d.getTime() + istOffsetMs);
-
-  // Start of IST day
-  istDate.setHours(0, 0, 0, 0);
-
-  // Convert back to UTC for DB comparison
-  return new Date(istDate.getTime() - istOffsetMs);
-};
-
-/* ============================
    SECURITY + MESSAGE CLEANUP CRON
 ============================ */
 export const startSecurityCleanupCron = () => {
   if (process.env.ENABLE_INTERNAL_CRON !== "true") {
-    console.log("⏸️ Internal cron disabled (ENABLE_INTERNAL_CRON != true)");
+    console.log("Internal cron disabled ");
     return;
   }
 
-  console.log("✅ Security cleanup cron started...");
+  console.log("Security cleanup cron started...");
 
   // Runs every day at 3:00 AM
-  cron.schedule("0 3 * * *", async () => {
-    try {
-      console.log("🧹 Running security & message cleanup cron...");
+  cron.schedule(
+  "0 3 * * *",
+    async () => {
+      try {
+        const now = new Date();
 
-      const now = new Date();
+        //  Delete revoked refresh tokens older than 7 days
+        const revokedBefore = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-      /**
-       * 1) Cleanup revoked refresh tokens older than 7 days
-       */
-      const revokedBefore = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        await RefreshToken.deleteMany({
+          revoked: true,
+          updatedAt: { $lt: revokedBefore },
+        });
 
-      const deletedRevokedRefresh = await RefreshToken.deleteMany({
-        revoked: true,
-        updatedAt: { $lt: revokedBefore },
-      });
+        // Delete used reset tokens older than 1 day
+        const usedBefore = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-      /**
-       * 2) Cleanup used password reset tokens older than 1 day
-       */
-      const usedBefore = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        await PasswordReset.deleteMany({
+          used: true,
+          updatedAt: { $lt: usedBefore },
+        });
 
-      const deletedUsedResets = await PasswordReset.deleteMany({
-        used: true,
-        updatedAt: { $lt: usedBefore },
-      });
+        // Deactivate inactive sessions (>10 days)
+        const inactiveBefore = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
 
-      /**
-       * 3) Deactivate stale sessions (last seen > 10 days)
-       */
-      const inactiveBefore = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+        await Session.updateMany(
+          { isActive: true, lastSeenAt: { $lt: inactiveBefore } },
+          { $set: { isActive: false } }
+        );
 
-      const deactivatedSessions = await Session.updateMany(
-        { isActive: true, lastSeenAt: { $lt: inactiveBefore } },
-        { isActive: false }
-      );
+        //  Delete expired announcements
+        await Message.deleteMany({
+          type: "ANNOUNCEMENT",
+          expiresAt: { $lte: now },
+        });
 
-      /**
-       * 4) 🔥 DELETE EXPIRED ANNOUNCEMENTS (END OF DAY - IST)
-       */
-      const todayIST = getStartOfISTDay();
-
-      const deletedAnnouncements = await Message.deleteMany({
-        type: "ANNOUNCEMENT",
-        createdAt: { $lt: todayIST },
-      });
-
-      console.log("✅ Cleanup summary:", {
-        deletedRevokedRefresh: deletedRevokedRefresh.deletedCount,
-        deletedUsedResets: deletedUsedResets.deletedCount,
-        deactivatedSessions: deactivatedSessions.modifiedCount,
-        deletedAnnouncements: deletedAnnouncements.deletedCount,
-      });
-    } catch (err) {
-      console.error("❌ Cleanup cron failed:", err.message);
+        console.log("Cleanup completed");
+      } catch (err) {
+        console.error("Cleanup failed:", err);
+      }
+    },
+    {
+      timezone: "Asia/Kolkata",
     }
-  });
+  );
 };

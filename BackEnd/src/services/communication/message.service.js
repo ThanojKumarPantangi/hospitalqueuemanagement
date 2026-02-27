@@ -30,30 +30,41 @@ end.setDate(end.getDate() + 1);
 export const sendMessageService = async ({
   toUserId,
   fromUserId,
+  senderRole = "ADMIN",
   title,
   content,
   type = "GENERAL",
   metadata = {},
 }) => {
+  const now = new Date();
+
+  let expiresAt = null;
+
+  //Automatically expire announcements after 24 hours
+  if (type === "ANNOUNCEMENT") {
+    expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  }
+
   const message = await Message.create({
     toUser: toUserId,
     fromUser: fromUserId,
-    senderRole: "ADMIN",
+    senderRole,
     title,
     content,
     type,
     metadata,
+    expiresAt,
   });
 
   // MULTI-TAB SAFE SOCKET EMIT
   const socketIds = getOnlineUserSockets(toUserId);
 
-  if (socketIds.size > 0) {
+  if (socketIds && socketIds.size > 0) {
     for (const socketId of socketIds) {
       getIO().to(socketId).emit("messages:new", message.toObject());
     }
 
-    //  MARK AS DELIVERED (at least one socket received it)
+    // Mark as delivered
     await Message.updateOne(
       { _id: message._id },
       { $set: { deliveredAt: new Date() } }

@@ -1,15 +1,13 @@
 import jwt from "jsonwebtoken";
 import speakeasy from "speakeasy";
-import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import User from "../../models/user.model.js";
 import UserSecurity from "../../models/userSecurity.model.js";
-import Session from "../../models/session.model.js";
-import RefreshToken from "../../models/refreshToken.model.js";
 import Device from "../../models/device.model.js";
-import { generateAccessToken, generateRefreshToken } from "../../utils/jwt.util.js";
 import { getLocationFromIp } from "../../utils/geo.util.js";
 import { updateDeviceRecord } from "./deviceSecurity.service.js";
+import { createSession } from "./session.service.js";
+import { issueTokens } from "./token.service.js";
 
 
 export const verifyMfaService = async (tempToken, code, req) => {
@@ -67,13 +65,15 @@ export const verifyMfaService = async (tempToken, code, req) => {
 
     const delay = Math.min(1000 * Math.pow(2, attempts - 1), 30000);
     await security.save();
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
 
     if (attempts >= 5) {
       security.mfaLockedUntil = new Date(Date.now() + 10 * 60 * 1000);
       security.failedMfaAttempts = 0;
       await security.save();
-      throw new Error("Too many failed attempts. MFA locked for 10 minutes.");
+      throw new Error(
+        "Too many failed attempts. MFA locked for 10 minutes."
+      );
     }
 
     throw new Error("Invalid MFA code");
@@ -95,7 +95,7 @@ export const verifyMfaService = async (tempToken, code, req) => {
     ? ip.replace("::ffff:", "")
     : ip;
 
-  // Get location immediately
+  // Get location
   const location = await getLocationFromIp(cleanIp);
   const currentCountry = location?.country || null;
 
@@ -108,7 +108,7 @@ export const verifyMfaService = async (tempToken, code, req) => {
     });
   }
 
-  //  Trust device after MFA success
+  // Trust device after MFA success
   await updateDeviceRecord(
     user,
     deviceId,
@@ -118,78 +118,19 @@ export const verifyMfaService = async (tempToken, code, req) => {
     currentCountry
   );
 
-  //  Update account login memory
+  // Update account login memory
   security.lastLoginIp = cleanIp;
   security.lastLoginCountry = currentCountry;
   security.lastLoginAt = new Date();
   await security.save();
 
-  // SESSION INVALIDATION (keep your logic)
-  await Session.updateMany(
-    { user: user._id, isActive: true },
-    { isActive: false }
-  );
+  // CREATE SESSION via centralized service
+  const session = await createSession(user, req, cleanIp);
 
-  await RefreshToken.updateMany(
-    { user: user._id, revoked: false },
-    { revoked: true }
-  );
+  // ISSUE TOKENS via token service
+  const tokens = await issueTokens(user, session);
 
-  // SESSION CREATION
-  let absoluteExpiry;
-  if (user.role === "DOCTOR") {
-    absoluteExpiry = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-  } else if (user.role === "ADMIN") {
-    absoluteExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  } else {
-    absoluteExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-  }
-
-  const session = await Session.create({
-    user: user._id,
-    role: user.role,
-    device: req.headers["user-agent"]?.substring(0, 120),
-    ipAddress: cleanIp,
-    location,
-    isActive: true,
-    absoluteExpiresAt: absoluteExpiry,
-  });
-
-  // TOKEN GENERATION
-  const accessPayload = {
-    id: user._id,
-    role: user.role,
-    name: user.name,
-    sessionId: session._id,
-  };
-
-  const refreshJti = uuidv4();
-
-  const refreshPayload = {
-    id: user._id,
-    role: user.role,
-    sessionId: session._id,
-    jti: refreshJti,
-  };
-
-  const accessToken = generateAccessToken(accessPayload);
-  const refreshToken = generateRefreshToken(refreshPayload);
-
-  const tokenHash = crypto
-    .createHash("sha256")
-    .update(refreshToken)
-    .digest("hex");
-
-  await RefreshToken.create({
-    user: user._id,
-    session: session._id,
-    jti: refreshJti,
-    tokenHash,
-    revoked: false,
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  });
-
-  return { accessToken, refreshToken, user };
+  return { ...tokens, user };
 };
 
 // MFA Login Flow

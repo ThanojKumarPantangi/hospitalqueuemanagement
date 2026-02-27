@@ -1,11 +1,11 @@
 import bcrypt from "bcrypt";
 import User from "../../models/user.model.js";
 import UserSecurity from "../../models/userSecurity.model.js";
-import { handlePasswordFailure, resetFailedAttempts } from "./loginSecurity.service.js";
-import { evaluateLoginRisk } from "./loginRisk.service.js";
+import { handlePasswordFailure, resetFailedAttempts } from "./loginFlow.service.js";
+import { evaluateLoginRisk } from "./loginFlow.service.js";
 import { handleMfaFlow } from "./mfa.service.js";
-import { createSession } from "./sessionCreate.service.js";
-import { issueTokens } from "./tokenIssue.service.js";
+import { createSession } from "./session.service.js";
+import { issueTokens } from "./token.service.js";
 import { createSecurityEvent, sendSecurityEmail } from "./securityAlert.service.js";
 import {updateDeviceRecord} from "./deviceSecurity.service.js"
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);

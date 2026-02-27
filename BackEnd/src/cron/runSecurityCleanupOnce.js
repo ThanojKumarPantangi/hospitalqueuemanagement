@@ -1,3 +1,4 @@
+// RENDER
 import dotenv from "dotenv";
 import connectDB from "../config/database.config.js";
 

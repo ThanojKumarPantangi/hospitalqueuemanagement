@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import User from "../models/user.model.js";
 import PasswordReset from "../models/passwordReset.model.js";
-import { revokeAllUserSessions } from "../services/auth/sessionRevoke.service.js";
+import { revokeAllUserSessions } from "../services/auth/session.service.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { resetPasswordTemplate } from "../emailTemplates/resetPassword.template.js";
 
