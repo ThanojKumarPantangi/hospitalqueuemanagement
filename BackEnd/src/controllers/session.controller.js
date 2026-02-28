@@ -1,6 +1,5 @@
-import Session from "../models/session.model.js";
-import RefreshToken from "../models/refreshToken.model.js";
-import { forceLogoutSession } from "../sockets/forceLogout.js"; 
+import Session from "../models/session.model.js"; 
+import {revokeAllUserSessions,revokeUserSessionById} from "../services/auth/session.service.js"
 import userSecurityModel from "../models/userSecurity.model.js";
 import SecurityEvent from "../models/securityEvent.model.js";
 import mongoose from "mongoose";
@@ -47,32 +46,11 @@ export const logoutSessionById = async (req, res) => {
 
     const { sessionId } = req.params;
 
-    const session = await Session.findOne({
-      _id: sessionId,
-      user: req.user._id,
-      isActive: true,
-    });
-
-    if (!session) {
-      return res.status(404).json({ message: "Session not found" });
-    }
-
-    // 1) deactivate session
-    session.isActive = false;
-    await session.save();
-
-    // 2) revoke refresh tokens for that session
-    await RefreshToken.updateMany(
-      { user: req.user._id, session: session._id, revoked: false },
-      { revoked: true }
-    );
-
-    // 3) force logout on that device (socket)
-    forceLogoutSession(global.io, session._id.toString());
+    await revokeUserSessionById(sessionId, req.user._id);
 
     return res.json({ message: "Session logged out successfully" });
   } catch (err) {
-    return res.status(500).json({ message: "Failed to logout session" });
+    return res.status(500).json({ message: err.message || "Failed to logout session" });
   }
 };
 
@@ -85,27 +63,7 @@ export const logoutAllMySessions = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    const sessions = await Session.find({
-      user: req.user._id,
-      isActive: true,
-    }).select("_id");
-
-    // 1) deactivate all sessions
-    await Session.updateMany(
-      { user: req.user._id, isActive: true },
-      { isActive: false }
-    );
-
-    // 2) revoke all refresh tokens for this user
-    await RefreshToken.updateMany(
-      { user: req.user._id, revoked: false },
-      { revoked: true }
-    );
-
-    // 3) force logout all sessions via socket
-    sessions.forEach((s) => {
-      forceLogoutSession(global.io, s._id.toString());
-    });
+    await revokeAllUserSessions(req.user._id);
 
     return res.json({ message: "Logged out from all devices successfully" });
   } catch (err) {

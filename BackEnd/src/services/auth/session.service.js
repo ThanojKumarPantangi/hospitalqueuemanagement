@@ -4,7 +4,7 @@ import { getLocationFromIp } from "../../utils/geo.util.js";
 import { forceLogoutSession } from "../../sockets/forceLogout.js";
 
 /* =========================================================
-   SESSION POLICY (Single Source of Truth)
+   SESSION POLICY
 ========================================================= */
 
 const SESSION_LIFETIME = {
@@ -26,7 +26,6 @@ const calculateAbsoluteExpiry = (role) => {
 
 /* =========================================================
    CREATE SESSION
-   (Same behavior as your old createSession)
 ========================================================= */
 
 export const createSession = async (user, req, cleanIp) => {
@@ -114,6 +113,35 @@ export const revokeAllUserSessions = async (userId) => {
   sessions.forEach((s) => {
     forceLogoutSession(global.io, s._id.toString());
   });
+};
+
+/* =========================================================
+   REVOKE USER SESSION BY ID
+========================================================= */
+
+export const revokeUserSessionById = async (sessionId, userId) => {
+  const session = await Session.findOne({
+    _id: sessionId,
+    user: userId,
+    isActive: true,
+  });
+
+  if (!session) {
+    throw new Error("Session not found");
+  }
+
+  // deactivate session
+  session.isActive = false;
+  await session.save();
+
+  // revoke refresh tokens for that session
+  await RefreshToken.updateMany(
+    { user: userId, session: session._id, revoked: false },
+    { revoked: true }
+  );
+
+  // force logout via socket
+  forceLogoutSession(global.io, session._id.toString());
 };
 
 /* =========================================================
