@@ -20,6 +20,8 @@ import messageRoutes from "./routes/message.routes.js";
 import sessionRoutes from "./routes/session.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import patientProfileRoutes from "./routes/patientProfile.routes.js";
+import medicineRoutes from "./routes/medicine.routes.js";
+import templateRoutes from "./routes/template.routes.js";
 
 
 import {globalLimiter} from "./middlewares/rateLimiter.middleware.js";
@@ -66,7 +68,9 @@ app.use("/api/doctorProfile", doctorRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/users",userRoutes);
-app.use("/api/patient-profile", patientProfileRoutes)
+app.use("/api/patient-profile", patientProfileRoutes);
+app.use("/api/medicines", medicineRoutes);
+app.use("/api/templates", templateRoutes);
 
 /* ------------------ Health check ------------------ */
 app.get("/health", (req, res) => {

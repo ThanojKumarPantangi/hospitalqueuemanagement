@@ -28,6 +28,7 @@ import DoctorDashboard from "./pages/doctor/Dashboard";
 import DoctorProfile from "./pages/doctor/DoctorProfile.jsx";
 import DoctorQueue from "./pages/doctor/Queue.jsx";
 import DoctorInbox from "./pages/doctor/DoctorInbox.jsx";
+import DoctorTemplates from "./pages/doctor/DoctorTemplatesPage.jsx";
 
 import AdminLayout from "./layouts/AdminNavbarLayout.jsx";
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -39,6 +40,7 @@ import AdminInbox from "./pages/admin/AdminInbox.jsx";
 import AdminResetMfa from "./pages/admin/AdminResetMfa.jsx";
 import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
 import AdminMessagingPanel from "./pages/admin/AdminMessagingPanel.jsx";
+import Medicine from "./pages/admin/Medicine.jsx";
 
 import Loader from "./components/animation/Loader";
 import Logout from "./components/button/Logoutbutton.jsx";
@@ -86,6 +88,7 @@ function App() {
             <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
             <Route path="/doctor/profile" element={<DoctorProfile />} />
             <Route path="/doctor/queue" element={<DoctorQueue />} />
+            <Route path="/doctor/templates" element={<DoctorTemplates />} />
             <Route path="/doctor/change-password" element={<ChangePasswordUI />} />
             <Route path="/doctor/inbox" element={<DoctorInbox />} />
           </Route>
@@ -98,6 +101,7 @@ function App() {
               <Route path="departments" element={<DepartmentManagement />} />
               <Route path="queue-monitor" element={<QueueMonitor />} />
               <Route path="qr-scanner" element={<AdminPatientQrScanner />} />
+              <Route path="medicine" element={<Medicine/>}/>
               <Route path="analytics" element={<AnalyticsDashboard />} />
               <Route path="settings" element={<ChangePasswordUI />} />
               <Route path="messaging" element={<AdminMessagingPanel />} />

@@ -6,7 +6,7 @@ const authMiddleware = async (req, res, next) => {
   try {
     // Read access token from HttpOnly cookie
     const token = req.cookies?.accessToken;
-
+    
     if (!token) {
       return res.status(401).json({ message: "No access token" });
     }

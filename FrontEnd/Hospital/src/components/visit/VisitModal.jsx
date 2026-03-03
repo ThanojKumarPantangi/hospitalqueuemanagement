@@ -2,14 +2,17 @@
 /* -------------------- Create Visit Record -------------------- */
 /* ------------------------------------------------------------- */
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Toast from "../../components/ui/Toast";
 import {
   motion,
   AnimatePresence,
-  LayoutGroup,
   useReducedMotion,
 } from "framer-motion";
+import {
+  searchMedicinesApi,
+  matchTemplateMedicineApi,
+} from "../../api/medicine.api.js"
 import {
   Calendar,
   ChevronLeft,
@@ -22,17 +25,18 @@ import {
   Thermometer,
   Heart,
   Scale,
-  Sparkles,
   ClipboardCheck,
-  ShieldCheck,
-  Info,
+  Trash2,
 } from "lucide-react";
 
 /* -------------------- Helpers -------------------- */
 
 const createEmptyPrescription = () => ({
   id: crypto.randomUUID(),
+  medicineId: "",
   medicineName: "",
+  form: "",
+  strength: "",
   dosage: "",
   duration: "",
   frequency: "",
@@ -61,183 +65,86 @@ const sameDay = (a, b) => {
 
 const overlayVars = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.28 } },
-  exit: { opacity: 0, transition: { duration: 0.18 } },
+  visible: { opacity: 1, transition: { duration: 0.35 } },
+  exit: { opacity: 0, transition: { duration: 0.25 } },
 };
 
 const modalVars = {
-  hidden: { opacity: 0, scale: 0.96, y: 22, filter: "blur(8px)" },
+  hidden: { opacity: 0, scale: 0.96, y: 24 },
   visible: {
     opacity: 1,
     scale: 1,
     y: 0,
-    filter: "blur(0px)",
-    transition: { type: "spring", damping: 26, stiffness: 320 },
+    transition: {
+      duration: 0.45,
+      ease: [0.16, 1, 0.3, 1],
+    },
   },
   exit: {
     opacity: 0,
-    scale: 0.96,
-    y: 18,
-    filter: "blur(8px)",
-    transition: { duration: 0.18 },
+    scale: 0.97,
+    y: 12,
+    transition: { duration: 0.25, ease: "easeInOut" },
   },
 };
 
-const containerVars = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.07, delayChildren: 0.06 },
-  },
-};
-
-const itemVars = {
-  hidden: { opacity: 0, y: 14 },
+const fadeUpVars = {
+  hidden: { opacity: 0, y: 10 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring", stiffness: 210, damping: 20 },
+    transition: { duration: 0.3, ease: "easeOut" },
   },
 };
 
-const softPop = {
-  rest: { y: 0 },
-  hover: { y: -2 },
-  tap: { scale: 0.98 },
-};
-
-const glowPulse = {
-  hidden: { opacity: 0 },
+const calendarVars = {
+  hidden: { opacity: 0, y: 10, scale: 0.98 },
   visible: {
-    opacity: [0.2, 0.35, 0.2],
-    transition: { duration: 2.6, repeat: Infinity, ease: "easeInOut" },
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.22, ease: [0.2, 0.85, 0.25, 1] },
   },
+  exit: { opacity: 0, y: 8, scale: 0.99, transition: { duration: 0.18 } },
 };
 
 /* -------------------- Sub-Components -------------------- */
 
-// Reusable Input Wrapper for consistent style
-const InputGroup = ({
-  label,
-  icon: Icon,
-  required,
-  rightTag,
-  hint,
-  children,
-  className = "",
-}) => (
-  <div className={cn("space-y-1.5", className)}>
-    <div className="flex items-center justify-between px-1">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-        {Icon && <Icon size={12} className="text-blue-500" />}
-        {label}
-        {hint ? (
-          <span className="hidden sm:inline-flex items-center gap-1 ml-2 text-[10px] font-bold text-slate-400 dark:text-slate-500">
-            <Info size={12} />
-            {hint}
-          </span>
-        ) : null}
-      </div>
-
-      {required ? (
-        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md dark:bg-rose-900/20 dark:text-rose-300">
-          REQUIRED
-        </span>
-      ) : rightTag ? (
-        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded-md dark:bg-slate-800 dark:text-slate-500">
-          {rightTag}
-        </span>
-      ) : null}
-    </div>
-    {children}
+const Label = ({ children, required, rightTag }) => (
+  <div className="flex items-center justify-between mb-1.5">
+    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+      {children}
+    </label>
+    {required && (
+      <span className="text-[10px] font-semibold text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-1.5 py-0.5 rounded">
+        Required
+      </span>
+    )}
+    {rightTag && <span className="text-[10px] font-medium text-slate-400">{rightTag}</span>}
   </div>
 );
 
-// Styled Base Input
-const BaseInput = (props) => (
+const BaseInput = React.forwardRef(({ className, ...props }, ref) => (
   <input
+    ref={ref}
     {...props}
     className={cn(
-      "w-full",
-      "bg-slate-50 border border-slate-200",
-      "text-slate-900 text-sm font-medium",
-      "rounded-xl px-4 py-3",
-      "placeholder:text-slate-400",
-      "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500",
-      "hover:bg-white hover:border-slate-300",
-      "transition-all duration-200",
-      "dark:bg-slate-800/50 dark:border-slate-700 dark:text-slate-100",
-      "dark:focus:border-blue-400 dark:hover:bg-slate-800",
-      props.className
+      "w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-sm rounded-lg px-3.5 py-2.5 outline-none transition-shadow",
+      "placeholder:text-slate-400 dark:placeholder:text-slate-500",
+      "focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:focus:ring-blue-500/20",
+      className
     )}
   />
-);
+));
+BaseInput.displayName = "BaseInput";
 
-// Styled Base Textarea
-const BaseTextarea = (props) => (
-  <textarea
-    {...props}
-    className={cn(
-      "w-full",
-      "bg-slate-50 border border-slate-200",
-      "text-slate-900 text-sm font-medium",
-      "rounded-xl px-4 py-3",
-      "placeholder:text-slate-400",
-      "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500",
-      "hover:bg-white hover:border-slate-300",
-      "transition-all duration-200",
-      "dark:bg-slate-800/50 dark:border-slate-700 dark:text-slate-100",
-      "dark:focus:border-blue-400 dark:hover:bg-slate-800",
-      props.className
-    )}
-  />
-);
-
-// Tiny badge for sections
-const MiniBadge = ({ icon: Icon, text }) => (
-  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700 text-[10px] font-extrabold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-    {Icon ? <Icon size={12} className="text-blue-500" /> : null}
-    {text}
-  </span>
-);
-
-// Section container card
-const SectionCard = ({ title, icon: Icon, subtitle, right, children }) => (
-  <div className="relative rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/50 shadow-sm overflow-visible">
-    <div className="absolute inset-0 pointer-events-none">
-      <motion.div
-        variants={glowPulse}
-        initial="hidden"
-        animate="visible"
-        className="absolute -top-20 -right-20 h-56 w-56 rounded-full blur-3xl opacity-25 bg-gradient-to-br from-blue-400 via-indigo-300 to-cyan-300 dark:opacity-10"
-      />
+const SectionTitle = ({ icon: Icon, title, description }) => (
+  <div className="mb-4">
+    <div className="flex items-center gap-2 mb-1">
+      {Icon && <Icon size={18} className="text-blue-500" />}
+      <h3 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">{title}</h3>
     </div>
-
-    <div className="relative px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40 backdrop-blur">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 flex items-center justify-center">
-              <Icon size={16} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-extrabold text-slate-800 dark:text-white truncate">
-                {title}
-              </p>
-              {subtitle ? (
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                  {subtitle}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        {right ? <div className="shrink-0">{right}</div> : null}
-      </div>
-    </div>
-
-    <div className="relative p-5">{children}</div>
+    {description && <p className="text-sm text-slate-500 dark:text-slate-400">{description}</p>}
   </div>
 );
 
@@ -250,6 +157,11 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
   const [toast, setToast] = useState(null);
   const [symptoms, setSymptoms] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [activeSearchIndex, setActiveSearchIndex] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isMatchingTemplate, setIsMatchingTemplate] = useState(false);
+  const searchTimeoutRef = useRef(null);
 
   const [vitals, setVitals] = useState({
     temperature: "",
@@ -301,14 +213,7 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
     return clamp(raw, 0, 100);
   }, [symptoms, diagnosis, vitals, validPrescriptionsCount]);
 
-  const completionLabel = useMemo(() => {
-    if (completionScore >= 90) return "Excellent";
-    if (completionScore >= 70) return "Good";
-    if (completionScore >= 45) return "In progress";
-    return "Getting started";
-  }, [completionScore]);
-
-  /* ---------- Calendar Memo (Fix Month Switch) ---------- */
+  /* ---------- Calendar Memo ---------- */
   const monthLabel = useMemo(() => {
     return viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   }, [viewDate]);
@@ -329,14 +234,125 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
     return Array.from({ length: firstDayIndex }, (_, i) => i);
   }, [firstDayIndex]);
 
-  const handleClose = () => {
+  /* ---------- Stable handlers ---------- */
+  const handleClose = useCallback(() => {
     setIsCalendarOpen(false);
     setViewDate(new Date());
     onClose?.();
+  }, [onClose]);
+
+  /* ---------- Search Function ---------- */
+  const handleMedicineSearch = (value, index) => {
+    updatePrescription(index, "medicineName", value);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (!value || value.trim().length < 2) {
+      setSearchResults([]);
+      setActiveSearchIndex(null);
+      setIsSearching(false); 
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        setIsSearching(true); 
+        const res = await searchMedicinesApi(value.trim());
+        const results = Array.isArray(res?.data?.data)
+          ? res.data.data
+          : [];
+        setSearchResults(results);
+        setActiveSearchIndex(index);
+      } catch (err) {
+        setIsSearching(false);
+        console.error("Search error", err);
+        setSearchResults([]);
+      }
+      finally{
+        setIsSearching(false);
+      }
+    }, 300);
   };
 
-  const handleSave = () => {
-    // ⚠️ DO NOT CHANGE LOGIC
+  /* ---------- Medicine Variant Select ---------- */
+  const handleVariantSelect = async (variantObj, index) => {
+    if (isMatchingTemplate) return;
+    const {
+      medicineId,
+      name,
+      form,
+      strength,
+      defaultDosage,
+      defaultFrequency,
+      defaultInstructions,
+    } = variantObj;
+
+    try {
+      setIsMatchingTemplate(true);
+      const res = await matchTemplateMedicineApi({
+        medicineId,
+        form,
+        strength,
+      });
+
+      const matched = res?.data?.data || null;
+
+      const followUpDays = matched?.followUpDays ?? null;
+
+      const copy = [...prescriptions];
+
+      copy[index] = {
+        ...copy[index],
+        medicineId,
+        medicineName: name,
+        form,
+        strength,
+        dosage: matched?.dosage ??strength?? "",
+        frequency: matched?.frequency ?? defaultFrequency ?? "",
+        duration: matched?.duration ?? "",
+        instructions:
+          matched?.instructions ?? defaultInstructions ?? "",
+      };
+
+      setPrescriptions(copy);
+      
+      if (followUpDays && !selectedDate) {
+        const today = new Date();
+        const nextDate = new Date(today);
+        nextDate.setDate(today.getDate() + Number(followUpDays));
+        setSelectedDate(nextDate);
+      }
+    } catch (err) {
+      console.error("Match error", err);
+
+      // fallback to global defaults
+      const copy = [...prescriptions];
+
+      copy[index] = {
+        ...copy[index],
+        medicineId,
+        medicineName: name,
+        form,
+        strength,
+        dosage: defaultDosage ?? "",
+        frequency: defaultFrequency ?? "",
+        duration: "",
+        instructions: defaultInstructions ?? "",
+      };
+
+      setPrescriptions(copy);
+    }
+    finally {
+      setIsMatchingTemplate(false);
+      setSearchResults([]);
+    setActiveSearchIndex(null);
+    }
+  };
+
+  // Wrapped in useCallback to satisfy dependency requirements
+  const handleSave = useCallback(() => {
     if (!diagnosis.trim()) {
       setToast({ type: "error", message: "Diagnosis is required to save record." });
       return;
@@ -353,7 +369,6 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
 
     setPrescriptions([createEmptyPrescription()]);
 
-    // ⚠️ DO NOT CHANGE PAYLOAD
     onSave({
       symptoms: symptoms.trim() || null,
       diagnosis: diagnosis.trim(),
@@ -366,19 +381,16 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
       prescriptions: validPrescriptions,
       followUpDate: selectedDate || null,
     });
-  };
+  }, [diagnosis, symptoms, vitals, prescriptions, selectedDate, onSave]);
 
   // Close calendar on outside click
   useEffect(() => {
     if (!isOpen) return;
-
     const handler = (e) => {
-      if (!isCalendarOpen) return;
-      if (!calendarRef.current) return;
+      if (!isCalendarOpen || !calendarRef.current) return;
       if (calendarRef.current.contains(e.target)) return;
       setIsCalendarOpen(false);
     };
-
     window.addEventListener("mousedown", handler);
     return () => window.removeEventListener("mousedown", handler);
   }, [isOpen, isCalendarOpen]);
@@ -388,13 +400,14 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
     if (!isOpen) return;
 
     const onKey = (e) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key === "Escape") {
+        handleClose();
+      }
     };
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, handleClose]);
 
   /* -------------------- Render -------------------- */
 
@@ -411,720 +424,405 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-            {/* Backdrop */}
+            {/* Dark minimal backdrop */}
             <motion.div
               variants={overlayVars}
               initial="hidden"
               animate="visible"
               exit="exit"
-              className="absolute inset-0 bg-slate-900/45 backdrop-blur-md"
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
               onClick={handleClose}
             />
 
-            {/* Modal Card */}
+            {/* Modal Box */}
             <motion.div
               variants={modalVars}
               initial="hidden"
               animate="visible"
               exit="exit"
               className={cn(
-                "relative w-full max-w-3xl max-h-[92vh] flex flex-col",
-                "bg-white dark:bg-slate-900",
-                "rounded-[2rem] shadow-2xl",
-                "border border-white/20 dark:border-slate-700",
+                "relative w-full max-w-4xl max-h-[92vh] flex flex-col",
+                "bg-white dark:bg-slate-950",
+                "rounded-2xl shadow-2xl shadow-black/30 backdrop-blur-xl",
+                "border border-slate-200 dark:border-slate-800",
                 "overflow-hidden"
               )}
             >
-              {/* Decorative background */}
-              <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full blur-3xl opacity-25 bg-gradient-to-br from-blue-400 via-indigo-300 to-cyan-300 dark:opacity-15" />
-                <div className="absolute -bottom-28 -left-28 h-80 w-80 rounded-full blur-3xl opacity-20 bg-gradient-to-br from-rose-300 via-amber-200 to-purple-300 dark:opacity-10" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_55%)]" />
-              </div>
-
-              {/* --- Sticky Header --- */}
-              <div className="relative shrink-0 z-20 bg-white/75 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 px-6 py-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 bg-blue-50/80 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40">
-                        <Sparkles
-                          size={14}
-                          className="text-blue-600 dark:text-blue-400"
-                        />
-                        <span className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-blue-700 dark:text-blue-300">
-                          New Consultation
-                        </span>
-                      </span>
-                      <MiniBadge icon={ShieldCheck} text="Secure" />
-                    </div>
-
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-3">
-                      Create Visit Record
+              {/* --- Header --- */}
+              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg">
+                    <ClipboardCheck size={20} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white leading-tight">
+                      Consultation Record
                     </h2>
-
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
-                      {new Date().toLocaleDateString(undefined, {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Complete the clinical summary and prescription details below.
                     </p>
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    {/* Completion */}
-                    <div className="hidden sm:flex flex-col items-end gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                          Completeness
-                        </span>
-                        <span className="text-[10px] font-black text-blue-600 dark:text-blue-400">
-                          {completionScore}%
-                        </span>
-                      </div>
-
-                      <div className="w-44 h-2 rounded-full bg-slate-200/70 dark:bg-slate-800 overflow-hidden">
-                        <motion.div
-                          className="h-full bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-500"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${completionScore}%` }}
-                          transition={{
-                            type: "spring",
-                            bounce: 0,
-                            duration: prefersReducedMotion ? 0 : 0.9,
-                          }}
-                        />
-                      </div>
-
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {completionLabel}
-                      </span>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  {/* Subtle progress indicator */}
+                  <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-500">
+                    <span>Completeness</span>
+                    <div className="w-16 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-blue-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${completionScore}%` }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                      />
                     </div>
-
-                    {/* Close */}
-                    <motion.button
-                      variants={softPop}
-                      initial="rest"
-                      whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                      whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                      onClick={handleClose}
-                      className="p-2 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors shadow-sm"
-                      aria-label="Close"
-                      type="button"
-                    >
-                      <X size={20} />
-                    </motion.button>
                   </div>
+                  <button
+                    onClick={handleClose}
+                    className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-800 dark:hover:text-slate-300 transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
               </div>
 
               {/* --- Scrollable Body --- */}
-              <motion.div
-                variants={containerVars}
-                initial="hidden"
-                animate="visible"
-                className="relative flex-1 overflow-y-auto p-6 sm:p-7 space-y-6 custom-scrollbar"
-              >
-                {/* Quick insight strip */}
-                <motion.div
-                  variants={itemVars}
-                  className="grid grid-cols-1 sm:grid-cols-3 gap-3"
-                >
-                  <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/50 p-4 shadow-sm">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                      Valid Rx
-                    </p>
-                    <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                      {validPrescriptionsCount}
-                    </p>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
-                      Medicines added
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/50 p-4 shadow-sm">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                      Follow-up
-                    </p>
-                    <p className="text-sm font-black text-slate-900 dark:text-white mt-2 truncate">
-                      {formatDateGB(selectedDate) || "Not scheduled"}
-                    </p>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
-                      Optional date
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-900/50 p-4 shadow-sm">
-                    <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                      Status
-                    </p>
-                    <p className="text-sm font-black text-blue-600 dark:text-blue-400 mt-2">
-                      {completionLabel}
-                    </p>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
-                      {completionScore}% complete
-                    </p>
-                  </div>
-                </motion.div>
-
+              <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar scroll-smooth bg-white dark:bg-slate-950">
+                
                 {/* 1. Clinical Data */}
-                <motion.div variants={itemVars}>
-                  <SectionCard
-                    title="Clinical Summary"
-                    icon={ClipboardCheck}
-                    subtitle="Add diagnosis first, then symptoms"
-                    right={<MiniBadge icon={Stethoscope} text="Doctor Notes" />}
-                  >
-                    <div className="grid md:grid-cols-2 gap-5">
-                      <InputGroup
-                        label="Diagnosis"
-                        icon={Stethoscope}
-                        required
-                        hint="Required"
-                      >
-                        <BaseInput
-                          placeholder="e.g. Acute Viral Bronchitis"
-                          value={diagnosis}
-                          onChange={(e) => setDiagnosis(e.target.value)}
-                          autoFocus
-                        />
-                      </InputGroup>
-
-                      <InputGroup
-                        label="Symptoms"
-                        icon={Activity}
-                        rightTag="Optional"
-                        hint="Short notes"
-                      >
-                        <BaseTextarea
-                          rows={1}
-                          placeholder="e.g. Cough, high fever, sore throat"
-                          value={symptoms}
-                          onChange={(e) => setSymptoms(e.target.value)}
-                        />
-                      </InputGroup>
+                <motion.section variants={fadeUpVars} initial="hidden" animate="visible" className="space-y-4">
+                  <SectionTitle icon={Stethoscope} title="Clinical Assessment" />
+                  <div className="grid md:grid-cols-2 gap-5">
+                    <div>
+                      <Label required>Diagnosis</Label>
+                      <BaseInput
+                        placeholder="e.g. Acute Viral Bronchitis"
+                        value={diagnosis}
+                        onChange={(e) => setDiagnosis(e.target.value)}
+                        autoFocus
+                      />
                     </div>
-                  </SectionCard>
-                </motion.div>
+                    <div>
+                      <Label rightTag="Optional">Symptoms & Notes</Label>
+                      <BaseInput
+                        placeholder="e.g. Cough, high fever, sore throat"
+                        value={symptoms}
+                        onChange={(e) => setSymptoms(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </motion.section>
 
-                {/* 2. Vitals Grid */}
-                <motion.div variants={itemVars}>
-                  <SectionCard
-                    title="Vital Signs"
-                    icon={Activity}
-                    subtitle="Optional measurements"
-                    right={<MiniBadge icon={Activity} text="Vitals" />}
-                  >
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {[
-                        {
-                          key: "temperature",
-                          label: "Temp",
-                          unit: "°F",
-                          icon: Thermometer,
-                        },
-                        { key: "bp", label: "BP", unit: "mmHg", icon: Activity },
-                        { key: "pulse", label: "Pulse", unit: "bpm", icon: Heart },
-                        { key: "weight", label: "Weight", unit: "kg", icon: Scale },
-                      ].map((v) => (
-                        <div key={v.key} className="relative group">
-                          <div className="absolute top-3 left-3 text-slate-400 group-focus-within:text-blue-500 transition-colors">
-                            <v.icon size={16} />
-                          </div>
+                <hr className="border-slate-100 dark:border-slate-800/80" />
 
-                          <input
-                            type="text"
-                            value={vitals[v.key]}
-                            onChange={(e) =>
-                              setVitals({ ...vitals, [v.key]: e.target.value })
-                            }
-                            className={cn(
-                              "w-full",
-                              "bg-slate-50 dark:bg-slate-800/50",
-                              "border border-slate-200 dark:border-slate-700",
-                              "rounded-2xl",
-                              "py-3 pl-9 pr-3",
-                              "text-center font-extrabold",
-                              "text-slate-700 dark:text-slate-200",
-                              "focus:outline-none focus:border-blue-500 focus:bg-white",
-                              "dark:focus:bg-slate-800",
-                              "transition-all"
-                            )}
-                            placeholder="-"
-                          />
-
-                          <div className="absolute bottom-1 w-full text-center">
-                            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">
-                              {v.label}{" "}
-                              <span className="opacity-50">({v.unit})</span>
-                            </span>
-                          </div>
+                {/* 2. Vitals */}
+                <motion.section variants={fadeUpVars} initial="hidden" animate="visible" transition={{ delay: 0.05 }} className="space-y-4">
+                  <SectionTitle icon={Activity} title="Vital Signs" description="Optional measurements taken during the visit." />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                      { key: "temperature", label: "Temp", unit: "°F", icon: Thermometer },
+                      { key: "bp", label: "BP", unit: "mmHg", icon: Activity },
+                      { key: "pulse", label: "Pulse", unit: "bpm", icon: Heart },
+                      { key: "weight", label: "Weight", unit: "kg", icon: Scale },
+                    ].map((v) => (
+                      <div key={v.key} className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                          <v.icon size={16} />
                         </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-slate-50/60 dark:bg-slate-800/30 p-4">
-                      <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                        Note
-                      </p>
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1">
-                        Leave vitals empty if not measured. It won’t block saving.
-                      </p>
-                    </div>
-                  </SectionCard>
-                </motion.div>
-
-                {/* 3. Prescription Section */}
-                <motion.div variants={itemVars}>
-                  <SectionCard
-                    title="Prescriptions"
-                    icon={Pill}
-                    subtitle="Add medicines with dosage and schedule"
-                    right={
-                      <div className="flex items-center gap-2">
-                        <MiniBadge icon={Pill} text={`${prescriptions.length} Rows`} />
-                        <MiniBadge
-                          icon={ClipboardCheck}
-                          text={`${validPrescriptionsCount} Valid`}
+                        <BaseInput
+                          className="pl-9 pr-12"
+                          placeholder="-"
+                          value={vitals[v.key]}
+                          onChange={(e) => setVitals({ ...vitals, [v.key]: e.target.value })}
                         />
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                          <span className="text-xs text-slate-400">{v.unit}</span>
+                        </div>
                       </div>
-                    }
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        Tip: Only rows with medicine name will be saved.
-                      </p>
+                    ))}
+                  </div>
+                </motion.section>
 
-                      <motion.button
-                        variants={softPop}
-                        initial="rest"
-                        whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                        whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                        onClick={addPrescription}
-                        className="text-xs font-black text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5 border border-blue-100 dark:border-blue-800/40"
-                        type="button"
-                      >
-                        <Plus size={14} /> Add Medicine
-                      </motion.button>
+                <hr className="border-slate-100 dark:border-slate-800/80" />
+
+                {/* 3. Prescription List */}
+                <motion.section variants={fadeUpVars} initial="hidden" animate="visible" transition={{ delay: 0.1 }} className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <SectionTitle icon={Pill} title="Prescription" />
+                  </div>
+
+                  <div className="space-y-3">
+                    {/* Header Row (Hidden on mobile) */}
+                    <div className="hidden md:grid grid-cols-12 gap-3 px-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      <div className="col-span-3">Medicine Name</div>
+                      <div className="col-span-2">Dosage</div>
+                      <div className="col-span-2">Frequency</div>
+                      <div className="col-span-2">Duration</div>
+                      <div className="col-span-2">Instructions</div>
+                      <div className="col-span-1 text-right">Action</div>
                     </div>
 
-                    <div className="mt-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl p-4 border border-slate-100 dark:border-slate-700/50 space-y-3">
-                      <LayoutGroup>
-                        <AnimatePresence initial={false}>
-                          {prescriptions.map((item, index) => (
-                            <motion.div
-                              layout
-                              key={item.id}
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0, overflow: "hidden" }}
-                              transition={{
-                                duration: prefersReducedMotion ? 0 : 0.28,
-                              }}
-                              className={cn(
-                                "group relative",
-                                "bg-white dark:bg-slate-900",
-                                "border border-slate-200 dark:border-slate-700",
-                                "rounded-2xl p-4",
-                                "shadow-sm",
-                                "hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800/50",
-                                "transition-all"
-                              )}
-                            >
-                              <div className="absolute inset-0 pointer-events-none">
-                                <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full blur-3xl opacity-15 bg-gradient-to-br from-blue-400 via-indigo-300 to-cyan-300 dark:opacity-10" />
+                    <AnimatePresence initial={false}>
+                      {prescriptions.map((item, index) => (
+                        <motion.div
+                          layout
+                          key={item.id}
+                          initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={prefersReducedMotion ? false : { opacity: 0, y: -6 }}
+                          transition={{ duration: 0.25 }}
+                          className="group bg-slate-50 dark:bg-slate-900/50 p-3 md:p-0 md:bg-transparent md:dark:bg-transparent rounded-xl md:rounded-none border border-slate-200 dark:border-slate-800 md:border-none"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start md:items-center">
+                            
+                            <div className="col-span-1 md:col-span-3">
+                              <span className="md:hidden text-xs font-medium text-slate-500 mb-1 block">Medicine Name</span>
+                              <div className="relative">
+                                <BaseInput
+                                  placeholder="Search medicine..."
+                                  value={item.medicineName}
+                                  disabled={isMatchingTemplate}
+                                  onChange={(e) =>
+                                    handleMedicineSearch(e.target.value, index)
+                                  }
+                                />
+
+                                {activeSearchIndex === index && (
+                                  <div className="absolute z-50 mt-2 w-full bg-white border rounded-lg shadow max-h-60 overflow-auto">
+                                    
+                                    {isSearching && (
+                                      <div className="p-3 text-center text-sm text-slate-500">
+                                        Searching medicines...
+                                      </div>
+                                    )}
+
+                                    {!isSearching && searchResults.length === 0 && (
+                                      <div className="p-3 text-center text-sm text-slate-400">
+                                        No medicines found
+                                      </div>
+                                    )}
+
+                                    {!isSearching && searchResults.map((result, i) => (
+                                      <div
+                                        key={`${result.medicineId}-${result.form}-${result.strength}-${i}`}
+                                        onClick={() => handleVariantSelect(result, index)}
+                                        className="p-2 hover:bg-slate-100 cursor-pointer"
+                                      >
+                                        <div className="font-medium">
+                                          {result.name}
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                          {result.form} • {result.strength}
+                                        </div>
+                                      </div>
+                                    ))}
+
+                                  </div>
+                                )}
                               </div>
+                            </div>
 
-                              <div className="relative grid grid-cols-12 gap-3">
-                                {/* Medicine Name */}
-                                <div className="col-span-12 md:col-span-4">
-                                  <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                                    Medicine
-                                  </label>
-                                  <input
-                                    className="w-full text-sm font-extrabold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 bg-transparent outline-none py-2"
-                                    placeholder="Medicine Name"
-                                    value={item.medicineName}
-                                    onChange={(e) =>
-                                      updatePrescription(
-                                        index,
-                                        "medicineName",
-                                        e.target.value
-                                      )
-                                    }
-                                  />
-                                  <div className="h-0.5 w-10 bg-blue-500 rounded-full mt-1 opacity-20 group-hover:opacity-100 transition-opacity" />
-                                </div>
-
-                                {/* Details */}
-                                <div className="col-span-12 md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                  <div>
-                                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                                      Dosage
-                                    </label>
-                                    <input
-                                      className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none border border-transparent focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                                      placeholder="e.g. 500mg"
-                                      value={item.dosage}
-                                      onChange={(e) =>
-                                        updatePrescription(index, "dosage", e.target.value)
-                                      }
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                                      Frequency
-                                    </label>
-                                    <input
-                                      className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none border border-transparent focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                                      placeholder="1-0-1"
-                                      value={item.frequency}
-                                      onChange={(e) =>
-                                        updatePrescription(
-                                          index,
-                                          "frequency",
-                                          e.target.value
-                                        )
-                                      }
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                                      Duration
-                                    </label>
-                                    <input
-                                      className="w-full bg-slate-50 dark:bg-slate-800 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none border border-transparent focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                                      placeholder="e.g. 5 days"
-                                      value={item.duration}
-                                      onChange={(e) =>
-                                        updatePrescription(
-                                          index,
-                                          "duration",
-                                          e.target.value
-                                        )
-                                      }
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Instructions */}
-                                <div className="col-span-12">
-                                  <label className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                                    Instructions
-                                  </label>
-                                  <input
-                                    className="w-full text-xs text-slate-600 dark:text-slate-300 placeholder:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
-                                    placeholder="e.g. After food / Before food"
-                                    value={item.instructions}
-                                    onChange={(e) =>
-                                      updatePrescription(
-                                        index,
-                                        "instructions",
-                                        e.target.value
-                                      )
-                                    }
-                                  />
-                                </div>
+                            <div className="col-span-1 md:col-span-2 grid grid-cols-2 md:grid-cols-1 gap-3">
+                              <div>
+                                <span className="md:hidden text-xs font-medium text-slate-500 mb-1 block">Dosage</span>
+                                <BaseInput
+                                  placeholder="500mg"
+                                  value={item.dosage}
+                                  onChange={(e) => updatePrescription(index, "dosage", e.target.value)}
+                                />
                               </div>
+                              <div className="md:hidden">
+                                <span className="text-xs font-medium text-slate-500 mb-1 block">Frequency</span>
+                                <BaseInput
+                                  placeholder="1-0-1"
+                                  value={item.frequency}
+                                  onChange={(e) => updatePrescription(index, "frequency", e.target.value)}
+                                />
+                              </div>
+                            </div>
 
+                            <div className="hidden md:block col-span-2">
+                              <BaseInput
+                                placeholder="1-0-1"
+                                value={item.frequency}
+                                onChange={(e) => updatePrescription(index, "frequency", e.target.value)}
+                              />
+                            </div>
+
+                            <div className="col-span-1 md:col-span-4 grid grid-cols-2 gap-3">
+                              <div>
+                                <span className="md:hidden text-xs font-medium text-slate-500 mb-1 block">Duration</span>
+                                <BaseInput
+                                  placeholder="5 Days"
+                                  value={item.duration}
+                                  onChange={(e) => updatePrescription(index, "duration", e.target.value)}
+                                />
+                              </div>
+                              <div>
+                                <span className="md:hidden text-xs font-medium text-slate-500 mb-1 block">Instructions</span>
+                                <BaseInput
+                                  placeholder="After food"
+                                  value={item.instructions}
+                                  onChange={(e) => updatePrescription(index, "instructions", e.target.value)}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="col-span-1 flex items-center justify-end">
                               {prescriptions.length > 1 && (
-                                <motion.button
-                                  variants={softPop}
-                                  initial="rest"
-                                  whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                                  whileTap={!prefersReducedMotion ? "tap" : "rest"}
+                                <button
                                   type="button"
                                   onClick={() => removePrescription(item.id)}
-                                  className="absolute -top-2 -right-2 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 shadow-sm border border-slate-100 dark:border-slate-700 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-all"
-                                  aria-label="Remove"
+                                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors w-full md:w-auto flex justify-center mt-2 md:mt-0"
                                 >
-                                  <X size={14} />
-                                </motion.button>
+                                  <Trash2 size={16} />
+                                  <span className="md:hidden ml-2 text-sm">Remove</span>
+                                </button>
                               )}
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
-                      </LayoutGroup>
-                    </div>
-                  </SectionCard>
-                </motion.div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+
+                    <button
+                      type="button"
+                      onClick={addPrescription}
+                      className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 rounded-lg transition-colors"
+                    >
+                      <Plus size={16} />
+                      Add Medicine
+                    </button>
+                  </div>
+                </motion.section>
+
+                <hr className="border-slate-100 dark:border-slate-800/80" />
 
                 {/* 4. Follow Up */}
-                <motion.div variants={itemVars}>
-                  <SectionCard
-                    title="Next Follow-up"
-                    icon={Calendar}
-                    subtitle="Optional next visit scheduling"
-                    right={
-                      <MiniBadge
-                        icon={Calendar}
-                        text={selectedDate ? "Scheduled" : "Not set"}
-                      />
-                    }
-                  >
-                    <InputGroup
-                      label="Next Visit"
-                      icon={Calendar}
-                      rightTag="Optional"
-                      hint="Select a date"
+                <motion.section variants={fadeUpVars} initial="hidden" animate="visible" transition={{ delay: 0.15 }} className="space-y-4 pb-12">
+                  <SectionTitle icon={Calendar} title="Follow-up Date" />
+                  <div className="relative max-w-sm" ref={calendarRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                      className={cn(
+                        "w-full flex items-center justify-between px-4 py-2.5 rounded-lg border text-sm font-medium transition-colors outline-none focus:ring-4 focus:ring-blue-500/10",
+                        selectedDate
+                          ? "bg-blue-50/50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-400"
+                          : "bg-white border-slate-300 text-slate-600 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      )}
                     >
-                      <div className="relative overflow-visible">
-                        <motion.button
-                          type="button"
-                          variants={softPop}
-                          initial="rest"
-                          whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                          whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                          onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                          className={cn(
-                            "w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-sm font-semibold",
-                            selectedDate
-                              ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300"
-                              : "bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800/50 dark:border-slate-700 dark:text-slate-300"
-                          )}
+                      <span>
+                        {selectedDate ? formatDateGB(selectedDate) : "Schedule next visit (Optional)"}
+                      </span>
+                      <Calendar size={16} className={selectedDate ? "text-blue-500" : "text-slate-400"} />
+                    </button>
+
+                    <AnimatePresence>
+                      {isCalendarOpen && (
+                        <motion.div
+                          variants={calendarVars}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          transition={{ duration: 0.22 }}
+                          className="absolute bottom-full mb-2 left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-50 p-4"
                         >
-                          <span>
-                            {selectedDate
-                              ? formatDateGB(selectedDate)
-                              : "No follow-up scheduled"}
-                          </span>
-                          <Calendar
-                            size={16}
-                            className={selectedDate ? "text-blue-500" : "text-slate-400"}
-                          />
-                        </motion.button>
-
-                        <AnimatePresence>
-                          {isCalendarOpen && (
-                            <motion.div
-                              ref={calendarRef}
-                              initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                              animate={{ opacity: 1, y: 0, scale: 1 }}
-                              exit={{ opacity: 0, y: 10, scale: 0.98 }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 260,
-                                damping: 20,
-                                duration: prefersReducedMotion ? 0 : undefined,
-                              }}
-                              className="
-                                absolute
-                                top-full
-                                left-0
-                                mt-3
-                                w-full
-                                max-w-sm
-                                bg-white dark:bg-slate-900
-                                border border-slate-200 dark:border-slate-700
-                                rounded-2xl
-                                shadow-2xl
-                                z-[999]
-                                p-4
-                                overflow-hidden
-                              "
+                          <div className="flex items-center justify-between mb-4">
+                            <button
+                              type="button"
+                              onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}
+                              className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
                             >
-                              {/* Calendar Header */}
-                              <div className="flex items-center justify-between mb-4 gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setViewDate(
-                                      new Date(
-                                        viewDate.getFullYear() - 1,
-                                        viewDate.getMonth(),
-                                        1
-                                      )
-                                    )
-                                  }
-                                  className="px-2 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-[10px] font-black text-slate-600 dark:text-slate-300"
-                                  aria-label="Previous year"
-                                >
-                                  -Y
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setViewDate(
-                                      new Date(
-                                        viewDate.getFullYear(),
-                                        viewDate.getMonth() - 1,
-                                        1
-                                      )
-                                    )
-                                  }
-                                  className="p-2 rounded-xl bg-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                  aria-label="Previous month"
-                                >
-                                  <ChevronLeft size={16} />
-                                </button>
-
-                                <span className="text-sm font-black text-slate-700 dark:text-slate-200 flex-1 text-center">
-                                  {monthLabel}
-                                </span>
-
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setViewDate(
-                                      new Date(
-                                        viewDate.getFullYear(),
-                                        viewDate.getMonth() + 1,
-                                        1
-                                      )
-                                    )
-                                  }
-                                  className="p-2 rounded-xl bg-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                                  aria-label="Next month"
-                                >
-                                  <ChevronRight size={16} />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setViewDate(
-                                      new Date(
-                                        viewDate.getFullYear() + 1,
-                                        viewDate.getMonth(),
-                                        1
-                                      )
-                                    )
-                                  }
-                                  className="px-2 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-[10px] font-black text-slate-600 dark:text-slate-300"
-                                  aria-label="Next year"
-                                >
-                                  +Y
-                                </button>
+                              <ChevronLeft size={16} />
+                            </button>
+                            <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                              {monthLabel}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}
+                              className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+                            >
+                              <ChevronRight size={16} />
+                            </button>
+                          </div>
+                          
+                          <div className="grid grid-cols-7 gap-1 mb-2">
+                            {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                              <div key={d} className="text-[10px] font-semibold text-center text-slate-400 uppercase">
+                                {d}
                               </div>
-
-                              {/* Days */}
-                              <div className="grid grid-cols-7 gap-1 mb-2">
-                                {["S", "M", "T", "W", "T", "F", "S"].map((d) => (
-                                  <div
-                                    key={d}
-                                    className="text-[10px] font-extrabold text-center text-slate-400"
-                                  >
-                                    {d}
-                                  </div>
-                                ))}
-                              </div>
-
-                              <div className="grid grid-cols-7 gap-1">
-                                {emptySlots.map((i) => (
-                                  <div key={`e-${i}`} />
-                                ))}
-
-                                {daysArray.map((day) => {
-                                  const dObj = new Date(
-                                    viewDate.getFullYear(),
-                                    viewDate.getMonth(),
-                                    day
-                                  );
-
-                                  const isSel = sameDay(selectedDate, dObj);
-                                  const isToday = sameDay(new Date(), dObj);
-
-                                  return (
-                                    <button
-                                      type="button"
-                                      key={day}
-                                      onClick={() => {
-                                        setSelectedDate(dObj);
-                                        setIsCalendarOpen(false);
-                                      }}
-                                      className={cn(
-                                        "h-9 rounded-xl text-xs font-extrabold transition-all",
-                                        isSel
-                                          ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
-                                          : "hover:bg-slate-100 text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800",
-                                        isToday && !isSel
-                                          ? "ring-2 ring-blue-500/30"
-                                          : ""
-                                      )}
-                                    >
-                                      {day}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-
-                              {/* Footer */}
-                              <div className="mt-3 flex items-center justify-between gap-2">
+                            ))}
+                          </div>
+                          
+                          <div className="grid grid-cols-7 gap-1">
+                            {emptySlots.map((i) => <div key={`empty-${i}`} />)}
+                            {daysArray.map((day) => {
+                              const dObj = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+                              const isSel = sameDay(selectedDate, dObj);
+                              const isToday = sameDay(new Date(), dObj);
+                              return (
                                 <button
                                   type="button"
+                                  key={day}
                                   onClick={() => {
-                                    setSelectedDate(null);
+                                    setSelectedDate(dObj);
                                     setIsCalendarOpen(false);
                                   }}
-                                  className="flex-1 py-2 text-xs font-black text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition"
+                                  className={cn(
+                                    "h-8 rounded-md text-sm transition-colors flex items-center justify-center",
+                                    isSel 
+                                      ? "bg-blue-600 text-white font-semibold" 
+                                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800",
+                                    isToday && !isSel && "border border-blue-500 text-blue-600 dark:text-blue-400 font-medium"
+                                  )}
                                 >
-                                  Clear
+                                  {day}
                                 </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setIsCalendarOpen(false)}
-                                  className="flex-1 py-2 text-xs font-black text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
-                                >
-                                  Done
-                                </button>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </InputGroup>
-                  </SectionCard>
-                </motion.div>
-              </motion.div>
-
-              {/* --- Footer Actions --- */}
-              <div className="relative shrink-0 p-6 bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between gap-4">
-                  <motion.button
-                    variants={softPop}
-                    initial="rest"
-                    whileHover={!prefersReducedMotion ? "hover" : "rest"}
-                    whileTap={!prefersReducedMotion ? "tap" : "rest"}
-                    onClick={handleClose}
-                    className="flex-1 py-3.5 rounded-xl border border-slate-200 text-slate-700 font-black text-sm hover:bg-slate-50 hover:text-slate-900 transition-colors dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                    type="button"
-                  >
-                    Cancel
-                  </motion.button>
-
-                  <motion.button
-                    variants={softPop}
-                    initial="rest"
-                    whileHover={!saving && !prefersReducedMotion ? "hover" : "rest"}
-                    whileTap={!saving && !prefersReducedMotion ? "tap" : "rest"}
-                    onClick={handleSave}
-                    disabled={saving}
-                    className={cn(
-                      "flex-[2] py-3.5 rounded-xl font-black text-sm text-white transition-all",
-                      "shadow-lg",
-                      saving
-                        ? "bg-slate-400 cursor-not-allowed shadow-none"
-                        : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-600/30 hover:-translate-y-0.5"
-                    )}
-                    type="button"
-                  >
-                    {saving ? "Saving Record..." : "Confirm & Save"}
-                  </motion.button>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                  <span>Tip</span>
-                  <span className="text-blue-600 dark:text-blue-400">
-                    Diagnosis → Prescription → Save
-                  </span>
-                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between">
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedDate(null); setIsCalendarOpen(false); }}
+                              className="text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.section>
               </div>
+
+              {/* --- Footer --- */}
+              <div className="shrink-0 px-6 py-4 bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-[0.97]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className={cn(
+                    "px-6 py-2.5 text-sm font-medium text-white rounded-lg transition-all active:scale-[0.97] transform-gpu",
+                    saving
+                      ? "bg-slate-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/20"
+                  )}
+                >
+                  {saving ? "Saving..." : "Save Record"}
+                </button>
+              </div>
+              
             </motion.div>
           </div>
         )}

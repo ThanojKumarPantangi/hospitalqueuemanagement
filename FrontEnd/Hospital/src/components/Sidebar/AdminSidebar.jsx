@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3 ,
+  Pill,
   Menu,
   Mail,
   Inbox,
@@ -30,6 +31,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     { name: "Departments", path: "/admin/departments", icon: Building2 },
     { name: "Queue Monitor", path: "/admin/queue-monitor", icon: MonitorCheck },
     { name: "Messsage", path: "/admin/messaging", icon:Mail },
+    { name: "Medicines", path: "/admin/medicine", icon:Pill },
     {name:"Inbox",path:"/admin/inbox", icon:Inbox},
     { name: "Analytics", path: "/admin/analytics", icon:BarChart3 },
     { name: "Reset", path: "/admin/reset-mfa", icon:RefreshCcw },
@@ -157,7 +159,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
         </div>
 
         {/* --- Navigation Links --- */}
-        <div className="flex-1 overflow-y-auto py-6 px-3 space-y-2 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto py-6 px-3 space-y-2 no-scrollbar">
           {menuItems.map((item, idx) => {
             if (item.type === "divider") {
               return <div key={idx} className="h-px bg-gray-100 dark:bg-gray-800 my-2 mx-2" />;

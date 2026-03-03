@@ -21,7 +21,6 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import Navbar from "../../components/Navbar/DoctorNavbar";
-import "./queue.css";
 import Toast from "../../components/ui/Toast";
 import {
   callNextPatientApi,
@@ -318,15 +317,23 @@ const DoctorQueue = () => {
     setSavingVisit(true);
 
     try {
-      const res = await createVisitApi({
+      if(token?._id){
+        const res = await createVisitApi({
         tokenId: token?._id,
         ...visitData,
-      });
-
-      setToast({
-        type: "success",
-        message: res?.data?.message || "Visit record saved successfully",
-      });
+        });
+        setToast({
+          type: "success",
+          message: res?.data?.message || "Visit record saved successfully",
+        });
+      }
+      else{
+        setToast({
+          type: "error",
+          message:"No Token Found",
+        });
+      }
+      
     } catch (error) {
       setToast({
         type: "error",

@@ -77,14 +77,14 @@ export const loginService = async (email, password, req) => {
 
   const forceMfa = riskScore >= 50;
 
-  const mfaResult = await handleMfaFlow(
-    user,
-    security,
-    deviceId,
-    forceMfa
-  );
+  // const mfaResult = await handleMfaFlow(
+  //   user,
+  //   security,
+  //   deviceId,
+  //   forceMfa
+  // );
 
-  if (mfaResult) return mfaResult;
+  // if (mfaResult) return mfaResult;
 
   // LOW RISK SUCCESS → update device + account memory
   await updateDeviceRecord(
