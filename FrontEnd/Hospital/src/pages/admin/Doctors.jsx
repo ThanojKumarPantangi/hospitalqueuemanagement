@@ -20,7 +20,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { createPortal } from "react-dom";
-import Toast from "../../components/ui/Toast";
+import { showToast } from '../../utils/toastBus.js';
 import DoctorProfileModal from "../../components/DoctorModal/DoctorProfileModal";
 import CreateDoctorModal from "../../components/DoctorModal/CreateDoctorModal";
 import {
@@ -377,7 +377,7 @@ const ActionButtons = ({
   uiState,
   doc,
   onSuccess,
-  setToast,
+  showToast,
   onViewProfile,
 }) => {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -408,7 +408,7 @@ const ActionButtons = ({
       closeConfirm();
     } catch (error) {
       console.log(error);
-      setToast?.({
+      showToast?.({
         type: "error",
         message: error?.response?.data?.message || "Something went wrong!",
       });
@@ -440,7 +440,7 @@ const ActionButtons = ({
               action: async () => {
                 await verifyDoctorApi({ doctorId: doc?._id });
                 await onSuccess?.();
-                setToast?.({
+                showToast?.({
                   type: "success",
                   message: "Doctor approved successfully!",
                 });
@@ -464,7 +464,7 @@ const ActionButtons = ({
                 action: async () => {
                   await markDoctorOnLeaveApi({ doctorId: doc?._id });
                   await onSuccess?.();
-                  setToast?.({
+                  showToast?.({
                     type: "success",
                     message: "Doctor marked as On Leave!",
                   });
@@ -485,7 +485,7 @@ const ActionButtons = ({
                 action: async () => {
                   await markDoctorInactiveApi({ doctorId: doc?._id });
                   await onSuccess?.();
-                  setToast?.({
+                  showToast?.({
                     type: "success",
                     message: "Doctor suspended successfully!",
                   });
@@ -508,7 +508,7 @@ const ActionButtons = ({
               action: async () => {
                 await markDoctorAvailableApi({ doctorId: doc?._id });
                 await onSuccess?.();
-                setToast?.({
+                showToast?.({
                   type: "success",
                   message: "Doctor marked as Available!",
                 });
@@ -530,7 +530,7 @@ const ActionButtons = ({
               action: async () => {
                 await activateDoctorApi({ doctorId: doc?._id });
                 await onSuccess?.();
-                setToast?.({
+                showToast?.({
                   type: "success",
                   message: "Doctor reactivated successfully!",
                 });
@@ -559,7 +559,7 @@ const DoctorGridCard = ({
   uiState,
   initials,
   onRefresh,
-  setToast,
+  showToast,
   onViewProfile,
 }) => {
   const Icon = config.icon;
@@ -651,7 +651,7 @@ const DoctorGridCard = ({
                 uiState={uiState}
                 doc={doc}
                 onSuccess={onRefresh}
-                setToast={setToast}
+                showToast={showToast}
                 onViewProfile={onViewProfile}
               />
             </div>
@@ -669,7 +669,7 @@ const DoctorListItem = ({
   uiState,
   initials,
   onRefresh,
-  setToast,
+  showToast,
   onViewProfile,
 }) => {
   return (
@@ -726,7 +726,7 @@ const DoctorListItem = ({
             uiState={uiState}
             doc={doc}
             onSuccess={onRefresh}
-            setToast={setToast}
+            showToast={showToast}
             onViewProfile={onViewProfile}
           />
         </div>
@@ -744,7 +744,7 @@ const AdminDoctors = () => {
   const [viewMode, setViewMode] = useState("GRID");
 
   const [doctors, setDoctors] = useState([]);
-  const [toast, setToast] = useState(null);
+ 
   const [loading, setLoading] = useState(true);
 
   const [profileLoading, setProfileLoading] = useState(false);
@@ -780,7 +780,7 @@ const AdminDoctors = () => {
       const res = await getDoctorProfileApi(doctorID);
       setDoctorProfile(res?.data || null);
     } catch (error) {
-      setToast?.({
+      showToast?.({
         type: "error",
         message: error?.response?.data?.message || "Failed to load doctor profile",
       });
@@ -798,7 +798,7 @@ const AdminDoctors = () => {
       const res = await getDoctorsApi();
       setDoctors(res.data || []);
     } catch (err) {
-      setToast?.({
+      showToast?.({
         type: "error",
         message: err?.response?.data?.message || "Failed to load doctors",
       });
@@ -813,7 +813,7 @@ const AdminDoctors = () => {
       const res =await getAllDepartmentsApi();
       setDepartments(res?.data?.departments)
     } catch (error) {
-      setToast({
+      showToast({
         type: "error",
         message: error?.response?.data?.message||"Failed to fetch departments",
       })
@@ -858,16 +858,9 @@ const AdminDoctors = () => {
 
   return (
     <>
-      {/* ✅ Toast */}
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
+      
 
-      {/* ✅ Doctor Profile Modal */}
+      {/*  Doctor Profile Modal */}
       <DoctorProfileModal
         open={profileOpen}
         onClose={closeProfile}
@@ -880,13 +873,13 @@ const AdminDoctors = () => {
             await updateDoctorDepartmentsApi(selectedDoctor._id, {
               departmentId: payload?.department,
             });
-            setToast({
+            showToast({
               type: "success",
               message: res?.data?.message||"Doctor profile updated successfully!",
             });
             getDoctorProfile(selectedDoctor._id); 
           } catch (error) {
-            setToast({
+            showToast({
               type: "error",
               message: error?.response?.data?.message||"Failed to update doctor profile",
             });
@@ -902,13 +895,13 @@ const AdminDoctors = () => {
           try {
             const res=await createDoctorApi(payload);
             setCreateOpen(false);
-            setToast({
+            showToast({
               type: "success",
               message: res?.data?.message||"Doctor created successfully!",
             });
             fetchDoctors();
           } catch (error) {
-            setToast({
+            showToast({
               type: "error",
               message: error?.response?.data?.message||"Failed Create Doctor",
             });
@@ -1070,7 +1063,7 @@ const AdminDoctors = () => {
                       uiState={uiState}
                       initials={initials}
                       onRefresh={fetchDoctors}
-                      setToast={setToast}
+                      showToast={showToast}
                       onViewProfile={openProfile}
                     />
                   ) : (
@@ -1081,7 +1074,7 @@ const AdminDoctors = () => {
                       uiState={uiState}
                       initials={initials}
                       onRefresh={fetchDoctors}
-                      setToast={setToast}
+                      showToast={showToast}
                       onViewProfile={openProfile}
                     />
                   );

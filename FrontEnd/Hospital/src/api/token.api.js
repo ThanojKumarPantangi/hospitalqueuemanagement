@@ -1,19 +1,19 @@
 import api from "./axios";
 
 export const getMyTokenApi = () => {
-  return api.get("/api/tokens/my");
+  return api.get("/api/queue/my");
 };
 
 export const getMyUpcomingTokensApi = (config = {}) => {
-  return api.get("/api/tokens/my/upcoming",config);
+  return api.get("/api/queue/my/upcoming",config);
 };
 
 export const cancelTokenApi = (tokenId) =>{
-  return api.patch(`/api/tokens/${tokenId}/cancel`);
+  return api.patch(`/api/queue/${tokenId}/cancel`);
 }
   
 export const createTokenApi = (data) => {
-  return api.post("/api/tokens", data);
+  return api.post("/api/queue", data);
 };
 
 export const getAllDepartmentsApi=()=>{
@@ -21,7 +21,7 @@ export const getAllDepartmentsApi=()=>{
 }
 
 export const previewTokenNumberApi = ({ departmentId, appointmentDate }) => {
-  return api.get("/api/tokens/preview", {
+  return api.get("/api/queue/preview", {
     params: {
       departmentId,
       appointmentDate,
@@ -31,5 +31,5 @@ export const previewTokenNumberApi = ({ departmentId, appointmentDate }) => {
 
 
 export const getTokenHistoryApi = () => {
-  return api.get("/api/tokens/history");
+  return api.get("/api/queue/history");
 };

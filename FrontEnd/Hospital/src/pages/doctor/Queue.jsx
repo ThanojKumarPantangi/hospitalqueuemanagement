@@ -13,6 +13,7 @@ import {
   UserCheck,
   Calendar,
   ChevronRight,
+  Video,
   Pill,
   User,
   Sparkles,
@@ -21,7 +22,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import Navbar from "../../components/Navbar/DoctorNavbar";
-import Toast from "../../components/ui/Toast";
+import { showToast } from '../../utils/toastBus.js';
 import {
   callNextPatientApi,
   completeCurrentTokenApi,
@@ -35,6 +36,10 @@ import { getDoctorPatientVisitsApi, createVisitApi } from "../../api/visit.api";
 import AsyncMotionButton from "../../components/buttonmotion/AsyncMotionButton";
 import PatientProfile from "../../components/patientProfile(Doc,Adm)/patientProfileModal";
 
+import VideoCallCore from "@/components/webrtc/VideoCallCore";
+import {startConsulationApi,endConsulationApi} from "@/api/consulation.api.js"
+
+
 const DoctorQueue = () => {
   const [queue, setQueue] = useState({
     totalToday: 0,
@@ -43,7 +48,6 @@ const DoctorQueue = () => {
     nextWaiting: [],
   });
 
-  const [toast, setToast] = useState(null);
 
   const [view, setView] = useState("check");
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,10 +58,13 @@ const DoctorQueue = () => {
   const [open, setOpen] = useState(false);
   const [patient, setPatient] = useState(null);
 
-  // UI-only enhancements (no API logic change)
+  
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [isLoadingVisits, setIsLoadingVisits] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+
+  const [roomId, setRoomId] = useState(() => sessionStorage.getItem("roomId"));
+  const [videoOpen, setVideoOpen] = useState(false);
 
   // Button animation
   const [loading, setLoading] = useState({
@@ -130,6 +137,7 @@ const DoctorQueue = () => {
     },
   };
 
+
   // --------------------------
   // Dashboard Summary (API logic same)
   // --------------------------
@@ -140,7 +148,7 @@ const DoctorQueue = () => {
       setQueue(res?.data?.data);
       setLastUpdatedAt(new Date());
     } catch (error) {
-      setToast({
+      showToast({
         type: "error",
         message:
           error?.response?.data?.message || "Failed To Fetch The Dashboard Summary",
@@ -177,7 +185,7 @@ const DoctorQueue = () => {
       } catch (error) {
         console.error("Failed to load patient profile", error);
 
-        setToast({
+        showToast({
           type: "error",
           message: error?.response?.data?.message || "Failed to load patient profile",
         });
@@ -191,9 +199,17 @@ const DoctorQueue = () => {
     };
   }, [token?.patient?._id]);
 
+  // Automatically join Live Appointement
+  useEffect(() => {
+    if (roomId) {
+      setVideoOpen(true);
+    }
+  }, [roomId]);
+
   // CallNext Token
   async function CallNextToken() {
     try {
+
       const res = await callNextPatientApi();
       const tokenData = res?.data?.token;
 
@@ -202,24 +218,60 @@ const DoctorQueue = () => {
       }
 
       setOpen(true);
-
       setToken(tokenData);
       localStorage.setItem("currentToken", JSON.stringify(tokenData));
+
       fetchDashboardSummary();
 
       const patientId = tokenData?.patient?._id;
+
       if (patientId) {
         setIsLoadingVisits(true);
-        const visitsRes = await getDoctorPatientVisitsApi(patientId);
-        setHistory(visitsRes?.data?.visits || []);
+
+        try {
+          const visitsRes = await getDoctorPatientVisitsApi(patientId);
+          setHistory(visitsRes?.data?.visits || []);
+        } catch (error) {
+          console.error("Failed to fetch patient visits:", error);
+
+          showToast({
+            type: "error",
+            message:
+              error?.response?.data?.message ||
+              "Unable to load patient visit history",
+          });
+
+          setHistory([]);
+        } finally {
+          setIsLoadingVisits(false);
+        }
       }
 
-      setToast({
+       if(token?.consultationType ==="REMOTE" && token?._id){
+        try {
+          const consultRes = await startConsulationApi({
+            tokenId: tokenData._id
+          });
+      
+          const roomId = consultRes?.data?.roomId;
+
+          if(roomId){
+            sessionStorage.setItem("roomId", roomId);
+            setRoomId(roomId);
+            setVideoOpen(true);
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      }
+      
+      showToast({
         type: "success",
-        message: res?.response?.data?.message || "Next Patient Called Successfully",
+        message: "Next Patient Called Successfully",
       });
+
     } catch (error) {
-      setToast({
+      showToast({
         type: "error",
         message:
           error?.response?.data?.message ||
@@ -256,53 +308,73 @@ const DoctorQueue = () => {
     }
   }, []);
 
+  const clearCurrentToken = () => {
+    setToken(null);
+    localStorage.removeItem("currentToken");
+  };
+
   // Complete Token
   async function CompleteToken() {
     try {
+
+      if(roomId){
+        try {
+          await endConsulationApi({ roomId });
+          sessionStorage.removeItem("roomId");
+          setRoomId(null);
+          setVideoOpen(false);
+        } catch(err){
+          console.log(err);
+        }
+      }
+
       const res = await completeCurrentTokenApi();
 
-      setToast({
+      showToast({
         type: "success",
-        message: res?.response?.data?.message || "Completed Successfully",
+        message: res?.data?.message || "Completed Successfully",
       });
 
       setHistory([]);
-
-      const clearCurrentToken = () => {
-        setToken(null);
-        localStorage.removeItem("currentToken");
-      };
       clearCurrentToken();
       fetchDashboardSummary();
+
     } catch (error) {
-      setToast({
+      showToast({
         type: "error",
         message: error?.response?.data?.message || "Not Completed Successfully",
       });
     }
   }
-
+      
   // Skip Token
   async function SkipToken() {
     try {
+
+      if(roomId){
+        try {
+          await endConsulationApi({ roomId });
+          sessionStorage.removeItem("roomId");
+          setRoomId(null);
+          setVideoOpen(false);
+        } catch(err){
+          console.log(err);
+        }
+      }
+
       const res = await skipCurrentTokenApi();
 
-      setToast({
+      showToast({
         type: "success",
-        message: res?.response?.data?.message || "Skipped Successfully",
+        message: res?.data?.message || "Skipped Successfully",
       });
 
       setHistory([]);
-
-      const clearCurrentToken = () => {
-        setToken(null);
-        localStorage.removeItem("currentToken");
-      };
       clearCurrentToken();
-
       fetchDashboardSummary();
+
     } catch (error) {
-      setToast({
+      showToast({
         type: "error",
         message: error?.response?.data?.message || "Something went wrong",
       });
@@ -322,20 +394,21 @@ const DoctorQueue = () => {
         tokenId: token?._id,
         ...visitData,
         });
-        setToast({
+        showToast({
           type: "success",
           message: res?.data?.message || "Visit record saved successfully",
         });
+        setIsVisitModalOpen(false); 
       }
       else{
-        setToast({
+        showToast({
           type: "error",
           message:"No Token Found",
         });
       }
       
     } catch (error) {
-      setToast({
+      showToast({
         type: "error",
         message:
           error?.response?.data?.message ||
@@ -392,11 +465,6 @@ const DoctorQueue = () => {
 
   return (
     <>
-      {/* Notifications */}
-      {toast && (
-        <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />
-      )}
-
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
         <Navbar activePage="Queue" />
 
@@ -566,10 +634,22 @@ const DoctorQueue = () => {
                       >
                         Patient Profile
                       </AsyncMotionButton>
+
                     </div>
                   </div>
                 </div>
               </motion.section>
+
+              <div className="flex flex-col items-center">
+                {videoOpen && (
+                  <VideoCallCore
+                    roomId={roomId}
+                    role="doctor"
+                    isOpen={videoOpen}
+                    onClose={() => setVideoOpen(false)}
+                  />
+                )}
+              </div>
 
               {/* ===== NEXT TOKEN + STATS ===== */}
               <motion.section variants={itemVars} className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -746,7 +826,7 @@ const DoctorQueue = () => {
 
                       {/* History List */}
                       <div
-                        className="space-y-4 max-h-[480px] overflow-y-auto pr-2 custom-scrollbar"
+                        className="space-y-4 max-h-[480px] overflow-y-auto pr-2 no-scrollbar"
                         role="list"
                         aria-label="Visit history list"
                       >
@@ -870,7 +950,7 @@ const DoctorQueue = () => {
                 </span>
               </div>
 
-              <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar" aria-label="Live queue">
+              <div className="space-y-3 overflow-y-auto pr-1 no-scrollbar" aria-label="Live queue">
                 <AnimatePresence mode="sync">
                   {queue?.nextWaiting.length === 0 ? (
                     <motion.div

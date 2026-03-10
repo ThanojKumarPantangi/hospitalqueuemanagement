@@ -200,6 +200,7 @@ const VerifyMfa = () => {
         setError("Session expired. Please login again.");
         // remove any stale expiry too
         sessionStorage.removeItem("mfaExpiry");
+        sessionStorage.removeItem("mfaEmail");
         setTimeout(() => navigate("/login"), 1000);
         return;
     }
@@ -225,6 +226,7 @@ const VerifyMfa = () => {
         // clear temp token and expiry after successful verification
         sessionStorage.removeItem("mfaTempToken");
         sessionStorage.removeItem("mfaExpiry");
+        sessionStorage.removeItem("mfaEmail")
 
         const { data: userData } = await api.get("/api/auth/me");
 

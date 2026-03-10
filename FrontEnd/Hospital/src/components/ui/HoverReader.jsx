@@ -196,7 +196,7 @@ export default function HoverReader({ content }) {
                 </div>
 
                 {/* Body */}
-                <div className="relative z-10 px-6 pb-5 max-h-[340px] overflow-y-auto custom-scrollbar">
+                <div className="relative z-10 px-6 pb-5 max-h-[340px] overflow-y-auto no-scrollbar">
                   <motion.p
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}

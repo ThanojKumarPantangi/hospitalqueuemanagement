@@ -567,7 +567,7 @@ const MedicineManager = () => {
               <span>Page {page}</span>
             </div>
 
-            <ul className="max-h-[500px] overflow-y-auto custom-scrollbar">
+            <ul className="max-h-[500px] overflow-y-auto no-scrollbar">
               {/* Show subtle skeletons while list loads */}
               {isLoadingList && (
                 <>
@@ -750,7 +750,7 @@ const MedicineManager = () => {
               </div>
 
               {/* Modal Body (Scrollable) */}
-              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-gray-50/30 dark:bg-transparent">
+              <div className="flex-1 overflow-y-auto p-6 no-scrollbar bg-gray-50/30 dark:bg-transparent">
                 {/* If modal is loading (openEdit), show modal skeletons instead of form */}
                 {isLoadingList && modalMode === "edit" ? (
                   <div className="space-y-6">

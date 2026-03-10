@@ -11,10 +11,10 @@ import OtpVerify from "./pages/auth/OtpVerify";
 import VerifyMfa from "./pages/auth/VerifyMfa";
 import SetupMfa from "./pages/auth/SetupMfa";
 import ResetMfa from "./pages/auth/ResetMfa.jsx";
-import Home from "./pages/main/HospitalRolesLanding.jsx";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
 import RoleRoute from "./routes/RoleRoute";
+import PublicHomeRoute from "./routes/PublicHomeRoute";
 import RoleDeviceGuard from "./components/DeviceRestriction/RoleDeviceGuard";
 
 import PatientDashboard from "./pages/patient/Dashboard";
@@ -63,7 +63,7 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
 
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<PublicHomeRoute />} />
       
       <Route path="/loader" element={<Loader />} />
       <Route path="/logout" element={<Logout />} />

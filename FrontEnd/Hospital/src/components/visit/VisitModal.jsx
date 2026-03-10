@@ -3,7 +3,7 @@
 /* ------------------------------------------------------------- */
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import Toast from "../../components/ui/Toast";
+import { showToast } from '../../utils/toastBus.js';
 import {
   motion,
   AnimatePresence,
@@ -154,7 +154,6 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
   const prefersReducedMotion = useReducedMotion();
 
   /* ---------- Visit Fields ---------- */
-  const [toast, setToast] = useState(null);
   const [symptoms, setSymptoms] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -354,7 +353,7 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
   // Wrapped in useCallback to satisfy dependency requirements
   const handleSave = useCallback(() => {
     if (!diagnosis.trim()) {
-      setToast({ type: "error", message: "Diagnosis is required to save record." });
+      showToast({ type: "error", message: "Diagnosis is required to save record." });
       return;
     }
 
@@ -363,7 +362,7 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
     );
 
     if (!symptoms.trim() && validPrescriptions.length === 0) {
-      setToast({ type: "error", message: "Please add symptoms or a prescription." });
+      showToast({ type: "error", message: "Please add symptoms or a prescription." });
       return;
     }
 
@@ -409,17 +408,29 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, handleClose]);
 
+  // Clear Formdata on close
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setSymptoms("");
+    setDiagnosis("");
+    setVitals({
+      temperature: "",
+      bp: "",
+      pulse: "",
+      weight: "",
+    });
+    setPrescriptions([createEmptyPrescription()]);
+    setSelectedDate(null);
+    setSearchResults([]);
+    setActiveSearchIndex(null);
+  }, [isOpen]);
+
   /* -------------------- Render -------------------- */
 
   return (
     <>
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
+      
 
       <AnimatePresence>
         {isOpen && (
@@ -487,7 +498,7 @@ const VisitRecordModal = ({ isOpen, onClose, onSave, saving }) => {
               </div>
 
               {/* --- Scrollable Body --- */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar scroll-smooth bg-white dark:bg-slate-950">
+              <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar scroll-smooth bg-white dark:bg-slate-950">
                 
                 {/* 1. Clinical Data */}
                 <motion.section variants={fadeUpVars} initial="hidden" animate="visible" className="space-y-4">

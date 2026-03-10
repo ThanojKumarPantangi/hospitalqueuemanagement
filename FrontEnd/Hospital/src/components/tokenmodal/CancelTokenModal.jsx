@@ -96,7 +96,7 @@ const CancelTokenModal = ({
         </div>
 
         {/* --- Scrollable Content Area --- */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-gray-50/50 dark:bg-[#0f121a]">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar bg-gray-50/50 dark:bg-[#0f121a]">
           <motion.div 
             variants={containerVariants}
             initial="hidden"

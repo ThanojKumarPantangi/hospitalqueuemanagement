@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 export function useTokenSocket({
   socketRef,
   token,
-  departmentId ,
+  departmentId,
   onCalled,
   onSkipped,
   onCompleted,

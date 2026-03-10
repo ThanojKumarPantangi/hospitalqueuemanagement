@@ -67,6 +67,7 @@ export const createToken = async ({
   requestedPriority = "NORMAL",
   createdByRole,
   appointmentDate,
+  consultationType,
 }) => {
   const department = await Department.findById(departmentId);
   if (!department || !department.isOpen) {
@@ -140,6 +141,8 @@ export const createToken = async ({
         priority: finalPriority,
         priorityRank: PRIORITY_ORDER[finalPriority],
         appointmentDate: dayStart,
+        consultationType,
+        createdByRole,
       });
 
       try {
@@ -644,8 +647,8 @@ export const recalculateQueuePositions = async (departmentId) => {
 
   // Try Redis first
   try {
-    const ids = await redis.zrevrange(queueKey, 0, -1);
-
+    const ids = await redis.zrange(queueKey, 0, -1, { rev: true });
+    
     if (ids?.length) {
       tokens = await Token.find({ _id: { $in: ids } })
         .select("_id patient")

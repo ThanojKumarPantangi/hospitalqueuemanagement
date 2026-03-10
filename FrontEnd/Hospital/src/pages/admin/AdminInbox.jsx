@@ -485,7 +485,7 @@ export default function AdminInbox() {
         </div>
 
         {/* Thread List */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-4 space-y-1 relative z-10">
+        <div className="flex-1 overflow-y-auto no-scrollbar px-3 pb-4 space-y-1 relative z-10">
           {isLoadingThreads ? (
             <ThreadListSkeleton />
           ) : filteredThreads.length === 0 ? (
@@ -716,7 +716,7 @@ export default function AdminInbox() {
                 </div>
               </header>
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6" id="chat-container">
+              <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6" id="chat-container">
                 {isLoadingMessages ? (
                    <div className="flex flex-col items-center justify-center h-full gap-4">
                      <Loader2 size={36} className="animate-spin text-indigo-500" />
@@ -823,7 +823,7 @@ export default function AdminInbox() {
                     disabled={isSending || isTicketClosed}
                     placeholder={isTicketClosed ? "🚫 This ticket is closed. Re-open to reply." : "Type your reply here..."}
                     rows={1}
-                    className="w-full max-h-32 px-4 py-3 bg-transparent resize-none text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none custom-scrollbar rounded-xl disabled:cursor-not-allowed"
+                    className="w-full max-h-32 px-4 py-3 bg-transparent resize-none text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none no-scrollbar rounded-xl disabled:cursor-not-allowed"
                   />
 
                   <div className="flex items-center justify-between px-2 pb-1">

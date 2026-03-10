@@ -8,7 +8,7 @@ import redis  from "./config/redisClient.js";
 
 
 import authRoutes from "./routes/auth.routes.js";
-import tokenRoutes from "./routes/token.routes.js";
+import queueRoutes from "./routes/queue.routes.js";
 import visitRoutes from "./routes/visit.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import otpRoutes from "./routes/otp.routes.js";
@@ -22,7 +22,8 @@ import userRoutes from "./routes/user.routes.js";
 import patientProfileRoutes from "./routes/patientProfile.routes.js";
 import medicineRoutes from "./routes/medicine.routes.js";
 import templateRoutes from "./routes/template.routes.js";
-
+import consultationRoutes from "./routes/consultation.routes.js";
+import turnRoutes from "./routes/turn.routes.js";
 
 import {globalLimiter} from "./middlewares/rateLimiter.middleware.js";
 
@@ -57,7 +58,7 @@ app.use((req, res, next) => {
 
 /* ------------------ Routes ------------------ */
 app.use("/api/auth",authRoutes);
-app.use("/api/tokens",tokenRoutes);
+app.use("/api/queue",queueRoutes);
 app.use("/api/visits", visitRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/otp", otpRoutes);
@@ -71,6 +72,9 @@ app.use("/api/users",userRoutes);
 app.use("/api/patient-profile", patientProfileRoutes);
 app.use("/api/medicines", medicineRoutes);
 app.use("/api/templates", templateRoutes);
+app.use("/api/consultations", consultationRoutes);
+app.use("/api/turn-credentials", turnRoutes);
+
 
 /* ------------------ Health check ------------------ */
 app.get("/health", (req, res) => {

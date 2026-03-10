@@ -18,7 +18,7 @@ import {
 
 import SessionCard from "../../components/session/SessionCard";
 import LogoutAllButton from "../../components/session/LogoutAllButton";
-import Toast from "../../components/ui/Toast";
+import { showToast } from '../../utils/toastBus.js';
 import Navbar from "../../components/Navbar/PatientNavbar";
 import { Link } from "react-router-dom";
 import AsyncMotionButton from "../../components/buttonmotion/AsyncMotionButton";
@@ -92,7 +92,7 @@ function SessionSecurityTab() {
   const [currentSessionId, setCurrentSessionId] = useState("");
   const [loading, setLoading] = useState(true); // page-level fetch
   const [twoStepEnabled, setTwoStepEnabled] = useState(false);
-  const [toast, setToast] = useState(null);
+
   const [twoStepLoading, setTwoStepLoading] = useState(false); // toggle-specific loading
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
   const [password, setPassword] = useState("");
@@ -114,7 +114,7 @@ function SessionSecurityTab() {
 
       setTwoStepEnabled(Boolean(enabled));
 
-      setToast({
+      showToast({
         type: "success",
         message: enabled
           ? "Two-Step Verification enabled"
@@ -155,7 +155,7 @@ function SessionSecurityTab() {
         setTwoStepEnabled(Boolean(initialTwoStep));
       } catch (error) {
         console.error("Failed to fetch sessions", error);
-        setToast({
+        showToast({
           type: "error",
           message: error?.response?.data?.message || "Failed to fetch sessions",
         });
@@ -174,9 +174,7 @@ function SessionSecurityTab() {
 
   return (
     <>
-      {/* toast */}
-      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
-
+      
       <div className="min-h-[40vh]">
         <main className="max-w-5xl mx-auto space-y-8">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

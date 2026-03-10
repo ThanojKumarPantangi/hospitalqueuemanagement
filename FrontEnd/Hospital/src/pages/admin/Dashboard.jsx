@@ -87,6 +87,7 @@ const Dashboard = () => {
   const [departmentId, setDepartmentId] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
   const [priority, setPriority] = useState("NORMAL");
+  const [consultationType, setConsultationType] = useState("LOCAL");
 
   const [expectedTokenNumber, setExpectedTokenNumber] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -112,9 +113,9 @@ const Dashboard = () => {
 
   // create Token
   const createToken = async (payload) => {
-    const { patientId, departmentId, appointmentDate, priority } = payload || {};
+    const { patientId, departmentId, appointmentDate, priority,consultationType  } = payload || {};
 
-    if (!patientId || !departmentId || !appointmentDate || !priority) {
+    if (!patientId || !departmentId || !appointmentDate || !priority || !consultationType) {
       showToast({ type: "error", message: "Please fill all the fields" });
       return;
     }
@@ -127,6 +128,7 @@ const Dashboard = () => {
         departmentId,
         appointmentDate,
         priority,
+        consultationType
       });
 
       setOpen(false);
@@ -233,6 +235,7 @@ const Dashboard = () => {
       setDepartmentId("");
       setAppointmentDate("");
       setPriority("NORMAL");
+      setConsultationType("LOCAL");
       setExpectedTokenNumber(null);
     }
   }, [open]);
@@ -1099,6 +1102,10 @@ const Dashboard = () => {
         formatDate={formatDate}
         priority={priority}
         setPriority={setPriority}
+
+        consultationType={consultationType}
+        setConsultationType={setConsultationType}
+
         creating={creating}
         createToken={createToken}
       />

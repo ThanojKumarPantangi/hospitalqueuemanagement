@@ -18,7 +18,7 @@ import {tokenCancelledTemplate} from "../emailTemplates/tokenCancelledTemplate.j
 
 export const createTokenController = async (req, res) => {
   try {
-    const { departmentId, priority, appointmentDate, patientId } = req.body;
+    const { departmentId, priority, appointmentDate, patientId,consultationType } = req.body;
 
     let finalPatientId = req.user._id;
 
@@ -49,6 +49,7 @@ export const createTokenController = async (req, res) => {
       requestedPriority: priority,
       createdByRole: req.user.role,
       appointmentDate,
+      consultationType,
     });
 
     // Fast response
@@ -198,6 +199,7 @@ export const getMyCurrentTokenController = async (req, res) => {
       waitingCount: token.waitingCount,
       minMinutes: token.minMinutes,
       maxMinutes: token.maxMinutes,
+      consultationType:token.consultationType,
     });
     
   } catch (error) {

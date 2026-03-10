@@ -1,4 +1,3 @@
-// src/pages/doctor/DoctorTemplatesPage.jsx
 import React, { useEffect, useRef, useState } from "react";
 import {
   createTemplateApi,

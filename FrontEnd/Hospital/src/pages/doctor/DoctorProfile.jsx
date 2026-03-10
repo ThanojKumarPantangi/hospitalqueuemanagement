@@ -5,7 +5,7 @@ import {
   Clock, IndianRupee, FileText, Calendar, Plus, Trash2,
   Save,ChevronRight, Sparkles, AlertCircle
 } from 'lucide-react';
-import Toast from "../../components/ui/Toast";
+import { showToast } from '../../utils/toastBus.js';
 import Navbar from "../../components/Navbar/DoctorNavbar";
 import {getMyDoctorProfileApi,updateDoctorProfileApi} from "../../api/doctor.api";
 import Tooltip from "../../components/tooltip/Tooltip"
@@ -14,7 +14,7 @@ const DoctorProfile = () => {
 
     const [formData, setFormData] = useState();
     const [isSaving, setIsSaving] = useState(false);
-    const [toast, setToast] = useState(null);
+
 
 
 // Doctor Profile APi
@@ -111,13 +111,13 @@ const DoctorProfile = () => {
     };
 
     const res=await updateDoctorProfileApi(payload);
-    setToast({
+    showToast({
       type: "success",
       message:res?.response?.data?.message ||"Profile updated successfully",
     });
 
   } catch (error) {
-    setToast({
+    showToast({
       type: "error",
       message:error?.response?.data?.message||"Failed to update doctor profile",
     });
@@ -130,14 +130,7 @@ const DoctorProfile = () => {
 
   return (
     <>
-        {/* Notifications */}
-        {toast && (
-        <Toast
-            type={toast.type}
-            message={toast.message}
-            onClose={() => setToast(null)}
-        />
-        )}
+        
         <div className="min-h-screen bg-[#fcfcfd] dark:bg-gray-950 transition-colors duration-500 pb-24">
             <Navbar activePage="Profile" />
             <motion.main 

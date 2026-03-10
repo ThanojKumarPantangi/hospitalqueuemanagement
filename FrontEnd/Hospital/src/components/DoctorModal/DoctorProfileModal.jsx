@@ -494,7 +494,7 @@ const DoctorProfileModal = ({
             </div>
 
             {/* Profile Content */}
-            <div className="relative flex flex-col items-center pt-16 px-6 pb-6 h-full overflow-y-auto custom-scrollbar">
+            <div className="relative flex flex-col items-center pt-16 px-6 pb-6 h-full overflow-y-auto no-scrollbar">
               
               {/* Avatar */}
               <motion.div 
@@ -640,7 +640,7 @@ const DoctorProfileModal = ({
             </div>
 
             {/* Scrollable Form Content */}
-            <div className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar space-y-8">
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 no-scrollbar space-y-8">
                <motion.div 
                  variants={contentContainerVariants}
                  initial="hidden"

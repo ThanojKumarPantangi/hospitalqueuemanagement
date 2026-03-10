@@ -14,7 +14,8 @@ export default function AnimatedQuote({ token, Namedoc }) {
     maxMinutes,
     waitingCount,
     doctorName,
-  } = token;
+    consultationType
+  } = token || {};
 
   /* ---------------- MODE ---------------- */
   const mode =
@@ -27,36 +28,69 @@ export default function AnimatedQuote({ token, Namedoc }) {
   /* ---------------- WAIT-INTENSITY ---------------- */
   const intensity = useMemo(() => {
     if (typeof minMinutes !== "number") return 1;
-    if (minMinutes <= 5) return 1.4;     // urgent
-    if (minMinutes <= 15) return 1.1;    // moderate
-    return 0.9;                          // calm
+    if (minMinutes <= 5) return 1.4;
+    if (minMinutes <= 15) return 1.1;
+    return 0.9;
   }, [minMinutes]);
 
   const rotationTime = ROTATION_BASE / intensity;
 
   /* ---------------- QUOTES ---------------- */
   const quotes = useMemo(() => {
+    const doc =
+      doctorName?.toUpperCase() ||
+      Namedoc?.toUpperCase() ||
+      "Doctor";
+
     if (mode === "CALLED") {
-      return [`Dr. ${doctorName?.toUpperCase() || Namedoc?.toUpperCase() || "Doctor"} is calling you now.`];
+      return [
+        consultationType === "REMOTE"
+          ? `Dr. ${doc} is ready. Please join the video consultation.`
+          : `Dr. ${doc} is calling you. Please proceed to the consultation room.`
+      ];
     }
 
     if (mode === "SKIPPED") {
       return ["You were skipped. Please stay alert."];
     }
 
+    /* REMOTE WAITING */
+    if (
+      consultationType === "REMOTE" &&
+      typeof minMinutes === "number" &&
+      typeof maxMinutes === "number"
+    ) {
+      return [
+        `Estimated wait: ${minMinutes}–${maxMinutes} minutes.`,
+        `${waitingCount ?? "Some"} patients ahead of you.`,
+        "Your video consultation is being prepared.",
+        "Please keep your camera and microphone ready.",
+        "Ensure your internet connection is stable."
+      ];
+    }
+
+    /* LOCAL WAITING */
     if (typeof minMinutes === "number" && typeof maxMinutes === "number") {
       return [
         `Estimated wait: ${minMinutes}–${maxMinutes} minutes.`,
         `${waitingCount ?? "Some"} patients ahead of you.`,
-        "We’re preparing for your consultation.",
+        "We’re preparing for your consultation."
       ];
     }
 
     return [
       "Your token is registered.",
-      "Queue has not started yet.",
+      "Queue has not started yet."
     ];
-  }, [mode, minMinutes, maxMinutes, waitingCount, doctorName, Namedoc]);
+  }, [
+    mode,
+    minMinutes,
+    maxMinutes,
+    waitingCount,
+    doctorName,
+    Namedoc,
+    consultationType
+  ]);
 
   /* ---------------- ROTATION ---------------- */
   useEffect(() => {
@@ -87,44 +121,45 @@ export default function AnimatedQuote({ token, Namedoc }) {
                  backdrop-blur-xl shadow-2xl shadow-emerald-900/5 dark:shadow-emerald-500/5
                  p-10 md:p-14 text-center group"
     >
-      {/* Background Decorative Glow (Optional Subtle Gradient) */}
+      {/* Glow background */}
       <div className="absolute -top-20 -left-20 w-40 h-40 bg-emerald-400/20 rounded-full blur-[80px] pointer-events-none" />
       <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-teal-400/20 rounded-full blur-[80px] pointer-events-none" />
 
-      {/* Icon Section */}
+      {/* Icon */}
       <div className="flex justify-center mb-8 relative">
-        {/* Pulse Effect behind icon */}
         {!prefersReducedMotion && mode === "WAITING" && (
           <motion.div
             animate={{ scale: [1, 1.5], opacity: [0.3, 0] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-            className="absolute inset-0 m-auto h-16 w-16 rounded-2xl bg-emerald-500/20 z-0"
+            className="absolute inset-0 m-auto h-16 w-16 rounded-2xl bg-emerald-500/20"
           />
         )}
-        
+
         <motion.div
           animate={
             prefersReducedMotion
               ? {}
-              : { 
+              : {
                   y: [0, -5, 0],
-                  scale: mode === 'CALLED' ? 1.1 : 1 
+                  scale: mode === "CALLED" ? 1.1 : 1
                 }
           }
-          transition={{ 
+          transition={{
             y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
             scale: { duration: 0.5 }
           }}
-          className={`relative z-10 h-16 w-16 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20
-                      ${mode === 'CALLED' 
-                        ? 'bg-gradient-to-br from-emerald-500 to-green-600 ring-4 ring-emerald-200 dark:ring-emerald-900' 
-                        : 'bg-gradient-to-br from-teal-500 to-emerald-600'}`}
+          className={`relative h-16 w-16 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20
+                      ${
+                        mode === "CALLED"
+                          ? "bg-gradient-to-br from-emerald-500 to-green-600 ring-4 ring-emerald-200 dark:ring-emerald-900"
+                          : "bg-gradient-to-br from-teal-500 to-emerald-600"
+                      }`}
         >
           <Quote size={28} className="text-white fill-white/20" />
         </motion.div>
       </div>
 
-      {/* Quote Text Area */}
+      {/* Quote text */}
       <div className="min-h-[100px] flex justify-center items-center relative z-10">
         <AnimatePresence mode="wait">
           <motion.div
@@ -141,9 +176,9 @@ export default function AnimatedQuote({ token, Namedoc }) {
                 }
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)", scale: 1 }}
                 exit={
-                   prefersReducedMotion 
-                   ? { opacity: 0 } 
-                   : { opacity: 0, y: -10, filter: "blur(4px)", transition: { duration: 0.2 } }
+                  prefersReducedMotion
+                    ? { opacity: 0 }
+                    : { opacity: 0, y: -10, filter: "blur(4px)" }
                 }
                 transition={{
                   duration: 0.5,
@@ -154,7 +189,7 @@ export default function AnimatedQuote({ token, Namedoc }) {
                 }}
                 className={`text-2xl md:text-3xl font-bold tracking-tight ${
                   mode === "CALLED"
-                    ? "text-emerald-600 dark:text-emerald-400 drop-shadow-sm"
+                    ? "text-emerald-600 dark:text-emerald-400"
                     : "text-slate-700 dark:text-slate-100"
                 }`}
               >
@@ -165,7 +200,7 @@ export default function AnimatedQuote({ token, Namedoc }) {
         </AnimatePresence>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress bar */}
       {mode === "WAITING" && !prefersReducedMotion && (
         <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-200/50 dark:bg-gray-700/30">
           <motion.div

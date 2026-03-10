@@ -14,7 +14,7 @@ import {
     previewTokenNumber,
     getPatientTokenHistoryController,
     getDoctorQueueSummaryController
-} from "../controllers/token.controller.js";
+} from "../controllers/queue.controller.js";
 
 const router=express.Router();
 

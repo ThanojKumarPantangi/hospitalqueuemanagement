@@ -26,7 +26,7 @@ import {
   getPatientQrApi,
 } from "../../api/patient.api";
 
-import Toast from "../../components/ui/Toast";
+import { showToast } from '../../utils/toastBus.js';
 import Loader from "../../components/animation/Loader";
 
 /* ---------- Helpers ---------- */
@@ -102,9 +102,9 @@ const PatientProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [toast, setToast] = useState(null);
 
-  // ✅ QR states
+
+  // QR states
   const [showQr, setShowQr] = useState(false);
   const [qrImage, setQrImage] = useState("");
   const [qrLoading, setQrLoading] = useState(false);
@@ -138,7 +138,7 @@ const PatientProfile = () => {
         setBackupProfile(clone(normalizedProfile));
         setIsDirty(false);
       } catch (err) {
-        setToast({
+        showToast({
           type: "error",
           message: err?.response?.data?.message || "Error loading profile.",
         });
@@ -236,9 +236,9 @@ const PatientProfile = () => {
       setBackupProfile(clone(profile));
       setIsEditing(false);
       setIsDirty(false);
-      setToast({ type: "success", message: "Profile updated successfully!" });
+      showToast({ type: "success", message: "Profile updated successfully!" });
     } catch (err) {
-      setToast({
+      showToast({
         type: "error",
         message: err?.response?.data?.message || "Failed to save profile.",
       });
@@ -258,13 +258,7 @@ const PatientProfile = () => {
 
   return (
     <>
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
+      
 
       {/* Main Container - added padding bottom for floating bar */}
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-40 relative">

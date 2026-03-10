@@ -25,7 +25,7 @@ import {
   createDepartmentApi,
   updateDepartmentApi,
 } from "../../api/admin.api";
-import Toast from "../../components/ui/Toast";
+import { showToast } from '../../utils/toastBus.js';
 
 const AdminDepartments = () => {
   const [departments, setDepartments] = useState([]);
@@ -37,7 +37,7 @@ const AdminDepartments = () => {
   // Modal + Toast
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState(null);
-  const [toast, setToast] = useState(null);
+
 
   // Search + Filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -51,7 +51,7 @@ const AdminDepartments = () => {
         const res = await getDepartmentsStatusApi();
         setDepartments(res.data);
       } catch (error) {
-        setToast({
+        showToast({
           type: "error",
           message: error?.response?.data?.message || "Failed to load departments",
         });
@@ -70,7 +70,7 @@ const AdminDepartments = () => {
 
       await updateDepartmentStatusApi(departmentId, !currentIsOpen);
 
-      setToast({
+      showToast({
         type: "success",
         message: "Successfully updated department status",
       });
@@ -82,7 +82,7 @@ const AdminDepartments = () => {
         )
       );
     } catch (error) {
-      setToast({
+      showToast({
         type: "error",
         message: error?.response?.data?.message || "Something went wrong",
       });
@@ -114,7 +114,7 @@ const AdminDepartments = () => {
         // ✏️ UPDATE
         const res = await updateDepartmentApi(editingDepartment._id, formData);
 
-        setToast({
+        showToast({
           type: "success",
           message: res?.data?.message || "Successfully updated department",
         });
@@ -128,7 +128,7 @@ const AdminDepartments = () => {
         // ➕ CREATE
         const res = await createDepartmentApi(formData);
 
-        setToast({
+        showToast({
           type: "success",
           message: res?.data?.message || "Successfully created department",
         });
@@ -138,7 +138,7 @@ const AdminDepartments = () => {
 
       closeModal();
     } catch (error) {
-      setToast({
+      showToast({
         type: "error",
         message: error?.response?.data?.message || "Something went wrong",
       });
@@ -445,13 +445,7 @@ const AdminDepartments = () => {
 
   return (
     <>
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
+      
 
       <motion.div
         className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6 space-y-6 relative overflow-hidden"

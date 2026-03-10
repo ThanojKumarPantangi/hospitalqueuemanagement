@@ -53,6 +53,14 @@ const tokenSchema = new mongoose.Schema(
       default: null,
     },
 
+    consultationType: {
+      type: String,
+      enum: ["LOCAL", "REMOTE"],
+      default: "LOCAL",
+      required: true,
+      index: true
+    },
+
     appointmentDate: {
       type: Date,
       required: true,
@@ -62,6 +70,13 @@ const tokenSchema = new mongoose.Schema(
     calledAt: {
       type: Date,
       default: null,
+    },
+
+    createdByRole:{
+      type:String,
+      enum: ["PATIENT","ADMIN"],
+      required: true,
+      default:"PATIENT",
     },
 
     completedAt: {

@@ -12,7 +12,7 @@ import {
 import QrScanner from "qr-scanner";
 
 import { verifyPatientQrApi } from "../../api/admin.api";
-import Toast from "../../components/ui/Toast";
+import { showToast } from '../../utils/toastBus.js';
 
 export default function AdminPatientQrScanner({ onFound, onClose }) {
   const videoRef = useRef(null);
@@ -27,7 +27,6 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
   const [loadingCamera, setLoadingCamera] = useState(true);
   const [verifying, setVerifying] = useState(false);
 
-  const [toast, setToast] = useState(null);
   const [result, setResult] = useState(null);
 
   // 🔥 camera states
@@ -109,7 +108,7 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
 
       const caps = track.getCapabilities?.();
       if (!caps?.torch) {
-        setToast({
+        showToast({
           type: "error",
           message: "Torch not supported on this device/browser",
         });
@@ -126,7 +125,7 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
 
       setTorchOn(nextTorch);
     } catch (e) {
-      setToast({
+      showToast({
         type: "error",
         message: "Unable to toggle torch. Try another camera.",
       });
@@ -149,7 +148,7 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
 
       setResult(data);
 
-      setToast({
+      showToast({
         type: "success",
         message: `Patient Found: ${data?.name || "Unknown"}`,
       });
@@ -173,7 +172,7 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
       scanLockRef.current = false;
       lastQrRef.current = null;
 
-      setToast({
+      showToast({
         type: "error",
         message: err?.response?.data?.message || "QR verification failed",
       });
@@ -236,7 +235,7 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
 
       setLoadingCamera(false);
     } catch (err) {
-      setToast({
+      showToast({
         type: "error",
         message:
           "Camera permission denied or camera not available. Please allow camera access.",
@@ -266,7 +265,7 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
   };
 
   const handleScanAgain = async () => {
-    setToast(null);
+    showToast(null);
     setTorchOn(false);
 
     // ✅ unlock scan again
@@ -278,13 +277,7 @@ export default function AdminPatientQrScanner({ onFound, onClose }) {
 
   return (
     <>
-      {toast && (
-        <Toast
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast(null)}
-        />
-      )}
+      
 
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-6">
         <div className="max-w-3xl mx-auto space-y-5">

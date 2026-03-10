@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import Message from "../../models/message.model.js";
-import { getIO, getOnlineUserSockets } from "../../sockets/index.js";
+import { getIO} from "../../sockets/index.js";
 import User from "../../models/user.model.js";
 import Token from "../../models/token.model.js";
 
@@ -36,11 +36,12 @@ export const sendMessageService = async ({
   type = "GENERAL",
   metadata = {},
 }) => {
+
   const now = new Date();
 
   let expiresAt = null;
 
-  //Automatically expire announcements after 24 hours
+  // Automatically expire announcements after 24 hours
   if (type === "ANNOUNCEMENT") {
     expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   }
@@ -56,15 +57,21 @@ export const sendMessageService = async ({
     expiresAt,
   });
 
-  // MULTI-TAB SAFE SOCKET EMIT
-  const socketIds = getOnlineUserSockets(toUserId);
+  const io = getIO();
 
-  if (socketIds && socketIds.size > 0) {
-    for (const socketId of socketIds) {
-      getIO().to(socketId).emit("messages:new", message.toObject());
-    }
+  /* ==========================
+     EMIT USING USER ROOM
+  ========================== */
 
-    // Mark as delivered
+  io.to(`user:${toUserId}`).emit(
+    "messages:new",
+    message.toObject()
+  );
+
+  // mark as delivered (only if user was online)
+  const room = io.sockets.adapter.rooms.get(`user:${toUserId}`);
+
+  if (room && room.size > 0) {
     await Message.updateOne(
       { _id: message._id },
       { $set: { deliveredAt: new Date() } }
@@ -83,17 +90,18 @@ export const sendDepartmentAnnouncementService = async ({
   title,
   content,
 }) => {
+
   const doctors = await User.find({
     departments: departmentId,
     isActive: true,
   }).select("_id");
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   const patientTokens = await Token.find({
     department: departmentId,
-    appointmentDate: today,
+    appointmentDate: {
+      $gte: start,
+      $lt: end,
+    },
     status: { $in: ["WAITING", "CALLED"] },
   }).select("patient");
 
@@ -116,20 +124,24 @@ export const sendDepartmentAnnouncementService = async ({
     }))
   );
 
-  //  EMIT TO ALL ONLINE SOCKETS PER USER
+  const io = getIO();
+
+  /* ==========================
+     EMIT USING USER ROOMS
+  ========================== */
+
   for (const msg of messages) {
-    const socketIds = getOnlineUserSockets(msg.toUser.toString());
 
-    if (socketIds.size > 0) {
-      for (const socketId of socketIds) {
-        getIO().to(socketId).emit("messages:new", msg.toObject());
-      }
+    io.to(`user:${msg.toUser}`).emit(
+      "messages:new",
+      msg.toObject()
+    );
 
-      await Message.updateOne(
-        { _id: msg._id },
-        { $set: { deliveredAt: new Date() } }
-      );
-    }
+    await Message.updateOne(
+      { _id: msg._id },
+      { $set: { deliveredAt: new Date() } }
+    );
+
   }
 
   return messages;
@@ -137,14 +149,13 @@ export const sendDepartmentAnnouncementService = async ({
 
 /* ============================
    SEND GLOBAL MESSAGE
-   (ALL WAITING PATIENTS TODAY - IST SAFE)
+   (ALL WAITING PATIENTS TODAY)
 ============================ */
 export const sendGlobalWaitingPatientsMessageService = async ({
   fromUserId,
   title,
   content,
 }) => {
-  const { start, end } = getISTDayRange();
 
   const tokens = await Token.find(
     {
@@ -158,6 +169,7 @@ export const sendGlobalWaitingPatientsMessageService = async ({
   ).lean();
 
   const userIds = new Set();
+
   for (const t of tokens) {
     if (t.patient) userIds.add(t.patient.toString());
   }
@@ -179,19 +191,24 @@ export const sendGlobalWaitingPatientsMessageService = async ({
     }))
   );
 
+  const io = getIO();
+
   for (const msg of messages) {
-    const socketIds = getOnlineUserSockets(msg.toUser.toString());
 
-    if (socketIds.size > 0) {
-      for (const socketId of socketIds) {
-        getIO().to(socketId).emit("messages:new", msg.toObject());
-      }
+    io.to(`user:${msg.toUser}`).emit(
+      "messages:new",
+      msg.toObject()
+    );
 
+    const room = io.sockets.adapter.rooms.get(`user:${msg.toUser}`);
+
+    if (room && room.size > 0) {
       await Message.updateOne(
         { _id: msg._id },
         { $set: { deliveredAt: new Date() } }
       );
     }
+
   }
 
   return messages;
@@ -206,7 +223,8 @@ export const sendGlobalActiveDoctorsMessageService = async ({
   title,
   content,
 }) => {
-  //  Find all eligible doctors
+
+  // Find active available doctors
   const doctors = await User.find({
     role: "DOCTOR",
     isActive: true,
@@ -215,7 +233,7 @@ export const sendGlobalActiveDoctorsMessageService = async ({
 
   if (!doctors.length) return [];
 
-  //  Create messages (one per doctor)
+  // Create messages
   const messages = await Message.insertMany(
     doctors.map(doc => ({
       toUser: doc._id,
@@ -230,21 +248,24 @@ export const sendGlobalActiveDoctorsMessageService = async ({
     }))
   );
 
-  //  Emit to all online sockets (multi-tab safe)
+  const io = getIO();
+
   for (const msg of messages) {
-    const socketIds = getOnlineUserSockets(msg.toUser.toString());
 
-    if (socketIds.size > 0) {
-      for (const socketId of socketIds) {
-        getIO().to(socketId).emit("messages:new", msg.toObject());
-      }
+    io.to(`user:${msg.toUser}`).emit(
+      "messages:new",
+      msg.toObject()
+    );
 
-      //  Mark delivered if at least one socket received it
+    const room = io.sockets.adapter.rooms.get(`user:${msg.toUser}`);
+
+    if (room && room.size > 0) {
       await Message.updateOne(
         { _id: msg._id },
         { $set: { deliveredAt: new Date() } }
       );
     }
+
   }
 
   return messages;
@@ -633,6 +654,7 @@ export const closeTicketService = async ({
   threadId,
   adminId,
 }) => {
+
   if (!threadId) {
     throw new Error("threadId is required");
   }
@@ -640,7 +662,9 @@ export const closeTicketService = async ({
   /* ----------------------------
      VERIFY ADMIN
   ---------------------------- */
+
   const admin = await User.findById(adminId).select("role");
+
   if (!admin || admin.role !== "ADMIN") {
     throw new Error("Only admin can close tickets");
   }
@@ -648,6 +672,7 @@ export const closeTicketService = async ({
   /* ----------------------------
      FIND ROOT MESSAGE
   ---------------------------- */
+
   const rootMessage = await Message.findOne({ threadId })
     .sort({ createdAt: 1 });
 
@@ -662,6 +687,7 @@ export const closeTicketService = async ({
   /* ----------------------------
      CLOSE TICKET
   ---------------------------- */
+
   rootMessage.metadata = {
     ...rootMessage.metadata,
     ticketStatus: "CLOSED",
@@ -674,17 +700,14 @@ export const closeTicketService = async ({
   /* ----------------------------
      SOCKET NOTIFY USER
   ---------------------------- */
-  const userId = rootMessage.fromUser.toString();
-  const socketIds = getOnlineUserSockets(userId);
 
-  if (socketIds.size > 0) {
-    for (const socketId of socketIds) {
-      getIO().to(socketId).emit("messages:new", {
-        threadId,
-        closedAt: rootMessage.metadata.closedAt,
-      });
-    }
-  }
+  const userId = rootMessage.fromUser.toString();
+  const io = getIO();
+
+  io.to(`user:${userId}`).emit("messages:new", {
+    threadId,
+    closedAt: rootMessage.metadata.closedAt,
+  });
 
   return {
     success: true,
@@ -795,7 +818,7 @@ export const getMessagesService = async ({
 
   const filter = {
     toUser: userId,
-    threadId: { $exists: false }, 
+    threadId: null, 
   };
 
   const [messages, total] = await Promise.all([

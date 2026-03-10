@@ -45,6 +45,7 @@ export const AuthProvider = ({ children }) => {
       "/doctor-signup",
       "/forgot-password",
       "/verify-otp",
+      "/"
     ];
 
     const mfaRoutes = [

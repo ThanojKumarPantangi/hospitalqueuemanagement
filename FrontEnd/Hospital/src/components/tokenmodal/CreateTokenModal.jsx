@@ -12,7 +12,9 @@ import {
   Stethoscope,
   AlertTriangle,
   User,
-  ShieldCheck
+  ShieldCheck,
+  Video,
+  Building
 } from "lucide-react";
 
 const CreateTokenModal = ({
@@ -30,16 +32,19 @@ const CreateTokenModal = ({
   formatDate,
   priority,
   setPriority,
+  consultationType,
+  setConsultationType,
   creating,
   createToken,
 }) => {
   // ---------------- Logic State (Derived) ----------------
   const stepReadyDept = Boolean(departmentId);
   const stepReadyDate = Boolean(appointmentDate);
+  const stepReadyConsultation = Boolean(consultationType); // <- added
   const stepReadyPriority = Boolean(priority);
   
-  // In user flow, we only need these 3 to be ready
-  const canConfirm = stepReadyDept && stepReadyDate && stepReadyPriority;
+  // In user flow, we need dept, date, consultation type, and priority to be ready
+  const canConfirm = stepReadyDept && stepReadyDate && stepReadyConsultation && stepReadyPriority;
 
   const selectedDepartment = useMemo(() => {
     return departments.find((d) => d._id === departmentId);
@@ -109,13 +114,15 @@ const CreateTokenModal = ({
               <div className="w-4 h-[2px] bg-gray-200 dark:bg-gray-700 rounded-full" />
               <StatusPill active={stepReadyDate} icon={<Clock size={13} />} label="Date" />
               <div className="w-4 h-[2px] bg-gray-200 dark:bg-gray-700 rounded-full" />
+              <StatusPill active={stepReadyConsultation} icon={<Video size={13} />} label="Type" />
+              <div className="w-4 h-[2px] bg-gray-200 dark:bg-gray-700 rounded-full" />
               <StatusPill active={stepReadyPriority} icon={<Activity size={13} />} label="Priority" />
             </div>
           </div>
         </div>
 
         {/* --- Scrollable Content Area --- */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-gray-50/50 dark:bg-[#0f121a]">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar bg-gray-50/50 dark:bg-[#0f121a]">
           <motion.div 
               variants={containerVariants} 
               initial="hidden" 
@@ -205,7 +212,7 @@ const CreateTokenModal = ({
 
               {/* Calendar Strip */}
               <div className="mt-5 p-1 -mx-2">
-                  <div className="flex gap-4 overflow-x-auto pb-6 pt-2 px-2 snap-x custom-scrollbar">
+                  <div className="flex gap-4 overflow-x-auto pb-6 pt-2 px-2 snap-x no-scrollbar">
                   {Array.from({ length: MAX_ADVANCE_DAYS + 1 }).map((_, i) => {
                       const date = new Date(today);
                       date.setDate(today.getDate() + i);
@@ -286,7 +293,7 @@ const CreateTokenModal = ({
               </AnimatePresence>
             </motion.section>
 
-            {/* ---------------- SECTION 3: Priority ---------------- */}
+            {/* ---------------- SECTION 3: Consultation Type ---------------- */}
             <motion.section 
               variants={itemVariants} 
               className={`relative group ${!stepReadyDate ? "opacity-40 grayscale blur-[1px] pointer-events-none select-none transition-all duration-500" : "transition-all duration-500"}`}
@@ -294,6 +301,57 @@ const CreateTokenModal = ({
               <div className="absolute -left-3 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
               <SectionHeader 
                   step="03" 
+                  title="Consultation Type" 
+                  subtitle="Select your Consultation Type category"
+              />
+              
+              <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                 {/* LOCAL (Active) */}
+                 <button 
+                    type="button" 
+                    onClick={() => setConsultationType("LOCAL")} 
+                    className={`
+                        relative py-4 px-4 rounded-xl border-2 transition-all duration-200 flex items-center justify-center gap-2 group
+                        ${consultationType === "LOCAL"
+                            ? "bg-emerald-50 border-emerald-500 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 shadow-md" 
+                            : "bg-white dark:bg-[#131722] border-gray-100 dark:border-gray-800 text-gray-500"}
+                    `}
+                  >
+                    <Building size={16} />
+                    <span className="text-xs font-black uppercase tracking-widest">LOCAL</span>
+                    {consultationType === "LOCAL" && (
+                        <motion.div layoutId="prio-dot" className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    )}
+                  </button>
+
+                  <button 
+                    type="button" 
+                    onClick={() => setConsultationType("REMOTE")} 
+                    className={`
+                        relative py-4 px-4 rounded-xl border-2 transition-all duration-200 flex items-center justify-center gap-2 group
+                        ${consultationType === "REMOTE"
+                            ? "bg-emerald-50 border-emerald-500 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 shadow-md" 
+                            : "bg-white dark:bg-[#131722] border-gray-100 dark:border-gray-800 text-gray-500"}
+                    `}
+                  >
+                    <Video size={16} />
+                    <span className="text-xs font-black uppercase tracking-widest">REMOTE</span>
+                    {consultationType === "REMOTE" && (
+                        <motion.div layoutId="prio-dot" className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    )}
+                  </button>
+              </div>
+
+            </motion.section>
+
+            {/* ---------------- SECTION 4: Priority ---------------- */}
+            <motion.section 
+              variants={itemVariants} 
+              className={`relative group ${!stepReadyConsultation ? "opacity-40 grayscale blur-[1px] pointer-events-none select-none transition-all duration-500" : "transition-all duration-500"}`}
+            >
+              <div className="absolute -left-3 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
+              <SectionHeader 
+                  step="04" 
                   title="Visit Priority" 
                   subtitle="Select your booking category"
               />
@@ -344,7 +402,6 @@ const CreateTokenModal = ({
               </div>
             </motion.section>
 
-            <div className="h-12" /> {/* Bottom Spacer */}
           </motion.div>
         </div>
 

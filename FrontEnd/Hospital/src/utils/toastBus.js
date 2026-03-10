@@ -3,7 +3,7 @@
 let toastHandler = null;
 
 /**
- * Register the React setToast function once (in main.jsx)
+ * Register the React showToast function once (in main.jsx)
  */
 export const registerToastHandler = (handler) => {
   toastHandler = handler;

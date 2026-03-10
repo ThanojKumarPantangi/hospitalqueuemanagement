@@ -20,8 +20,8 @@ import authMiddleware from "../middlewares/auth.middleware.js";
 import roleMiddleware from "../middlewares/role.middleware.js";
 
 const router = express.Router();
-// ,authLimiter
-router.post("/login", login);
+
+router.post("/login",authLimiter, login);
 router.post("/refresh", refreshTokenController);
 router.post("/logout", logoutController);
 router.get("/me", authMiddleware, getMe);
@@ -37,6 +37,7 @@ router.post(
   roleMiddleware("ADMIN"),
   adminResetMfaController
 );
+
 router.post("/recovery-preview", getRecoveryPreviewController);
 
 router.post("/toggle-mfa",

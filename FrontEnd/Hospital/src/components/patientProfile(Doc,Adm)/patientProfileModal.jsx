@@ -186,7 +186,7 @@ export default function PatientProfileModal({
             </div>
 
             {/* Scrollable Body */}
-            <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar space-y-8">
+            <div className="p-6 sm:p-8 overflow-y-auto no-scrollbar space-y-8">
               
               {/* Personal Details */}
               <Section title="Personal Information">

@@ -230,7 +230,7 @@ const CustomCalendar = ({ selectedDate, onDateSelect }) => {
                         animate="center"
                         exit="exit"
                         transition={{ duration: 0.2 }}
-                        className="absolute inset-0 grid grid-cols-4 gap-2 content-start overflow-y-auto max-h-[280px] custom-scrollbar pr-2"
+                        className="absolute inset-0 grid grid-cols-4 gap-2 content-start overflow-y-auto max-h-[280px] no-scrollbar pr-2"
                       >
                         {YEARS.map((year) => (
                           <motion.button

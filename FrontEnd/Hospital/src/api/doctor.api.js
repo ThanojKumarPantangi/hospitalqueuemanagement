@@ -9,19 +9,19 @@ export const updateDoctorProfileApi=(payload)=>{
 }
 
 export const callNextPatientApi=()=>{
-    return api.post("/api/tokens/doctor/call-next");
+    return api.post("/api/queue/doctor/call-next");
 }
 
 export const completeCurrentTokenApi=()=>{
-    return api.post("/api/tokens/doctor/complete");
+    return api.post("/api/queue/doctor/complete");
 }
 
 export const skipCurrentTokenApi=()=>{
-    return api.post("/api/tokens/doctor/skip");
+    return api.post("/api/queue/doctor/skip");
 }
 
 export const getDoctorQueueSummary=()=>{
-  return api.get(`/api/tokens/dashboard/queue-summary`)
+  return api.get(`/api/queue/dashboard/queue-summary`)
 }
 
 export const makeDoctorOnLeaveApi=()=>{

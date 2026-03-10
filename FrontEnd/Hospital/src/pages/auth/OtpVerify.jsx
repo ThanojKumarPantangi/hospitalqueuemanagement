@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { sendotp, verifyotp } from "../../api/auth.api";
-import Toast from "../../components/ui/Toast";
-import { showToast } from "../../utils/toastBus";
+import { showToast } from '../../utils/toastBus.js';
 import { motion, AnimatePresence} from "framer-motion";
 import {
   ShieldCheck,

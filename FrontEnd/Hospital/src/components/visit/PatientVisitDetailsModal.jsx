@@ -224,7 +224,7 @@ const PatientVisitDetailsModal = ({
             </div>
 
             {/* --- Scrollable Body --- */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar bg-slate-50/50 dark:bg-slate-900/50">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 no-scrollbar bg-slate-50/50 dark:bg-slate-900/50">
               <LayoutGroup>
                 <div className="space-y-4">
                   

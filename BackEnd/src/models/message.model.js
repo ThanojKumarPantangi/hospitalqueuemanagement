@@ -90,7 +90,7 @@ const messageSchema = new mongoose.Schema(
        METADATA (EXTENSIBLE)
     ============================ */
     metadata: {
-      type: Object,
+      type: mongoose.Schema.Types.Mixed,
       default: {},
     },
   },
@@ -100,7 +100,7 @@ const messageSchema = new mongoose.Schema(
 /* ============================
    INDEXES (IMPORTANT)
 ============================ */
-messageSchema.index({ threadId: 1, createdAt: 1 });
+messageSchema.index({ threadId: 1, createdAt: -1 });
 messageSchema.index({ toUser: 1, readAt: 1 });
 messageSchema.index({ category: 1, createdAt: -1 });
 messageSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });

@@ -30,8 +30,6 @@ Smart Q digitizes token issuance, enforces priority-based ordering (`EMERGENCY` 
 - OTP phone verification & password recovery
 - TV/display endpoints for waiting areas
 
-> ❌ Redis is not used in this project.
-
 ---
 
 ## 🌐 Live URLs
