@@ -1,5 +1,6 @@
 import axios from "axios";
 import { showToast } from "../utils/toastBus";
+import {useNavigate} from "react-router-dom";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -112,8 +113,10 @@ api.interceptors.response.use(
         type: "error",
         message: "Authentication failed. Please login again.",
       });
+      
+      const navigate = useNavigate();
+      navigate("/login");
 
-      window.location.href = "/login";
 
       return Promise.reject(error);
     }
