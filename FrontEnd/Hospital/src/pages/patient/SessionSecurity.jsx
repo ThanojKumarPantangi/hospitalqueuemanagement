@@ -374,7 +374,6 @@ function SecurityActivityTab() {
     try {
       setLoading(true);
       const res = await getSecurityEventsApi();
-      console.log(res)
       setEvents(res.data.events || res.data || []);
     } catch (err) {
       console.error("Failed to fetch events", err);
