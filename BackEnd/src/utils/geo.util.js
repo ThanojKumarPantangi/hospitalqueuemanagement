@@ -4,9 +4,9 @@ export const getLocationFromIp = async (ip) => {
     if (ip === "::1" || ip === "127.0.0.1") return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 7000);
 
-    const res = await fetch(`https://ipinfo.io/${ip}`, {
+    const res = await fetch(`https://ipinfo.io/${ip}/json`, {
       headers: {
         "User-Agent": "Mozilla/5.0",
         "Accept": "application/json"

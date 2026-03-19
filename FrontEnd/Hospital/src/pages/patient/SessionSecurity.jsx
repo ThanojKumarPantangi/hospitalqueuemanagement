@@ -55,7 +55,7 @@ const itemVariants = {
 /* -------------------------------------------------------------------------- */
 /*                               Premium Loader                                */
 /* -------------------------------------------------------------------------- */
-/* Inline, non-blocking loader used by both tabs so layout doesn't jump.     */
+
 function PremiumLoader({ text = "Loading..." }) {
   return (
     <div className="flex flex-col items-center justify-center py-20">
@@ -354,10 +354,27 @@ function SecurityActivityTab() {
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
 
+  function generateDescription(event) {
+    switch (event.type) {
+      case "SUSPICIOUS_LOGIN":
+        return `Suspicious login detected from ${event.country} (IP: ${event.ip})`;
+
+      case "NEW_DEVICE":
+        return `New device login detected (${event.userAgent})`;
+
+      case "FAILED_LOGIN":
+        return `Multiple failed login attempts detected`;
+
+      default:
+        return "Security event detected";
+    }
+  }
+
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
       const res = await getSecurityEventsApi();
+      console.log(res)
       setEvents(res.data.events || res.data || []);
     } catch (err) {
       console.error("Failed to fetch events", err);
@@ -448,11 +465,56 @@ function SecurityActivityTab() {
                       </div>
 
                       <div>
-                        <p className={`font-medium text-base transition-colors duration-200 ${event.isRead ? "text-gray-700 dark:text-gray-300" : "text-gray-900 dark:text-gray-100"}`}>
-                          {event.title}
+                        <p className={`font-medium text-base transition-colors duration-200 ${
+                          event.isRead ? "text-gray-700 dark:text-gray-300" : "text-gray-900 dark:text-gray-100"
+                        }`}>
+                          {event.type.replaceAll("_", " ")}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{event.description}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2.5 font-medium">{new Date(event.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</p>
+
+                        {/* Description */}
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          {generateDescription(event)}
+                        </p>
+
+                        {/* Extra details */}
+                        <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+
+                          {event.ip && (
+                            <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
+                              🌐 {event.ip}
+                            </span>
+                          )}
+
+                          {event.country && (
+                            <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
+                              📍 {event.country}
+                            </span>
+                          )}
+
+                          {event.riskScore !== undefined && (
+                            <span className={`px-2 py-1 rounded font-medium ${
+                              event.riskScore > 70
+                                ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                : "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
+                            }`}>
+                              ⚠️ Risk: {event.riskScore}
+                            </span>
+                          )}
+
+                          {event.userAgent && (
+                            <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 truncate max-w-[200px]">
+                              💻 {event.userAgent}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Time */}
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2.5 font-medium">
+                          {new Date(event.createdAt).toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })}
+                        </p>
                       </div>
                     </div>
 
