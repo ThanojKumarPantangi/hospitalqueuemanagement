@@ -4,7 +4,7 @@ export const getLocationFromIp = async (ip) => {
     if (ip === "::1" || ip === "127.0.0.1") return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000); // 2s timeout
+    const timeout = setTimeout(() => controller.abort(), 5000); 
 
     const res = await fetch(`https://ipwho.is/${ip}`, {
       signal: controller.signal,
@@ -23,7 +23,8 @@ export const getLocationFromIp = async (ip) => {
       country: data.country || null,
       timezone: data.timezone?.id || null,
     };
-  } catch {
+  } catch(err) {
+    console.error("Geo API error:", err);
     return null;
   }
 };
