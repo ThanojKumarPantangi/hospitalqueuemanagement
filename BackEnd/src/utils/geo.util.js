@@ -1,6 +1,7 @@
 export const getLocationFromIp = async (ip) => {
   try {
     if (!ip) return null;
+    console.log("ip",ip)
     if (ip === "::1" || ip === "127.0.0.1") return null;
 
     const controller = new AbortController();
@@ -24,7 +25,7 @@ export const getLocationFromIp = async (ip) => {
       timezone: data.timezone?.id || null,
     };
   } catch(err) {
-    console.error("Geo API error:", err);
+    console.log("Geo API error:", err);
     return null;
   }
 };

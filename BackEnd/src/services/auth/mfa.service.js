@@ -125,7 +125,7 @@ export const verifyMfaService = async (tempToken, code, req) => {
   await security.save();
 
   // CREATE SESSION via centralized service
-  const session = await createSession(user, req, cleanIp);
+  const session = await createSession(user, req, cleanIp,location);
 
   // ISSUE TOKENS via token service
   const tokens = await issueTokens(user, session);
