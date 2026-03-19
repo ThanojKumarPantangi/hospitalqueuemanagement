@@ -40,6 +40,11 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
 
   const showLocation = Boolean(locationText || timezoneText);
 
+  const ip = session?.ipAddress;
+  const maskedIP = ip?.includes(':')
+    ? ip.split(':').slice(0, 2).join(':') + ':...'
+    : ip?.split('.').slice(0, 2).join('.') + '...';
+
   return (
     <motion.div
       layout
@@ -123,7 +128,7 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
               <MapPin size={14} />
               <div className="min-w-0">
                 <span className="font-mono truncate block">
-                  {session.ipAddress || "0.0.0.0"}
+                  {maskedIP}
                 </span>
 
                 {showLocation && (

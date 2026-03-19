@@ -12,9 +12,6 @@ import {
   Bell,
   Loader2,
   ShieldX,
-  Activity,
-  LockKeyhole,
-  RefreshCw,
 } from "lucide-react";
 
 import SessionCard from "../../components/session/SessionCard";
@@ -175,7 +172,6 @@ function SessionSecurityTab() {
 
   return (
     <>
-      
       <div className="min-h-[40vh]">
         <main className="max-w-5xl mx-auto space-y-8">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
