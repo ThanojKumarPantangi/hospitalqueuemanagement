@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter } from "react-router-dom";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import { ThemeProvider } from "./context/ThemeProvider.jsx";
 import { AuthProvider } from "./context/AuthProvider.jsx";
@@ -22,6 +23,7 @@ export default function Root() {
         <AuthProvider>
           <ThemeProvider>
             <App />
+            <SpeedInsights />
 
             {toast && (
               <Toast
