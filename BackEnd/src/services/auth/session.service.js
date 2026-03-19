@@ -1,6 +1,5 @@
 import Session from "../../models/session.model.js";
 import RefreshToken from "../../models/refreshToken.model.js";
-import { getLocationFromIp } from "../../utils/geo.util.js";
 import { forceLogoutSession } from "../../sockets/forceLogout.js";
 
 /* =========================================================
@@ -28,7 +27,7 @@ const calculateAbsoluteExpiry = (role) => {
    CREATE SESSION
 ========================================================= */
 
-export const createSession = async (user, req, cleanIp) => {
+export const createSession = async (user, req, cleanIp,location) => {
   // Enforce role-based single session
   if (shouldEnforceSingleSession(user.role)) {
     await revokeAllUserSessions(user._id);
@@ -41,18 +40,10 @@ export const createSession = async (user, req, cleanIp) => {
     role: user.role,
     device: req.headers["user-agent"]?.substring(0, 120),
     ipAddress: cleanIp,
-    location: null,
+    location: location || null,
     isActive: true,
     absoluteExpiresAt: absoluteExpiry,
   });
-
-  getLocationFromIp(cleanIp)
-    .then((location) => {
-      if (location) {
-        Session.findByIdAndUpdate(session._id, { location }).catch(() => {});
-      }
-    })
-    .catch(() => {});
 
   return session;
 };

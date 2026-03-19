@@ -9,7 +9,7 @@ const departmentSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ⏱ Queue timing (ADMIN CONTROLLED)
+    // Queue timing (ADMIN CONTROLLED)
     slotDurationMinutes: {
       type: Number,
       required: true,

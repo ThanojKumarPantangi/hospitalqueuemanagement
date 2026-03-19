@@ -101,7 +101,7 @@ export const loginService = async (email, password, req) => {
   security.lastLoginAt = new Date();
   await security.save();
 
-  const session = await createSession(user, req, cleanIp);
+  const session = await createSession(user, req, cleanIp,location);
   const tokens = await issueTokens(user, session);
 
   return { ...tokens, user };
