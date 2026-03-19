@@ -5,12 +5,13 @@ import {
   ShieldOff,
   Eye,
   EyeOff,
+  CheckCheck,
   AlertTriangle,
   ShieldAlert,
   CheckCircle2,
   Bell,
   Loader2,
-  Circle,
+  ShieldX,
   Activity,
   LockKeyhole,
   RefreshCw,
@@ -370,6 +371,16 @@ function SecurityActivityTab() {
     }
   }
 
+  function getDevice(userAgent) {
+    if (!userAgent) return "Unknown Device";
+    if (userAgent.includes("Postman")) return "Postman";
+    if (userAgent.includes("Chrome")) return "Chrome";
+    if (userAgent.includes("Firefox")) return "Firefox";
+    if (userAgent.includes("Safari")) return "Safari";
+    return "Unknown Device";
+  }
+
+
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
@@ -453,78 +464,147 @@ function SecurityActivityTab() {
             <p className="text-lg font-medium">No security activity found</p>
           </div>
         ) : (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="space-y-4"
+          >
             <AnimatePresence mode="popLayout">
-              {events.map((event) => (
-                <motion.div key={event._id} variants={itemVariants} layout whileHover={{ y: -2 }} className={`p-5 rounded-2xl border transition-all duration-200 shadow-sm ${event.isRead ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800" : "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50"}`}>
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex gap-4">
-                      <div className={`mt-1 p-2.5 rounded-xl transition-colors duration-200 ${event.isRead ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" : "bg-blue-600 dark:bg-blue-500 text-white shadow-sm"}`}>
-                        {event.isRead ? <CheckCircle2 className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
-                      </div>
+              {events.map((event) => {
+                const isHighRisk = event.riskScore >= 90;
+                const device = getDevice(event.userAgent);
 
-                      <div>
-                        <p className={`font-medium text-base transition-colors duration-200 ${
-                          event.isRead ? "text-gray-700 dark:text-gray-300" : "text-gray-900 dark:text-gray-100"
-                        }`}>
-                          {event.type.replaceAll("_", " ")}
-                        </p>
-
-                        {/* Description */}
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          {generateDescription(event)}
-                        </p>
-
-                        {/* Extra details */}
-                        <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
-
-                          {event.ip && (
-                            <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
-                              🌐 {event.ip}
-                            </span>
-                          )}
-
-                          {event.country && (
-                            <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
-                              📍 {event.country}
-                            </span>
-                          )}
-
-                          {event.riskScore !== undefined && (
-                            <span className={`px-2 py-1 rounded font-medium ${
-                              event.riskScore > 70
-                                ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                                : "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
-                            }`}>
-                              ⚠️ Risk: {event.riskScore}
-                            </span>
-                          )}
-
-                          {event.userAgent && (
-                            <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 truncate max-w-[200px]">
-                              💻 {event.userAgent}
-                            </span>
+                return (
+                  <motion.div
+                    key={event._id}
+                    variants={itemVariants}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    whileHover={{ y: -2 }}
+                    className={`p-5 rounded-2xl border transition-all duration-200 shadow-sm ${
+                      event.isRead
+                        ? "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
+                        : isHighRisk
+                        ? "bg-red-50/60 dark:bg-red-900/10 border-red-200 dark:border-red-800/50"
+                        : "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start gap-4">
+                      
+                      {/* LEFT CONTENT */}
+                      <div className="flex gap-4">
+                        
+                        {/* ICON */}
+                        <div
+                          className={`mt-1 p-2.5 rounded-xl transition-colors duration-200 ${
+                            event.isRead
+                              ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                              : isHighRisk
+                              ? "bg-red-600 text-white"
+                              : "bg-blue-600 text-white"
+                          }`}
+                        >
+                          {event.isRead ? (
+                            <CheckCircle2 className="w-5 h-5" />
+                          ) : isHighRisk ? (
+                            <ShieldX className="w-5 h-5" />
+                          ) : (
+                            <ShieldAlert className="w-5 h-5" />
                           )}
                         </div>
 
-                        {/* Time */}
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2.5 font-medium">
-                          {new Date(event.createdAt).toLocaleString(undefined, {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}
-                        </p>
-                      </div>
-                    </div>
+                        {/* TEXT CONTENT */}
+                        <div>
+                          {/* TITLE */}
+                          <p
+                            className={`font-medium text-base transition-colors duration-200 ${
+                              event.isRead
+                                ? "text-gray-700 dark:text-gray-300"
+                                : "text-gray-900 dark:text-gray-100"
+                            }`}
+                          >
+                            {event.type.replaceAll("_", " ")}
+                          </p>
 
-                    {!event.isRead && (
-                      <motion.button whileTap={{ scale: 0.9 }} onClick={() => handleMarkAsRead(event._id)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 shrink-0">
-                        Mark read
-                      </motion.button>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
+                          {/* DESCRIPTION */}
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {generateDescription(event)}
+                          </p>
+
+                          {/* META BADGES */}
+                          <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+
+                            {event.ip && (
+                              <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
+                                🌐 {event.ip}
+                              </span>
+                            )}
+
+                            {event.country && (
+                              <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
+                                📍 {event.country}
+                              </span>
+                            )}
+
+                            {event.riskScore !== undefined && (
+                              <span
+                                className={`px-2 py-1 rounded font-medium ${
+                                  event.riskScore >= 90
+                                    ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                                    : "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                }`}
+                              >
+                                ⚠️ Risk: {event.riskScore}
+                              </span>
+                            )}
+
+                            {event.userAgent && (
+                              <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
+                                💻 {device}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* TIME */}
+                          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2.5 font-medium">
+                            {new Date(event.createdAt).toLocaleString(undefined, {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* RIGHT ACTION */}
+                      {!event.isRead ? (
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleMarkAsRead(event._id)}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 shrink-0"
+                        >
+                          Mark read
+                        </motion.button>
+                      ) : (
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <div className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                            <CheckCheck className="w-4 h-4" />
+                            Reviewed
+                          </div>
+
+                          {event.readAt && (
+                            <span className="text-[10px] text-gray-400">
+                              {new Date(event.readAt).toLocaleTimeString()}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </motion.div>
         )}
