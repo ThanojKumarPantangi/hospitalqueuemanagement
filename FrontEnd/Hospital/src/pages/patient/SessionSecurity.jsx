@@ -20,6 +20,7 @@ import { showToast } from '../../utils/toastBus.js';
 import Navbar from "../../components/Navbar/PatientNavbar";
 import { Link } from "react-router-dom";
 import AsyncMotionButton from "../../components/buttonmotion/AsyncMotionButton";
+import {getDevice} from "../../utils/deviceAgent.js"
 
 // APIs (keep your existing endpoints)
 import {
@@ -367,16 +368,6 @@ function SecurityActivityTab() {
     }
   }
 
-  function getDevice(userAgent) {
-    if (!userAgent) return "Unknown Device";
-    if (userAgent.includes("Postman")) return "Postman";
-    if (userAgent.includes("Chrome")) return "Chrome";
-    if (userAgent.includes("Firefox")) return "Firefox";
-    if (userAgent.includes("Safari")) return "Safari";
-    return "Unknown Device";
-  }
-
-
   const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
@@ -559,7 +550,7 @@ function SecurityActivityTab() {
 
                             {event.userAgent && (
                               <span className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800">
-                                💻 {device}
+                                💻 {device.fullName}
                               </span>
                             )}
                           </div>

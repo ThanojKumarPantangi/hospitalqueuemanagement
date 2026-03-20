@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { logoutSessionApi } from "../../api/session.api";
+import {getDevice} from "../../utils/deviceAgent.js"
 
 export default function SessionCard({ session, isCurrent, onLogout }) {
   const [loggingOut, setLoggingOut] = useState(false);
@@ -26,6 +27,7 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
     }
   };
 
+  
   const isMobile = /mobile|iphone|android/i.test(session.device || "");
 
   const locationText = [
@@ -44,6 +46,8 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
   const maskedIP = ip?.includes(':')
     ? ip.split(':').slice(0, 2).join(':') + ':...'
     : ip?.split('.').slice(0, 2).join('.') + '...';
+
+    const device = getDevice(session.userAgent);
 
   return (
     <motion.div
@@ -98,9 +102,9 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
               overflow-hidden text-ellipsis whitespace-nowrap
               max-w-full
             "
-            title={session.device}
+            title={device}
           >
-            {session.device || "Unknown Device"}
+            {device.fullName || "Unknown Device"}
           </h3>
 
           {/* Current Badge */}

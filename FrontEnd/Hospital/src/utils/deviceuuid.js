@@ -1,9 +1,9 @@
 export function getOrCreateDeviceId() {
-  let deviceId = localStorage.getItem("deviceId");
+  let deviceId = sessionStorage.getItem("deviceId");
 
   if (!deviceId) {
     deviceId = crypto.randomUUID();
-    localStorage.setItem("deviceId", deviceId);
+    sessionStorage.setItem("deviceId", deviceId);
   }
 
   return deviceId;

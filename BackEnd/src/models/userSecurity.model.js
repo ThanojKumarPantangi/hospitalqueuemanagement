@@ -14,8 +14,8 @@ const userSecuritySchema = new mongoose.Schema(
     },
 
     twoStepEnabled: {
-        type: Boolean,
-        default: false,
+      type: Boolean,
+      default: false,
     },
     mfaEnabled: {
       type: Boolean,
