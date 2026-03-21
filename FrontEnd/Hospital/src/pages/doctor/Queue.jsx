@@ -16,12 +16,11 @@ import {
   Video,
   Pill,
   User,
-  Sparkles,
+  RefreshCw,
   ShieldCheck,
   Activity,
   BadgeCheck,
 } from "lucide-react";
-import Navbar from "../../components/Navbar/DoctorNavbar";
 import { showToast } from '../../utils/toastBus.js';
 import {
   callNextPatientApi,
@@ -466,8 +465,7 @@ const DoctorQueue = () => {
   return (
     <>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
-        <Navbar activePage="Queue" />
-
+        
         <motion.main
           variants={containerVars}
           initial="hidden"
@@ -497,22 +495,33 @@ const DoctorQueue = () => {
 
             <div className="flex items-center gap-2">
               <motion.div
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="hidden sm:flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/70 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 backdrop-blur-md shadow-sm"
+                transition={{ duration: 0.4, ease: "easeOut" }}
               >
-                <Sparkles className="w-4 h-4" />
-                <span className="text-[10px] font-black uppercase tracking-wide">
-                  Premium Workflow UI
-                </span>
-              </motion.div>
+                <motion.button
+                  onClick={() => fetchDashboardSummary()}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-2xl 
+                            bg-white dark:bg-gray-900 
+                            border border-gray-100 dark:border-gray-800 
+                            text-slate-700 dark:text-slate-200 
+                            font-black text-xs 
+                            shadow-sm hover:shadow-lg 
+                            transition-all duration-300"
+                >
+                  <motion.span
+                    whileTap={{ rotate: 180 }}
+                    transition={{ duration: 0.4 }}
+                    className="flex items-center"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </motion.span>
 
-              <button
-                onClick={() => fetchDashboardSummary()}
-                className="px-4 py-2.5 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-slate-700 dark:text-slate-200 font-black text-xs shadow-sm hover:shadow-md transition"
-              >
-                Refresh
-              </button>
+                  Refresh
+                </motion.button>
+              </motion.div>
             </div>
           </motion.div>
 

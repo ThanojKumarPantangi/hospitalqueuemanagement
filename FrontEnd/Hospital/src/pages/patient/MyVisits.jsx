@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 
 import CustomCalendar from "../../components/Calendar/CustomCalendar";
-import Navbar from "../../components/Navbar/PatientNavbar";
 import Loader from "../../components/animation/Loader";
 import { showToast } from "../../utils/toastBus.js";
 import { getPatientVisitsApi } from "../../api/visit.api";
@@ -220,7 +219,6 @@ const MyVisits = () => {
 
   return (
     <div className="min-h-screen bg-[#FDFDFF] dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-      <Navbar activePage="Visit History" />
 
       <motion.main
         variants={pageVars}

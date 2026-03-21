@@ -25,9 +25,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useSocket } from "../../hooks/useSocket";
 import { useTokenSocket } from "../../hooks/useTokenSocket";
 
-// Components
-import DoctorNavbar from "../../components/Navbar/DoctorNavbar";
-
 // API
 import {
   getUserThreadsApi,
@@ -654,11 +651,6 @@ export default function DoctorInbox() {
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
-
-      {/* 1. Global Navigation */}
-      <div className="flex-shrink-0 z-50">
-        <DoctorNavbar />
-      </div>
 
       {/* Layout isolation wrapper — helps prevent overlap issues on mobile */}
       <div className="relative w-full h-full flex-1 overflow-hidden">

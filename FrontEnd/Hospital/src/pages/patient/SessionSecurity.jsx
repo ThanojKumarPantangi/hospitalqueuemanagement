@@ -17,7 +17,6 @@ import {
 import SessionCard from "../../components/session/SessionCard";
 import LogoutAllButton from "../../components/session/LogoutAllButton";
 import { showToast } from '../../utils/toastBus.js';
-import Navbar from "../../components/Navbar/PatientNavbar";
 import { Link } from "react-router-dom";
 import AsyncMotionButton from "../../components/buttonmotion/AsyncMotionButton";
 import {getDevice} from "../../utils/deviceAgent.js"
@@ -608,7 +607,6 @@ export default function SecuritySection() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300 pb-12">
-      <Navbar activePage="Security" />
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header and Small Box Tab Selector */}

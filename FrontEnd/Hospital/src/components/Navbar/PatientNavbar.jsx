@@ -170,7 +170,7 @@ const Navbar = () => {
                     onClick={() => navigate("/patient/session")} 
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   >
-                    <Users className="w-4 h-4 text-gray-400" /> Current Session
+                    <Users className="w-4 h-4 text-gray-400" /> Session & Settings
                   </button>
                   <button 
                     onClick={() => navigate("/patient/inbox")} 
@@ -258,7 +258,7 @@ const Navbar = () => {
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900"
               >
                 <Users className="w-5 h-5 text-gray-400" />
-                Session
+                Session & Settings
               </motion.button>
 
               <motion.button
@@ -277,7 +277,7 @@ const Navbar = () => {
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10"
               >
                 <LogOut className="w-5 h-5" />
-                Sign Out
+                Log Out
               </motion.button>
             </div>
           </motion.div>

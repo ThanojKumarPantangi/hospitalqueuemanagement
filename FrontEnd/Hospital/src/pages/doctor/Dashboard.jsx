@@ -5,7 +5,6 @@ import {
   UserCheck, Users, Clock, ChevronRight,User,
   Activity,ArrowUpRight, Timer, TrendingUp, Zap,Coffee,Play} from 'lucide-react';
 import {useAuth} from "../../hooks/useAuth"
-import Navbar from "../../components/Navbar/DoctorNavbar";
 import { showToast } from '../../utils/toastBus.js';
 import {getDoctorQueueSummary,getMyDoctorProfileApi,makeDoctorOnAvailableApi,makeDoctorOnLeaveApi} from "../../api/doctor.api";
 import { useTokenSocket } from "../../hooks/useTokenSocket";
@@ -257,7 +256,6 @@ const Dashboard = () => {
   return (
     <>
       <div className="min-h-screen bg-slate-50 dark:bg-gray-950 transition-colors duration-300">
-        <Navbar activePage="Home" />
 
         <motion.main 
           initial="hidden"

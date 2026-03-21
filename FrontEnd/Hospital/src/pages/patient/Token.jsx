@@ -1,7 +1,6 @@
 import { motion} from 'framer-motion';
 import { useEffect, useState ,useRef} from "react";
 import Badge from "../../components/badge/badge.jsx";
-import Navbar from "../../components/Navbar/PatientNavbar";
 import { showToast } from '../../utils/toastBus.js';
 import Loader from "../../components/animation/Loader.jsx";
 import StickyMiniToken from "../../components/token/StickyMiniToken";
@@ -306,7 +305,6 @@ const Token = () => {
       
 
       <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 p-4 md:p-6 pb-24">
-        <Navbar activePage="My Tokens" />
 
         <main className="max-w-5xl mx-auto space-y-8">
 

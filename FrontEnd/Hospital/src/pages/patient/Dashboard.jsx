@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState,useRef } from 'react';
-import Navbar from '../../components/Navbar/PatientNavbar';
 import AnimatedQuote from '../../components/animation/AnimatedQuote';
 import { useSocket} from "../../hooks/useSocket";
 import usePatientTokenSocket from "@/hooks/usePatientTokenSocket";
@@ -373,7 +372,6 @@ const itemVariants = {
 
 
       <div className="min-h-screen bg-[#f8fafc] dark:bg-gray-950 p-4 md:p-6 space-y-8 pb-24">
-        <Navbar activePage="Dashboard" />
 
         <main className="max-w-5xl mx-auto space-y-8">
           

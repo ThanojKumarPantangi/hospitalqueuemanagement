@@ -19,7 +19,6 @@ import {
   QrCode,
 } from "lucide-react";
 
-import Navbar from "../../components/Navbar/PatientNavbar";
 import {
   getMyPatientProfileApi,
   updatePatientProfileApi,
@@ -262,7 +261,6 @@ const PatientProfile = () => {
 
       {/* Main Container - added padding bottom for floating bar */}
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-40 relative">
-        <Navbar activePage="" />
 
         <main className="max-w-6xl mx-auto px-4 md:px-6 pt-8">
           <motion.div

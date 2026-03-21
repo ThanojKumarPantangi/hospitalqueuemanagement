@@ -17,6 +17,7 @@ import RoleRoute from "./routes/RoleRoute";
 import PublicHomeRoute from "./routes/PublicHomeRoute";
 import RoleDeviceGuard from "./components/DeviceRestriction/RoleDeviceGuard";
 
+import PatientLayout from "./layouts/PatientNavbarLayout.jsx";
 import PatientDashboard from "./pages/patient/Dashboard";
 import Token from "./pages/patient/Token.jsx";
 import MyVisits from "./pages/patient/MyVisits.jsx";
@@ -24,6 +25,7 @@ import SessionSecurity from "./pages/patient/SessionSecurity.jsx";
 import PatientProfile from "./pages/patient/PatientProfile.jsx";
 import UserInbox from "./pages/patient/UserInbox.jsx";
 
+import DoctorLayout from "./layouts/DoctorNavbarLayout.jsx";
 import DoctorDashboard from "./pages/doctor/Dashboard";
 import DoctorProfile from "./pages/doctor/DoctorProfile.jsx";
 import DoctorQueue from "./pages/doctor/Queue.jsx";
@@ -74,23 +76,27 @@ function App() {
           
           {/* PATIENT */}
           <Route element={<RoleRoute allowedRoles={["PATIENT"]} />}>
-            <Route path="/patient/dashboard" element={<PatientDashboard />} />
-            <Route path="/patient/tokens" element={<Token />} />
-            <Route path="/patient/history" element={<MyVisits />} />
-            <Route path="/patient/session" element={<SessionSecurity />} />
-            <Route path="/patient/profile" element={<PatientProfile />} />
-            <Route path="/patient/change-password" element={<ChangePasswordUI />} />
-            <Route path="/patient/inbox" element={<UserInbox />} />
+            <Route path="/patient" element={<PatientLayout />}>
+              <Route path="dashboard" element={<PatientDashboard />} />
+              <Route path="tokens" element={<Token />} />
+              <Route path="history" element={<MyVisits />} />
+              <Route path="session" element={<SessionSecurity />} />
+              <Route path="profile" element={<PatientProfile />} />
+              <Route path="change-password" element={<ChangePasswordUI />} />
+              <Route path="inbox" element={<UserInbox />} />
+            </Route> 
           </Route>
 
           {/* DOCTOR */}
           <Route element={<RoleRoute allowedRoles={["DOCTOR"]} />}>
-            <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
-            <Route path="/doctor/profile" element={<DoctorProfile />} />
-            <Route path="/doctor/queue" element={<DoctorQueue />} />
-            <Route path="/doctor/templates" element={<DoctorTemplates />} />
-            <Route path="/doctor/change-password" element={<ChangePasswordUI />} />
-            <Route path="/doctor/inbox" element={<DoctorInbox />} />
+            <Route path="/doctor" element={<DoctorLayout />}>
+              <Route path="dashboard" element={<DoctorDashboard />} />
+              <Route path="profile" element={<DoctorProfile />} />
+              <Route path="queue" element={<DoctorQueue />} />
+              <Route path="templates" element={<DoctorTemplates />} />
+              <Route path="change-password" element={<ChangePasswordUI />} />
+              <Route path="inbox" element={<DoctorInbox />} />
+            </Route>
           </Route>
 
           {/* ADMIN */}
