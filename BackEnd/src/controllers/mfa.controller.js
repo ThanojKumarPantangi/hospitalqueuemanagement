@@ -27,8 +27,8 @@ export const verifyMfaController = async (req, res) => {
       });
     }
 
-    const { accessToken, refreshToken, user } =
-      await verifyMfaService(tempToken, code, req);
+    const { accessToken, refreshToken, user,shouldAskTrustDevice } =
+      await verifyMfaService(tempToken, code, req,res);
 
     res.cookie(
       "accessToken",
@@ -46,6 +46,7 @@ export const verifyMfaController = async (req, res) => {
       message: "MFA verification successful",
       role: user.role,
       userId: user._id,
+      shouldAskTrustDevice,
     });
 
   } catch (error) {
@@ -58,8 +59,7 @@ export const verifyMfaController = async (req, res) => {
 export const setupMfaController = async (req, res) => {
   try {
     const { tempToken } = req.body;
-    const deviceId = req.headers["x-device-id"] || null;
-
+  
     if (!tempToken) {
       return res.status(400).json({ message: "Invalid MFA session 1" });
     }
@@ -76,9 +76,8 @@ export const setupMfaController = async (req, res) => {
 
     if (
       !decoded?.id ||
-      decoded.type !== "MFA_PENDING" ||
-      decoded.deviceId !== deviceId
-    ) {
+      decoded.type !== "MFA_PENDING" ) 
+    {
       return res.status(401).json({ message: "Invalid MFA session 3" });
     }
 
@@ -144,7 +143,6 @@ export const setupMfaController = async (req, res) => {
 export const confirmMfaController = async (req, res) => {
   try {
     const { tempToken, code } = req.body;
-    const deviceId = req.headers["x-device-id"] || null;
 
     if (!tempToken || !code) {
       return res.status(400).json({
@@ -163,9 +161,8 @@ export const confirmMfaController = async (req, res) => {
 
     if (
       !decoded?.id ||
-      decoded.type !== "MFA_PENDING" ||
-      decoded.deviceId !== deviceId
-    ) {
+      decoded.type !== "MFA_PENDING" ) 
+      {
       return res.status(401).json({
         message: "Invalid MFA session",
       });

@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import User from "../../models/user.model.js";
 import UserSecurity from "../../models/userSecurity.model.js";
+import Device from "../../models/device.model.js";
 import { handlePasswordFailure, resetFailedAttempts } from "./loginFlow.service.js";
 import { evaluateLoginRisk } from "./loginFlow.service.js";
 import { handleMfaFlow } from "./mfa.service.js";
@@ -12,6 +13,8 @@ const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
 
 export const loginService = async (email, password, req) => {
   const normalizedEmail = email.trim().toLowerCase();
+
+  const { deviceId, deviceSecret } = req.cookies;
 
   const user = await User.findOne({ email: normalizedEmail }).select("+password");
   if (!user) throw new Error("Invalid Credentials");
@@ -40,14 +43,21 @@ export const loginService = async (email, password, req) => {
     ? ip.replace("::ffff:", "")
     : ip;
 
-  const deviceId = req.headers["x-device-id"] || null;
+  const userAgent = req.headers["user-agent"];
 
-  const { riskScore, location, currentCountry, existingDevice } =
-  await evaluateLoginRisk({
+  const {
+    riskScore,
+    location,
+    currentCountry,
+    existingDevice,
+    similarDevice,
+  } = await evaluateLoginRisk({
     user,
     security,
     deviceId,
     cleanIp,
+    userAgent,
+    deviceSecret,
   });
 
   if (riskScore >= 50) {
@@ -57,7 +67,7 @@ export const loginService = async (email, password, req) => {
       ip: cleanIp,
       country: currentCountry,
       deviceId,
-      userAgent: req.headers["user-agent"],
+      userAgent,
       riskScore,
     });
 
@@ -70,38 +80,39 @@ export const loginService = async (email, password, req) => {
     });
   }
 
-  // HIGH RISK → block
   if (riskScore >= 90) {
     throw new Error("Suspicious login attempt detected.");
   }
-
-  const forceMfa = riskScore >= 50;
 
   const mfaResult = await handleMfaFlow(
     user,
     security,
     deviceId,
-    forceMfa
+    existingDevice,
+    riskScore,
   );
 
   if (mfaResult) return mfaResult;
 
-  // LOW RISK SUCCESS
+  // Update / create device record
   await updateDeviceRecord(
     user,
     deviceId,
     cleanIp,
-    req.headers["user-agent"],
+    userAgent,
     existingDevice,
-    currentCountry
+    currentCountry,
+    deviceSecret
   );
 
+  // Update security metadata
   security.lastLoginIp = cleanIp;
   security.lastLoginCountry = currentCountry || null;
   security.lastLoginAt = new Date();
   await security.save();
 
-  const session = await createSession(user, req, cleanIp,location);
+  // Session + tokens
+  const session = await createSession(user, req, cleanIp, location,deviceId);
   const tokens = await issueTokens(user, session);
 
   return { ...tokens, user };
@@ -178,4 +189,46 @@ export const doctorSignupService = async ({
   }
 
   return doctor;
+};
+
+export const trustDeviceService = async (userId, deviceId,role) => {
+  const device = await Device.findOne({
+    user: userId,
+    deviceId,
+  });
+
+  if (!device) {
+    throw new Error("Device not found");
+  }
+
+  let duration;
+
+  if (role === "PATIENT") {
+    duration = 30 * 24 * 60 * 60 * 1000; 
+  } else if (role === "DOCTOR") {
+    duration = 24 * 60 * 60 * 1000; 
+  } else if (role === "ADMIN") {
+    duration = 12 * 60 * 60 * 1000;
+  }
+
+  device.isTrusted = true;
+  device.trustExpiresAt = new Date(Date.now() + duration);
+
+  await device.save();
+};
+
+export const removeTrustService = async (userId, deviceId) => {
+  const device = await Device.findOne({
+    user: userId,
+    deviceId,
+  });
+
+  if (!device) {
+    throw new Error("Device not found");
+  }
+
+  device.isTrusted = false;
+  device.trustExpiresAt = null;
+
+  await device.save();
 };

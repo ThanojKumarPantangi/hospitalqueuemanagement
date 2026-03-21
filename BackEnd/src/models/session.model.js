@@ -20,6 +20,12 @@ const sessionSchema = new mongoose.Schema(
       default: null,
     },
 
+    deviceId: {  
+      type: String,
+      required: true,
+      index: true,
+    },
+
     ipAddress: {
       type: String,
       default: null,

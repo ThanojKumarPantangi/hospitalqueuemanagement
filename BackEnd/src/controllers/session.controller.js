@@ -2,6 +2,7 @@ import Session from "../models/session.model.js";
 import {revokeAllUserSessions,revokeUserSessionById} from "../services/auth/session.service.js"
 import userSecurityModel from "../models/userSecurity.model.js";
 import SecurityEvent from "../models/securityEvent.model.js";
+import Device from "../models/device.model.js";
 import mongoose from "mongoose";
 /**
  * GET all active sessions for logged-in patient
@@ -12,7 +13,7 @@ export const getMyActiveSessions = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    const [sessions, security] = await Promise.all([
+    const [sessions, security, devices] = await Promise.all([
       Session.find({
         user: req.user._id,
         isActive: true,
@@ -20,14 +21,33 @@ export const getMyActiveSessions = async (req, res) => {
         .sort({ lastSeenAt: -1 })
         .select("-__v"),
 
-      userSecurityModel.findOne({ user: req.user._id })
-        .select("twoStepEnabled")
+      userSecurityModel
+        .findOne({ user: req.user._id })
+        .select("twoStepEnabled"),
+
+      //fetch all devices
+      Device.find({ user: req.user._id }).select(
+        "deviceId isTrusted trustExpiresAt"
+      ),
     ]);
+
+    //map session → device
+    const sessionsWithTrust = sessions.map((session) => {
+      const device = devices.find(
+        (d) => d.deviceId === session.deviceId
+      );
+
+      return {
+        ...session.toObject(),
+        isTrusted: device?.isTrusted || false,
+        trustExpiresAt: device?.trustExpiresAt || null,
+      };
+    });
 
     return res.json({
       currentSessionId: req.sessionId || null,
       twoStepEnabled: security?.twoStepEnabled ?? false,
-      sessions,
+      sessions: sessionsWithTrust,
     });
 
   } catch (err) {

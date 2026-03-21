@@ -6,6 +6,8 @@ import {
   doctorSignupController,
   signupController,
   getMe,
+  trustDeviceController,
+  removeTrustController,
 } from "../controllers/auth.controller.js";
 import {verifyMfaController,
   setupMfaController,
@@ -21,16 +23,54 @@ import roleMiddleware from "../middlewares/role.middleware.js";
 
 const router = express.Router();
 
-router.post("/login",authLimiter, login);
-router.post("/refresh", refreshTokenController);
-router.post("/logout", logoutController);
-router.get("/me", authMiddleware, getMe);
-router.post("/signup",authLimiter, signupController);
-router.post("/doctor-signup",authLimiter, doctorSignupController);
-router.post("/verify-mfa",authLimiter, verifyMfaController);
-router.post("/setup-mfa",authLimiter, setupMfaController);
-router.post("/confirm-mfa",authLimiter, confirmMfaController);
-router.post("/recover-mfa",authLimiter, recoverMfaController);
+router.post("/login",
+  authLimiter, 
+  login
+);
+
+router.post("/refresh", 
+  refreshTokenController
+);
+
+router.post("/logout", 
+  logoutController
+);
+
+router.get("/me", 
+  authMiddleware, 
+  getMe
+);
+
+router.post("/signup",
+  authLimiter, 
+  signupController
+);
+
+router.post("/doctor-signup",
+  authLimiter, 
+  doctorSignupController
+);
+
+router.post("/verify-mfa",
+  authLimiter, 
+  verifyMfaController
+);
+
+router.post("/setup-mfa",
+  authLimiter, 
+  setupMfaController
+);
+
+router.post("/confirm-mfa",
+  authLimiter, 
+  confirmMfaController
+);
+
+router.post("/recover-mfa",
+  authLimiter, 
+  recoverMfaController
+);
+
 router.post(
   "/admin/reset-mfa/:userId",
   authMiddleware,
@@ -38,13 +78,27 @@ router.post(
   adminResetMfaController
 );
 
-router.post("/recovery-preview", getRecoveryPreviewController);
+router.post("/recovery-preview", 
+  getRecoveryPreviewController
+);
 
 router.post("/toggle-mfa",
   authLimiter,
   authMiddleware,
   roleMiddleware("PATIENT"), 
   toggleTwoStepController
+);
+
+router.post("/device/trust", 
+  authMiddleware, 
+  roleMiddleware("PATIENT","DOCTOR","ADMIN"), 
+  trustDeviceController
+);
+
+router.post("/device/remove-trust", 
+  authMiddleware, 
+  roleMiddleware("PATIENT","DOCTOR","ADMIN"), 
+  removeTrustController
 );
 
 export default router;

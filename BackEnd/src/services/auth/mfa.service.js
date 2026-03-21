@@ -5,12 +5,12 @@ import User from "../../models/user.model.js";
 import UserSecurity from "../../models/userSecurity.model.js";
 import Device from "../../models/device.model.js";
 import { getLocationFromIp } from "../../utils/geo.util.js";
-import { updateDeviceRecord } from "./deviceSecurity.service.js";
 import { createSession } from "./session.service.js";
 import { issueTokens } from "./token.service.js";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
 
-
-export const verifyMfaService = async (tempToken, code, req) => {
+export const verifyMfaService = async (tempToken, code, req,res) => {
   if (!tempToken || !code) {
     throw new Error("Invalid MFA request");
   }
@@ -22,12 +22,9 @@ export const verifyMfaService = async (tempToken, code, req) => {
     throw new Error("MFA session expired");
   }
 
-  const deviceId = req.headers["x-device-id"] || null;
-
   if (
     !decoded?.id ||
-    decoded.type !== "MFA_PENDING" ||
-    decoded.deviceId !== deviceId
+    decoded.type !== "MFA_PENDING" 
   ) {
     throw new Error("Invalid MFA session");
   }
@@ -99,24 +96,64 @@ export const verifyMfaService = async (tempToken, code, req) => {
   const location = await getLocationFromIp(cleanIp);
   const currentCountry = location?.country || null;
 
-  // Fetch existing device
-  let existingDevice = null;
-  if (deviceId) {
-    existingDevice = await Device.findOne({
+  const deviceId = decoded.deviceId; 
+
+  const device = await Device.findOne({
+    user: user._id,
+    deviceId,
+  });
+
+  const newSecret = crypto.randomBytes(32).toString("hex");
+  const newHash = await bcrypt.hash(newSecret, 12);
+
+  if (!device) {
+    await Device.create({
       user: user._id,
       deviceId,
+      userAgent: req.headers["user-agent"],
+      lastIp: cleanIp,
+      lastCountry: currentCountry,
+      lastUsedAt: new Date(),
+      deviceSecretHash: newHash,
+      isTrusted: false,
+      trustExpiresAt: null,
+    });
+
+    // set cookies
+    res.cookie("deviceId", deviceId, 
+      { 
+        httpOnly: true, 
+        secure: true, 
+        sameSite: "Strict" 
+      });
+
+    res.cookie("deviceSecret", newSecret, 
+      { 
+        httpOnly: true, 
+        secure: true, 
+        sameSite: "Strict" 
+      });
+  }
+  else {
+    device.deviceSecretHash = newHash;
+    device.lastUsedAt = new Date();
+    device.lastIp = cleanIp;
+    device.lastCountry = currentCountry;
+
+    await device.save();
+
+    res.cookie("deviceSecret", newSecret, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+    });
+
+    res.cookie("deviceId", device.deviceId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
     });
   }
-
-  // Trust device after MFA success
-  await updateDeviceRecord(
-    user,
-    deviceId,
-    cleanIp,
-    req.headers["user-agent"],
-    existingDevice,
-    currentCountry
-  );
 
   // Update account login memory
   security.lastLoginIp = cleanIp;
@@ -125,12 +162,15 @@ export const verifyMfaService = async (tempToken, code, req) => {
   await security.save();
 
   // CREATE SESSION via centralized service
-  const session = await createSession(user, req, cleanIp,location);
+  const session = await createSession(user, req, cleanIp,location, deviceId);
 
   // ISSUE TOKENS via token service
   const tokens = await issueTokens(user, session);
 
-  return { ...tokens, user };
+  const shouldAskTrustDevice =
+  !device || !device.isTrusted || false;
+
+  return { ...tokens, user,shouldAskTrustDevice};
 };
 
 // MFA Login Flow
@@ -138,17 +178,34 @@ export const handleMfaFlow = async (
   user,
   security,
   deviceId,
-  forceMfa = false
+  existingDevice,
+  riskScore,
 ) => {
-  const requiresMfa =
-    forceMfa ||
-    user.role === "ADMIN" ||
-    user.role === "DOCTOR" ||
-    (user.role === "PATIENT" && security.twoStepEnabled);
 
-  if (!requiresMfa) return null;
+  const isTrustedDevice =
+    existingDevice &&
+    existingDevice.isTrusted &&
+    existingDevice.trustExpiresAt > new Date();
+
+  const isHighRisk = riskScore >= 50;
+
+  let forceMfa = true;
+
+  if (user.role === "DOCTOR" || user.role === "ADMIN") {
+    forceMfa = !isTrustedDevice || isHighRisk;
+  } else if (user.role === "PATIENT") {
+    if (security.twoStepEnabled) {
+      forceMfa = !isTrustedDevice || isHighRisk;
+    } else {
+      forceMfa = isHighRisk;
+    }
+  }
+
+
+  if (!forceMfa) return null;
 
   const tempJti = uuidv4();
+  if(!deviceId) deviceId = crypto.randomUUID();
 
   const tempToken = jwt.sign(
     {
@@ -162,6 +219,7 @@ export const handleMfaFlow = async (
   );
 
   security.mfaTempTokenId = tempJti;
+  
   await security.save();
 
   if (!security.mfaEnabled) {

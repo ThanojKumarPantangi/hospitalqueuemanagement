@@ -21,7 +21,6 @@ import { Link } from "react-router-dom";
 import AsyncMotionButton from "../../components/buttonmotion/AsyncMotionButton";
 import {getDevice} from "../../utils/deviceAgent.js"
 
-// APIs (keep your existing endpoints)
 import {
   getMySessionApi,
   getSecurityEventsApi,
@@ -220,6 +219,13 @@ function SessionSecurityTab() {
                     session={session}
                     isCurrent={session._id === currentSessionId}
                     onLogout={() => setSessions((prev) => prev.filter((s) => s._id !== session._id))}
+                    onRemove={()=>setSessions((prev) =>
+                      prev.map((s) =>
+                        s.deviceId === session.deviceId
+                          ? { ...s, isTrusted: false, trustExpiresAt: null }
+                          : s
+                      )
+                    )}
                   />
                 </motion.div>
               ))}

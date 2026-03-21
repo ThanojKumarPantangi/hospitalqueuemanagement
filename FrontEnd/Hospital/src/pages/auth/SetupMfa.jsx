@@ -19,7 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { setupmfa, confirmmfa, recoveryprevewApi } from "../../api/auth.api";
-import { getOrCreateDeviceId } from "../../utils/deviceuuid";
+
 
 const SetupMfa = () => {
   // ==========================================
@@ -59,10 +59,8 @@ const SetupMfa = () => {
 
     const initMfaSetup = async () => {
         try {
-        const deviceId = getOrCreateDeviceId();
         const { data } = await setupmfa(
-            { tempToken },
-            { headers: { "x-device-id": deviceId } }
+          { tempToken },  
         );
         setQrData(data.qrCode);
         setManualCode(data.manualCode);
@@ -192,7 +190,7 @@ const SetupMfa = () => {
 
     const code = otp.join("");
     const tempToken = sessionStorage.getItem("mfaTempToken");
-    const deviceId = getOrCreateDeviceId();
+    
 
     if (!tempToken) { navigate("/login", { replace: true }); return; }
     if (code.length !== 6) { setError("Please enter the full 6-digit code."); return; }
@@ -203,7 +201,7 @@ const SetupMfa = () => {
     try {
         const { data } = await confirmmfa(
           { tempToken, code },
-          { headers: { "x-device-id": deviceId } }
+          
         );
 
         sessionStorage.removeItem("mfaTempToken");

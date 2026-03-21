@@ -27,7 +27,7 @@ const calculateAbsoluteExpiry = (role) => {
    CREATE SESSION
 ========================================================= */
 
-export const createSession = async (user, req, cleanIp,location) => {
+export const createSession = async (user, req, cleanIp,location,deviceId=null) => {
   // Enforce role-based single session
   if (shouldEnforceSingleSession(user.role)) {
     await revokeAllUserSessions(user._id);
@@ -42,6 +42,7 @@ export const createSession = async (user, req, cleanIp,location) => {
     ipAddress: cleanIp,
     location: location || null,
     isActive: true,
+    deviceId,
     absoluteExpiresAt: absoluteExpiry,
   });
 

@@ -1,4 +1,9 @@
-import { loginService,signupService,doctorSignupService } from "../services/auth/auth.service.js";
+import { loginService,
+  signupService,
+  doctorSignupService,
+  trustDeviceService,
+  removeTrustService,
+} from "../services/auth/auth.service.js";
 import {verifyRefreshToken} from "../utils/jwt.util.js";
 import { rotateRefreshToken } from "../services/auth/token.service.js";
 import RefreshToken from "../models/refreshToken.model.js";
@@ -17,7 +22,6 @@ export const login = async (req, res) => {
         tempToken: result.tempToken,
       });
     }
-
 
     // If MFA required → do NOT create session yet
     if (result.mfaRequired) {
@@ -114,6 +118,49 @@ export const doctorSignupController = async (req, res) => {
     res.status(400).json({
       message: error.message,
     });
+  }
+};
+
+export const trustDeviceController = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const role = req.user.role;
+
+    const { deviceId } = req.cookies;
+
+    if (!deviceId) {
+      return res.status(400).json({
+        message: "Device not identified",
+      });
+    }
+
+    await trustDeviceService(userId,deviceId,role);
+
+    return res.status(200).json({
+      message: "Device trusted successfully",
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      message: error.message || "Failed to trust device",
+    });
+  }
+};
+
+export const removeTrustController = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { deviceId } = req.body;
+
+    if (!deviceId) {
+      return res.status(400).json({ message: "Device ID required" });
+    }
+
+    await removeTrustService(userId, deviceId);
+
+    return res.json({ message: "Device trust removed" });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
   }
 };
 

@@ -17,11 +17,11 @@ const Dashboard = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [queue, setQueue] = useState({
-            totalToday: 0,
-            completed: 0,
-            remaining: 0,
-            nextWaiting: [],
-        });
+        totalToday: 0,
+        completed: 0,
+        remaining: 0,
+        nextWaiting: [],
+    });
 
     const completed = Number(queue.completed) || 0;
     const total = Number(queue.totalToday) || 0;
@@ -29,7 +29,6 @@ const Dashboard = () => {
       total > 0
         ? Math.min(100, Math.max(0, Math.round((completed / total) * 100)))
         : 0;
-
 
     const [formData, setFormData] = useState();
 

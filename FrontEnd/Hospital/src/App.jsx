@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 
 import PublicLayout from "./layouts/PublicLayout";
+import ProtectedLayout from "./layouts/TrustDeviceLayout.jsx";
 
 import Login from "./pages/auth/Login";
 import Signup from "./pages/auth/Signup";
@@ -72,47 +73,49 @@ function App() {
 
       {/* ================= PROTECTED + DEVICE RESTRICTED ================= */}
       <Route element={<ProtectedRoute />}>
-        <Route element={<RoleDeviceGuard />}>
-          
-          {/* PATIENT */}
-          <Route element={<RoleRoute allowedRoles={["PATIENT"]} />}>
-            <Route path="/patient" element={<PatientLayout />}>
-              <Route path="dashboard" element={<PatientDashboard />} />
-              <Route path="tokens" element={<Token />} />
-              <Route path="history" element={<MyVisits />} />
-              <Route path="session" element={<SessionSecurity />} />
-              <Route path="profile" element={<PatientProfile />} />
-              <Route path="change-password" element={<ChangePasswordUI />} />
-              <Route path="inbox" element={<UserInbox />} />
-            </Route> 
-          </Route>
-
-          {/* DOCTOR */}
-          <Route element={<RoleRoute allowedRoles={["DOCTOR"]} />}>
-            <Route path="/doctor" element={<DoctorLayout />}>
-              <Route path="dashboard" element={<DoctorDashboard />} />
-              <Route path="profile" element={<DoctorProfile />} />
-              <Route path="queue" element={<DoctorQueue />} />
-              <Route path="templates" element={<DoctorTemplates />} />
-              <Route path="change-password" element={<ChangePasswordUI />} />
-              <Route path="inbox" element={<DoctorInbox />} />
+        <Route element={<ProtectedLayout />}>
+          <Route element={<RoleDeviceGuard />}>
+            
+            {/* PATIENT */}
+            <Route element={<RoleRoute allowedRoles={["PATIENT"]} />}>
+              <Route path="/patient" element={<PatientLayout />}>
+                <Route path="dashboard" element={<PatientDashboard />} />
+                <Route path="tokens" element={<Token />} />
+                <Route path="history" element={<MyVisits />} />
+                <Route path="session" element={<SessionSecurity />} />
+                <Route path="profile" element={<PatientProfile />} />
+                <Route path="change-password" element={<ChangePasswordUI />} />
+                <Route path="inbox" element={<UserInbox />} />
+              </Route> 
             </Route>
-          </Route>
 
-          {/* ADMIN */}
-          <Route element={<RoleRoute allowedRoles={["ADMIN"]} />}>
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="doctors" element={<DoctorManagement />} />
-              <Route path="departments" element={<DepartmentManagement />} />
-              <Route path="queue-monitor" element={<QueueMonitor />} />
-              <Route path="qr-scanner" element={<AdminPatientQrScanner />} />
-              <Route path="medicine" element={<Medicine/>}/>
-              <Route path="analytics" element={<AnalyticsDashboard />} />
-              <Route path="settings" element={<ChangePasswordUI />} />
-              <Route path="messaging" element={<AdminMessagingPanel />} />
-              <Route path="inbox" element={<AdminInbox />} />
-              <Route path="reset-mfa" element={<AdminResetMfa />} />
+            {/* DOCTOR */}
+            <Route element={<RoleRoute allowedRoles={["DOCTOR"]} />}>
+              <Route path="/doctor" element={<DoctorLayout />}>
+                <Route path="dashboard" element={<DoctorDashboard />} />
+                <Route path="profile" element={<DoctorProfile />} />
+                <Route path="queue" element={<DoctorQueue />} />
+                <Route path="templates" element={<DoctorTemplates />} />
+                <Route path="change-password" element={<ChangePasswordUI />} />
+                <Route path="inbox" element={<DoctorInbox />} />
+              </Route>
+            </Route>
+
+            {/* ADMIN */}
+            <Route element={<RoleRoute allowedRoles={["ADMIN"]} />}>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="doctors" element={<DoctorManagement />} />
+                <Route path="departments" element={<DepartmentManagement />} />
+                <Route path="queue-monitor" element={<QueueMonitor />} />
+                <Route path="qr-scanner" element={<AdminPatientQrScanner />} />
+                <Route path="medicine" element={<Medicine/>}/>
+                <Route path="analytics" element={<AnalyticsDashboard />} />
+                <Route path="settings" element={<ChangePasswordUI />} />
+                <Route path="messaging" element={<AdminMessagingPanel />} />
+                <Route path="inbox" element={<AdminInbox />} />
+                <Route path="reset-mfa" element={<AdminResetMfa />} />
+              </Route>
             </Route>
           </Route>
         </Route>

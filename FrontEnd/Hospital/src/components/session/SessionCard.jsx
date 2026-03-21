@@ -8,25 +8,56 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
-import { logoutSessionApi } from "../../api/session.api";
+import { logoutSessionApi,RemoveTrustApi} from "../../api/session.api";
 import {getDevice} from "../../utils/deviceAgent.js"
+import getTimeLeft from "../../utils/timeLeft.js";
+import { showToast } from "../../utils/toastBus.js";
 
-export default function SessionCard({ session, isCurrent, onLogout }) {
+export default function SessionCard({ session, isCurrent, onLogout,onRemove }) {
   const [loggingOut, setLoggingOut] = useState(false);
+  const [trusting, setTrusting] = useState(false);
 
   const handleLogout = async () => {
     if (loggingOut) return;
     try {
       setLoggingOut(true);
-      await logoutSessionApi(session._id);
+      const res=await logoutSessionApi(session._id);
+      showToast({
+        type: "success",
+        message: res?.data?.message || "Logged out successfully",
+      })
       onLogout();
     } catch (error) {
       console.error("Logout failed", error);
+      showToast({
+        type: "error",
+        message: error?.response?.data?.message || "Failed to log out",
+      });
     } finally {
       setLoggingOut(false);
     }
   };
 
+  const handleTrust=async()=>{
+    if (trusting) return;
+    try {
+      setTrusting(true);
+      const res=await RemoveTrustApi({deviceId:session.deviceId});
+      showToast({
+        type: "success",
+        message: res?.data?.message || "Trust removed successfully",
+      })
+      onRemove();
+    } catch (error) {
+      console.error("Remove trust failed", error);
+      showToast({
+        type: "error",
+        message: error?.response?.data?.message || "Failed to remove trust",
+      });
+    } finally {
+      setTrusting(false);
+    }
+  }
   
   const isMobile = /mobile|iphone|android/i.test(session.device || "");
 
@@ -41,6 +72,8 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
   const timezoneText = session?.location?.timezone || "";
 
   const showLocation = Boolean(locationText || timezoneText);
+
+  const timeLeft = getTimeLeft(session.trustExpiresAt);
 
   const ip = session?.ipAddress;
   const maskedIP = ip?.includes(':')
@@ -107,10 +140,9 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
             {device.fullName || "Unknown Device"}
           </h3>
 
-          {/* Current Badge */}
-          {isCurrent && (
-            <span
-              className="
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {isCurrent && (
+              <span className="
                 inline-flex items-center gap-1 mt-1
                 px-2 py-0.5
                 text-[11px] font-bold uppercase tracking-wider
@@ -118,12 +150,27 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
                 bg-emerald-100 text-emerald-700
                 border border-emerald-200
                 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30
-              "
-            >
-              <ShieldCheck size={12} />
-              Current
-            </span>
-          )}
+              ">
+                <ShieldCheck size={12} />
+                Current
+              </span>
+            )}
+
+            {session.isTrusted && (
+              <span className="
+                inline-flex items-center gap-1 mt-1
+                px-2 py-0.5
+                text-[11px] font-bold uppercase tracking-wider
+                rounded-md
+                bg-emerald-100 text-emerald-700
+                border border-emerald-200
+                dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30
+              ">
+                <ShieldCheck size={12} />
+                Trusted {timeLeft && `• ${timeLeft}`}
+              </span>
+            )}
+          </div>
 
           {/* Meta */}
           <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-1">
@@ -162,15 +209,17 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
 
       {/* ================= RIGHT ================= */}
       {!isCurrent && (
-        <div className="shrink-0 w-full sm:w-auto mt-3 sm:mt-0">
+        <div className="shrink-0 w-full sm:w-auto mt-3 sm:mt-0 flex gap-2">
+          
+          {/* Logout */}
           <motion.button
             whileTap={{ scale: 0.95 }}
             disabled={loggingOut}
             onClick={handleLogout}
             className={`
-              w-full sm:w-auto
+              flex-1 sm:flex-none
               flex items-center justify-center gap-2
-              px-5 py-2.5
+              px-4 py-2.5
               rounded-xl
               text-sm font-bold
               transition-all
@@ -184,6 +233,32 @@ export default function SessionCard({ session, isCurrent, onLogout }) {
             <LogOut size={16} strokeWidth={2.5} />
             {loggingOut ? "Removing..." : "Logout"}
           </motion.button>
+
+          {/* Remove Trust */}
+          {session.isTrusted && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              disabled={trusting}
+              onClick={handleTrust}
+              className={`
+                flex-1 sm:flex-none
+                flex items-center justify-center gap-2
+                px-4 py-2.5
+                rounded-xl
+                text-sm font-semibold
+                transition-all
+                ${
+                  trusting
+                    ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-white/5"
+                    : "text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white dark:text-blue-400 dark:bg-blue-400/10 dark:hover:bg-blue-500"
+                }
+              `}
+            >
+              <ShieldCheck size={16} />
+              {trusting ? "Updating..." : "Remove Trust"}
+            </motion.button>
+          )}
+
         </div>
       )}
     </motion.div>

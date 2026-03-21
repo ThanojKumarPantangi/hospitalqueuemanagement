@@ -2,8 +2,6 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { loginApi } from "../../api/auth.api";
-// import { jwtDecode } from "jwt-decode";
-import {getOrCreateDeviceId} from "../../utils/deviceuuid"
 import api from "../../api/axios";
 import { showToast } from "../../utils/toastBus";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -258,7 +256,7 @@ const ActionButton = ({ children, loading, ...rest }) => {
 };
 
 /* =========================================
-   MAIN COMPONENT (kept API logic intact, UI enhanced)
+   MAIN COMPONENT 
    ========================================= */
 const Login = () => {
   // --- STATE MANAGEMENT ---
@@ -316,18 +314,11 @@ const Login = () => {
     try {
       setLoading(true);
 
-      const deviceId = getOrCreateDeviceId();
-
       const res = await loginApi(
         {
-          email: email.trim(),      // Trim email
-          password: password,       // DO NOT trim password
+          email: email.trim(),      
+          password: password,       
         },
-        {
-          headers: {
-            "x-device-id": deviceId,
-          },
-        }
       );
 
       sessionStorage.setItem("mfaEmail",email.trim())

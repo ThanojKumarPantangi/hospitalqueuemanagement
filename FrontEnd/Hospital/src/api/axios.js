@@ -1,6 +1,5 @@
 import axios from "axios";
 import { showToast } from "../utils/toastBus";
-import {useNavigate} from "react-router-dom";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -42,8 +41,8 @@ api.interceptors.response.use(
 
     const isAuthEndpoint =
       url.includes("/api/auth/login") ||
-      url.includes("/api/auth/refresh") ||
-      url.includes("/api/auth/me");
+      url.includes("/api/auth/refresh") 
+      || url.includes("/api/auth/me");
 
     /* ---------- TOKEN EXPIRED → REFRESH ---------- */
 
@@ -114,9 +113,7 @@ api.interceptors.response.use(
         message: "Authentication failed. Please login again.",
       });
       
-      const navigate = useNavigate();
-      navigate("/login");
-
+      window.location.href = "/login";
 
       return Promise.reject(error);
     }

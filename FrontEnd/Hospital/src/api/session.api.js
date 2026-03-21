@@ -23,3 +23,7 @@ export const markSecurityEventAsReadApi=(id)=>{
 export const markAllSecurityEventsAsReadApi=()=>{
     return api.patch("/api/sessions/security-events/mark-all-read");
 }
+
+export const RemoveTrustApi=(body)=>{
+    return api.post("/api/auth/device/remove-trust",body);
+}

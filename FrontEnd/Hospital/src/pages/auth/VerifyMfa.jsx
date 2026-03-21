@@ -16,7 +16,6 @@ import {
 import { verifymfaApi } from "../../api/auth.api.js";
 import api from '../../api/axios.js';
 import { useAuth } from "../../hooks/useAuth";
-import { getOrCreateDeviceId } from "../../utils/deviceuuid";
 
 const VerifyMfa = () => {
   // ==========================================
@@ -194,96 +193,98 @@ const VerifyMfa = () => {
 
     const code = otp.join("");
     const tempToken = sessionStorage.getItem("mfaTempToken");
-    const deviceId = getOrCreateDeviceId();
 
     if (!tempToken) {
-        setError("Session expired. Please login again.");
-        // remove any stale expiry too
-        sessionStorage.removeItem("mfaExpiry");
-        sessionStorage.removeItem("mfaEmail");
-        setTimeout(() => navigate("/login"), 1000);
-        return;
+      setError("Session expired. Please login again.");
+      sessionStorage.removeItem("mfaExpiry");
+      sessionStorage.removeItem("mfaEmail");
+      setTimeout(() => navigate("/login"), 1000);
+      return;
     }
 
     if (code.length !== 6) {
-        setError("Please enter a complete 6-digit code.");
-        return;
+      setError("Please enter a complete 6-digit code.");
+      return;
     }
 
     setLoading(true);
     setError("");
 
     try {
-        await verifymfaApi(
+      const res=await verifymfaApi(
         { tempToken, code },
-        {
-            headers: {
-            "x-device-id": deviceId,
-            },
-        }
-        );
+      );
 
-        // clear temp token and expiry after successful verification
-        sessionStorage.removeItem("mfaTempToken");
-        sessionStorage.removeItem("mfaExpiry");
-        sessionStorage.removeItem("mfaEmail")
+      const shouldAskTrustDevice = res?.data?.shouldAskTrustDevice;
 
-        const { data: userData } = await api.get("/api/auth/me");
+      // clear temp token and expiry after successful verification
+      sessionStorage.removeItem("mfaTempToken");
+      sessionStorage.removeItem("mfaExpiry");
+      sessionStorage.removeItem("mfaEmail")
 
-        setSuccess(true);
-        setUser(userData);
+      const { data: userData } = await api.get("/api/auth/me");
 
-        setTimeout(() => {
+      setSuccess(true);
+      setUser(userData);
+
+      setTimeout(() => {
         switch (userData.role) {
-            case "ADMIN":
-            navigate("/admin/dashboard");
+          case "ADMIN":
+            navigate("/admin/dashboard",{
+              state: { shouldAskTrustDevice }, 
+            });
             break;
-            case "DOCTOR":
-            navigate("/doctor/dashboard");
+          case "DOCTOR":
+            navigate("/doctor/dashboard",{
+              state: { shouldAskTrustDevice }, 
+            });
             break;
-            case "PATIENT":
-            navigate("/patient/dashboard");
+          case "PATIENT":
+            navigate("/patient/dashboard",{
+              state: { shouldAskTrustDevice }, 
+            });
             break;
-            default:
+          default:
             navigate("/");
         }
-        }, 1200);
+      }, 1200);
 
     } catch (err) {
-        const message =
+      const message =
         err?.response?.data?.message ||
         "Verification failed. Please try again.";
 
-        if (
+      if (
         message.includes("MFA session expired") ||
         message.includes("Invalid MFA session")
-        ) {
+      ) {
         setError("Session expired. Please login again.");
         sessionStorage.removeItem("mfaTempToken");
         sessionStorage.removeItem("mfaExpiry");
+        sessionStorage.removeItem("mfaEmail");
         setTimeout(() => navigate("/login"), 1500);
         return;
-        }
+      }
 
-        if (
+      if (
         message.includes("MFA temporarily locked") ||
         message.includes("Too many failed attempts")
-        ) {
+      ) {
         setError(message);
         return;
-        }
+      }
 
-        if (message.includes("Invalid MFA code")) {
+      if (message.includes("Invalid MFA code")) {
         setError("Incorrect code. Please try again.");
         setOtp(["", "", "", "", "", ""]);
         inputRefs.current[0]?.focus();
         return;
-        }
+      }
 
-        setError(message);
+      setError(message);
 
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 

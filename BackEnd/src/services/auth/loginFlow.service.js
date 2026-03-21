@@ -1,62 +1,114 @@
 import Device from "../../models/device.model.js";
 import redis from "../../config/redisClient.js";
 import { getLocationFromIp } from "../../utils/geo.util.js";
+import bcrypt from "bcrypt";
 
 export const evaluateLoginRisk = async ({
   user,
   security,
   deviceId,
   cleanIp,
+  userAgent,
+  deviceSecret,
 }) => {
   let riskScore = 0;
 
   const DEVICE_EXPIRY_DAYS = 60;
   const now = new Date();
 
-  // Get current location
   const location = await getLocationFromIp(cleanIp);
   const currentCountry = location?.country || null;
 
   let existingDevice = null;
+  let similarDevice = null;
 
-  if (deviceId) {
-    existingDevice = await Device.findOne({
+  if (deviceId && deviceSecret) {
+    const device = await Device.findOne({
       user: user._id,
       deviceId,
     });
 
-    // New device
-    if (!existingDevice) {
-      riskScore += 40;
-    } else {
-      //  Device expiration check (UTC-safe duration comparison)
-      const lastUsed = new Date(existingDevice.lastUsedAt);
-      const diffDays = (now - lastUsed) / (1000 * 60 * 60 * 24);
+    if (device) {
+      const isMatch = await bcrypt.compare(
+        deviceSecret,
+        device.deviceSecretHash
+      );
 
-      if (diffDays > DEVICE_EXPIRY_DAYS) {
-        riskScore += 40; // expired device
-      }
-
-      // IP change on same device
-      if (existingDevice.lastIp !== cleanIp) {
-        riskScore += 20;
-      }
-
-      // Country change on same device
-      if (
-        existingDevice.lastCountry &&
-        currentCountry &&
-        existingDevice.lastCountry !== currentCountry
-      ) {
-        riskScore += 50;
+      if (isMatch) {
+        existingDevice = device;
       }
     }
-  } else {
-    // Missing deviceId header
-    riskScore += 30;
   }
 
-  // Account-level country anomaly
+  if (!existingDevice && userAgent) {
+    similarDevice = await Device.findOne({
+      user: user._id,
+      userAgent,
+      lastCountry: currentCountry || undefined,
+    });
+  }
+
+  if (existingDevice) {
+    const lastUsed = new Date(existingDevice.lastUsedAt);
+    const diffDays = (now - lastUsed) / (1000 * 60 * 60 * 24);
+
+    if (diffDays > DEVICE_EXPIRY_DAYS) {
+      riskScore += 40;
+    }
+
+    if (existingDevice.lastIp !== cleanIp) {
+      riskScore += 20;
+    }
+
+    if (
+      existingDevice.lastCountry &&
+      currentCountry &&
+      existingDevice.lastCountry !== currentCountry
+    ) {
+      riskScore += 50;
+    }
+
+    const existingUA = existingDevice.userAgent || "";
+    const currentUA = userAgent || "";
+
+    if (
+      existingUA &&
+      currentUA &&
+      !currentUA.includes(existingUA.split(" ")[0])
+    ) {
+      riskScore += 15;
+    }
+
+    if (!existingDevice.isTrusted) {
+      riskScore += 20;
+    }
+
+    if (
+      existingDevice.trustExpiresAt &&
+      existingDevice.trustExpiresAt < now
+    ) {
+      riskScore += 30;
+    }
+
+  } else if (similarDevice) {
+    riskScore += 25;
+
+    if (similarDevice.lastIp !== cleanIp) {
+      riskScore += 15;
+    }
+
+    if (
+      similarDevice.lastCountry &&
+      currentCountry &&
+      similarDevice.lastCountry !== currentCountry
+    ) {
+      riskScore += 40;
+    }
+
+  } else {
+    riskScore += 40;
+  }
+
   if (
     security.lastLoginCountry &&
     currentCountry &&
@@ -65,7 +117,6 @@ export const evaluateLoginRisk = async ({
     riskScore += 30;
   }
 
-  //Redis IP velocity protection (60 sec window)
   const key = `login:ip:${cleanIp}`;
   const attempts = await redis.incr(key);
 
@@ -77,7 +128,6 @@ export const evaluateLoginRisk = async ({
     riskScore += 60;
   }
 
-  // Extra strictness for admin
   if (user.role === "ADMIN") {
     riskScore += 20;
   }
@@ -86,7 +136,8 @@ export const evaluateLoginRisk = async ({
     riskScore,
     location,
     currentCountry,
-    existingDevice,
+    existingDevice, 
+    similarDevice, 
   };
 };
 
