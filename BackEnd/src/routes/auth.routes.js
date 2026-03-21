@@ -38,6 +38,7 @@ router.post("/logout",
 
 router.get("/me", 
   authMiddleware, 
+  roleMiddleware("PATIENT","DOCTOR","ADMIN"),
   getMe
 );
 

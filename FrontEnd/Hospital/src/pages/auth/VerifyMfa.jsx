@@ -14,15 +14,11 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { verifymfaApi } from "../../api/auth.api.js";
-import api from '../../api/axios.js';
 import { useAuth } from "../../hooks/useAuth";
 
 const VerifyMfa = () => {
-  // ==========================================
-  // LOGIC & STATE (UNCHANGED)
-  // ==========================================
   const navigate = useNavigate();
-  const { setUser } = useAuth(); 
+  const { login } = useAuth(); 
   
   // Refs for inputs to manage focus
   const inputRefs = useRef([]);
@@ -222,13 +218,11 @@ const VerifyMfa = () => {
       sessionStorage.removeItem("mfaExpiry");
       sessionStorage.removeItem("mfaEmail")
 
-      const { data: userData } = await api.get("/api/auth/me");
-
+      await login();
       setSuccess(true);
-      setUser(userData);
 
       setTimeout(() => {
-        switch (userData.role) {
+        switch (res?.data?.role) {
           case "ADMIN":
             navigate("/admin/dashboard",{
               state: { shouldAskTrustDevice }, 

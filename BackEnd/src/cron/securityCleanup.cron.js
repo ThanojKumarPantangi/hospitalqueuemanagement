@@ -115,6 +115,28 @@ export const startSecurityCleanupCron = () => {
           createdAt: { $lt: messageRetention }
         });
 
+        await Device.updateMany(
+          {
+            isTrusted: true,
+            trustExpiresAt: { $lte: now },
+          },
+          {
+            $set: {
+              isTrusted: false,
+              trustExpiresAt: null,
+            },
+          }
+        );
+
+        const deviceInactiveBefore = new Date(
+          now.getTime() - 60 * 24 * 60 * 60 * 1000 
+        );
+
+        await Device.deleteMany({
+          lastUsedAt: { $lt: deviceInactiveBefore },
+          isTrusted: false,
+        });
+
         console.log("Cleanup completed successfully");
 
       } catch (err) {

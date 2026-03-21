@@ -17,7 +17,6 @@ const processQueue = (error) => {
       p.resolve();
     }
   });
-
   failedQueue = [];
 };
 
@@ -41,8 +40,7 @@ api.interceptors.response.use(
 
     const isAuthEndpoint =
       url.includes("/api/auth/login") ||
-      url.includes("/api/auth/refresh") 
-      || url.includes("/api/auth/me");
+      url.includes("/api/auth/refresh");
 
     /* ---------- TOKEN EXPIRED → REFRESH ---------- */
 
@@ -93,31 +91,8 @@ api.interceptors.response.use(
       }
     }
 
-    /* ---------- OTHER AUTH ERRORS ---------- */
-
-    const isAuthError =
-      status === 401 &&
-      code &&
-      code !== "TOKEN_EXPIRED" &&
-      !isAuthEndpoint;
-
-    if (isAuthError) {
-      try {
-        await api.post("/api/auth/logout");
-      } catch {
-        // 
-      }
-
-      showToast({
-        type: "error",
-        message: "Authentication failed. Please login again.",
-      });
-      
-      window.location.href = "/login";
-
-      return Promise.reject(error);
-    }
-
+    /* ---------- IMPORTANT: DO NOTHING ON NORMAL 401 ---------- */
+    
     return Promise.reject(error);
   }
 );

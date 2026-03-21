@@ -2,36 +2,52 @@ import { useEffect, useState, useRef } from "react";
 import { AuthContext } from "./AuthContext";
 import api from "../api/axios";
 import { useSocket } from "../hooks/useSocket";
+import { useLocation } from "react-router-dom";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const { connectSocket, disconnectSocket } = useSocket();
-
-  // prevents multiple /me calls
   const fetchedRef = useRef(false);
+  const location = useLocation();
 
   const fetchUser = async () => {
     try {
       const res = await api.get("/api/auth/me");
       setUser(res.data);
-    } catch {
-      setUser(null);
+    } catch (err) {
+      if (err?.response?.status === 401) {
+        setUser(null); 
+      } else {
+        console.error("Unexpected auth error:", err);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // run ONLY once
   useEffect(() => {
+    const publicRoutes = [
+      "/login",
+      "/verify-mfa",
+      "/setup-mfa",
+      "/verify-otp",
+    ];
+
+    
+    if (publicRoutes.includes(location.pathname)) {
+      setLoading(false);
+      return;
+    }
+
+    
     if (fetchedRef.current) return;
 
     fetchedRef.current = true;
     fetchUser();
-  }, []);
+  }, [location.pathname]);
 
-  // socket connection manager
   useEffect(() => {
     if (!user) {
       disconnectSocket();
@@ -40,12 +56,11 @@ export const AuthProvider = ({ children }) => {
 
     connectSocket();
 
-    return () => {
-      disconnectSocket();
-    };
-  }, [user,connectSocket,disconnectSocket]);
+    return () => disconnectSocket();
+  }, [user, connectSocket, disconnectSocket]);
 
   const login = async () => {
+    fetchedRef.current = false; 
     await fetchUser();
   };
 
@@ -53,9 +68,10 @@ export const AuthProvider = ({ children }) => {
     try {
       await api.post("/api/auth/logout");
     } catch {
-      // 
+      // ignore
     }
 
+    fetchedRef.current = false;
     setUser(null);
     disconnectSocket();
   };

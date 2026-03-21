@@ -1,8 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
 import { loginApi } from "../../api/auth.api";
-import api from "../../api/axios";
+import { useAuth } from "../../hooks/useAuth";
 import { showToast } from "../../utils/toastBus";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -268,10 +267,7 @@ const Login = () => {
   const [showPass, setShowPass] = useState(false);
 
   const navigate = useNavigate();
-
-  const { setUser } = useAuth();
-
-  
+  const {login}= useAuth();
 
   // micro-ref for focus
   const emailRef = useRef(null);
@@ -290,7 +286,7 @@ const Login = () => {
     if (emailRef.current) setTimeout(() => emailRef.current.focus(), 300);
   }, []);
 
-  // --- LOGIC (API & AUTH) — preserved exactly as requested ---
+  // --- LOGIC  — preserved exactly as requested ---
   const navigateBasedOnRole = (role) => {
     if (role === "ADMIN") navigate("/admin/dashboard");
     else if (role === "DOCTOR") navigate("/doctor/dashboard");
@@ -336,14 +332,10 @@ const Login = () => {
         navigate("/verify-mfa");
         return;
       }
+      await login();
 
-      //  Normal login (PATIENT)
-      const meRes = await api.get("/api/auth/me");
-      const user = meRes.data;
-
-      setUser(user);
-      navigateBasedOnRole(user.role);
-
+      navigateBasedOnRole(res?.data?.role);
+      
     } catch (err) {
 
       const message =
