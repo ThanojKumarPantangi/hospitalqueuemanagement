@@ -92,7 +92,10 @@ api.interceptors.response.use(
     }
 
     /* ---------- IMPORTANT: DO NOTHING ON NORMAL 401 ---------- */
-    
+    showToast({
+      type: "error",
+      message: "Unauthorized. Please login again or Reload the page.",
+    })
     return Promise.reject(error);
   }
 );

@@ -11,12 +11,12 @@ const deviceSchema = new mongoose.Schema(
 
     deviceId: {
       type: String,
-      required: true,
+      default: null,
     },
     
     deviceSecretHash: {
       type: String,
-      required: true,
+      default: null,
     },
 
     isTrusted: {
@@ -46,6 +46,14 @@ const deviceSchema = new mongoose.Schema(
 );
 
 // Unique device per user
-deviceSchema.index({ user: 1, deviceId: 1 }, { unique: true });
+deviceSchema.index(
+  { user: 1, deviceId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      deviceId: { $type: "string" }
+    }
+  }
+);
 
 export default mongoose.model("Device", deviceSchema);

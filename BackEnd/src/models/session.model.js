@@ -20,10 +20,9 @@ const sessionSchema = new mongoose.Schema(
       default: null,
     },
 
-    deviceId: {  
+    deviceId: {
       type: String,
-      required: true,
-      index: true,
+      default: null,
     },
 
     ipAddress: {
@@ -43,10 +42,10 @@ const sessionSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
-    
+
     absoluteExpiresAt: {
       type: Date,
-      required: true
+      required: true,
     },
 
     lastSeenAt: {
@@ -60,8 +59,15 @@ const sessionSchema = new mongoose.Schema(
 sessionSchema.index({ user: 1, isActive: 1 });
 
 sessionSchema.index(
-  { lastSeenAt: 1 },
-  { expireAfterSeconds: 10 * 24 * 60 * 60 }
+  { user: 1, deviceId: 1 },
+  {
+    partialFilterExpression: { deviceId: { $type: "string" } }
+  }
+);
+
+sessionSchema.index(
+  { absoluteExpiresAt: 1 },
+  { expireAfterSeconds: 0 }
 );
 
 export default mongoose.model("Session", sessionSchema);

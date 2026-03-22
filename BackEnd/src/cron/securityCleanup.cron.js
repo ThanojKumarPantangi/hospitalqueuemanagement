@@ -129,7 +129,7 @@ export const startSecurityCleanupCron = () => {
         );
 
         const deviceInactiveBefore = new Date(
-          now.getTime() - 60 * 24 * 60 * 60 * 1000 
+          now.getTime() - 45 * 24 * 60 * 60 * 1000 
         );
 
         await Device.deleteMany({
