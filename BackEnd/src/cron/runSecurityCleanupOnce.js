@@ -1,5 +1,4 @@
 // RENDER
-import dotenv from "dotenv";
 import connectDB from "../config/database.config.js";
 
 import Session from "../models/session.model.js";
@@ -7,7 +6,6 @@ import RefreshToken from "../models/refreshToken.model.js";
 import PasswordReset from "../models/passwordReset.model.js";
 import Message from "../models/message.model.js";
 
-dotenv.config({ path: "./src/.env" });
 
 /* ============================
    IST DAY HELPER

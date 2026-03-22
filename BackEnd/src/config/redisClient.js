@@ -1,5 +1,3 @@
-import dotenv from "dotenv";
-dotenv.config({ path: "./src/.env" });
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({

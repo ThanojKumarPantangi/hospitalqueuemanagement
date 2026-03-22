@@ -105,12 +105,16 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
     deviceId,
   });
 
-  const similarDevice = await Device.findOne({
-    user: user._id,
-    userAgent,
-    lastCountry: currentCountry || undefined,
-  });
-
+  let similarDevice = null;
+  
+  if(!device){
+     similarDevice = await Device.findOne({
+      user: user._id,
+      userAgent,
+      lastCountry: currentCountry || undefined,
+    });
+  }
+  
   const newSecret = crypto.randomBytes(32).toString("hex");
   const newHash = await bcrypt.hash(newSecret, 12);
 

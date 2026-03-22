@@ -1,11 +1,8 @@
-import dotenv from "dotenv";
-dotenv.config({ path: "./src/.env" });
 import express from "express";
 import sanitize from "mongo-sanitize";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import redis  from "./config/redisClient.js";
-
 
 import authRoutes from "./routes/auth.routes.js";
 import queueRoutes from "./routes/queue.routes.js";
@@ -88,14 +85,14 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
-// (async () => {
-//   try {
-//     await redis.set("healthcheck", "ok");
-//     console.log("Redis Connected");
-//   } catch (err) {
-//     console.error("Redis Connection Failed", err);
-//   }
-// })();
+(async () => {
+  try {
+    await redis.set("healthcheck", "ok");
+    console.log("Redis Connected");
+  } catch (err) {
+    console.error("Redis Connection Failed", err);
+  }
+})();
 
 
 export default app;

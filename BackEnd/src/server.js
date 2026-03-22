@@ -4,18 +4,26 @@ import http from "http";
 import { initSocket } from "./sockets/index.js";
 import { startSecurityCleanupCron } from "./cron/securityCleanup.cron.js";
 
-import dotenv from "dotenv";
-dotenv.config({ path: "./src/.env"});
-connectDB();
+const startServer = async () => {
+  try {
+    await connectDB();
 
-const server = http.createServer(app);
+    const server = http.createServer(app);
 
-const io = initSocket(server);
-global.io = io;
+    const io = initSocket(server);
+    global.io = io;
 
-const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  startSecurityCleanupCron();
-});
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      startSecurityCleanupCron();
+    });
+
+  } catch (err) {
+    console.error("Startup failed:", err);
+    process.exit(1);
+  }
+};
+
+startServer();

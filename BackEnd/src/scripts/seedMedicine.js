@@ -1,11 +1,7 @@
 import mongoose from "mongoose";
 
-import dotenv from "dotenv";
-import Medicine from "../models/medicine.model.js"; // adjust path if needed
+import Medicine from "../models/medicine.model.js";
 
-dotenv.config({ path: "../.env" });
-
-// Core Indian generics grouped by category
 const GENERIC_MASTER = {
   "Analgesic / Antipyretic": [
     "Paracetamol",

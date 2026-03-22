@@ -1,9 +1,7 @@
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import User from "../models/user.model.js";
 import UserSecurity from "../models/userSecurity.model.js";
-dotenv.config({ path: '../.env' });
 
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12", 10);
 

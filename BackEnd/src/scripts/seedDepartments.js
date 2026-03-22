@@ -1,8 +1,5 @@
 import mongoose from "mongoose";
-import dotenv from "dotenv";
-import Department from "../models/department.model.js"; // adjust path if needed
-
-dotenv.config({ path: "../.env" });
+import Department from "../models/department.model.js"; 
 
 const departments = [
   { name: "General Medicine", slotDurationMinutes: 10, consultationFee: 300, maxCounters: 2, isOpen: true },

@@ -12,10 +12,6 @@ import { generateTokens } from "../utils/jwt.util.js";
 import { generateRecoveryCodes } from "../utils/recoveryCode.util.js";
 import { getCookieOptions } from "../utils/cookie.util.js";
 
-import dotenv from "dotenv";
-
-dotenv.config({ path: "./src/.env" });
-
 // every Time
 export const verifyMfaController = async (req, res) => {
   try {
