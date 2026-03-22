@@ -36,6 +36,11 @@ process.on("unhandledRejection", (err) => {
 });
 
 const app = express();
+
+app.use((req, res, next) => {
+  console.log("➡️", req.method, req.path, req.headers["user-agent"]);
+  next();
+});
 app.set("trust proxy", 2);
 /* ------------------ Core middleware ------------------ */
 app.use(express.json());
@@ -108,14 +113,14 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
-(async () => {
-  try {
-    await redis.set("healthcheck", "ok");
-    console.log("Redis Connected");
-  } catch (err) {
-    console.error("Redis Connection Failed", err);
-  }
-})();
+// (async () => {
+//   try {
+//     await redis.set("healthcheck", "ok");
+//     console.log("Redis Connected");
+//   } catch (err) {
+//     console.error("Redis Connection Failed", err);
+//   }
+// })();
 
 
 export default app;
