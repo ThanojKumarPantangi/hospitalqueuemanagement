@@ -101,6 +101,7 @@ export const loginService = async (email, password, req) => {
     cleanIp,
     userAgent,
     existingDevice,
+    similarDevice,
     currentCountry,
     deviceSecret
   );

@@ -6,6 +6,7 @@ export const updateDeviceRecord = async (
   cleanIp,
   userAgent,
   existingDevice,
+  similarDevice,
   currentCountry,
   deviceSecret,
 ) => {
@@ -19,9 +20,14 @@ export const updateDeviceRecord = async (
     existingDevice.lastUsedAt = new Date();
 
     await existingDevice.save();
-
-  } else {
-    // Create new device
+  } 
+  else if (similarDevice) {
+    similarDevice.lastIp = cleanIp;
+    similarDevice.lastCountry = currentCountry || null;
+    similarDevice.lastUsedAt = new Date();
+    await similarDevice.save();
+  }
+  else {
     await Device.create({
       user: user._id,
       deviceId: finalDeviceId,
