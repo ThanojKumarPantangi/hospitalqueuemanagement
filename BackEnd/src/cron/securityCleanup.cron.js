@@ -21,9 +21,8 @@ export const startSecurityCleanupCron = () => {
       const startTime = Date.now();
       const lockKey = "cron:security_cleanup_lock";
 
-      let lock;
+      let lock = null;
 
-      // METRICS OBJECT
       const metrics = {
         refreshTokensDeleted: 0,
         passwordResetsDeleted: 0,
@@ -37,7 +36,11 @@ export const startSecurityCleanupCron = () => {
       };
 
       try {
-        lock = await redis.set(lockKey, "locked", "NX", "EX", 600);
+        //Upstash-Redis lock
+        lock = await redis.set(lockKey, "locked", {
+          nx: true,
+          ex: 600,
+        });
 
         if (!lock) {
           console.log("Cleanup skipped (another instance running)");
@@ -46,9 +49,7 @@ export const startSecurityCleanupCron = () => {
 
         const now = new Date();
 
-        /* ============================
-           REFRESH TOKENS
-        ============================ */
+        // REFRESH TOKENS
         const revokedBefore = new Date(
           now.getTime() - 7 * 24 * 60 * 60 * 1000
         );
@@ -60,9 +61,7 @@ export const startSecurityCleanupCron = () => {
 
         metrics.refreshTokensDeleted = refreshResult.deletedCount;
 
-        /* ============================
-           PASSWORD RESET
-        ============================ */
+        // PASSWORD RESET
         const usedBefore = new Date(
           now.getTime() - 24 * 60 * 60 * 1000
         );
@@ -74,9 +73,7 @@ export const startSecurityCleanupCron = () => {
 
         metrics.passwordResetsDeleted = passwordResult.deletedCount;
 
-        /* ============================
-           SESSION DEACTIVATION
-        ============================ */
+        // SESSION DEACTIVATION
         const inactiveBefore = new Date(
           now.getTime() - 10 * 24 * 60 * 60 * 1000
         );
@@ -88,9 +85,7 @@ export const startSecurityCleanupCron = () => {
 
         metrics.sessionsDeactivated = sessionDeactivateResult.modifiedCount;
 
-        /* ============================
-           SESSION DELETION
-        ============================ */
+        // SESSION DELETION
         const invalidBefore = new Date(
           now.getTime() - 30 * 24 * 60 * 60 * 1000
         );
@@ -109,9 +104,7 @@ export const startSecurityCleanupCron = () => {
 
         metrics.sessionsDeleted = sessionDeleteResult.deletedCount;
 
-        /* ============================
-           ANNOUNCEMENTS
-        ============================ */
+        // ANNOUNCEMENTS
         const messageResult = await Message.deleteMany({
           type: "ANNOUNCEMENT",
           expiresAt: { $lte: now },
@@ -119,9 +112,7 @@ export const startSecurityCleanupCron = () => {
 
         metrics.messagesDeleted = messageResult.deletedCount;
 
-        /* ============================
-           QUEUE MESSAGES
-        ============================ */
+        // QUEUE MESSAGES
         const messageRetention = new Date(
           now.getTime() - 90 * 24 * 60 * 60 * 1000
         );
@@ -133,9 +124,7 @@ export const startSecurityCleanupCron = () => {
 
         metrics.queueMessagesDeleted = queueMessageResult.deletedCount;
 
-        /* ============================
-           DEVICE TRUST EXPIRY
-        ============================ */
+        // DEVICE TRUST EXPIRY
         const deviceUntrustResult = await Device.updateMany(
           {
             isTrusted: true,
@@ -151,9 +140,7 @@ export const startSecurityCleanupCron = () => {
 
         metrics.devicesUntrusted = deviceUntrustResult.modifiedCount;
 
-        /* ============================
-           DEVICE CLEANUP
-        ============================ */
+        // DEVICE CLEANUP
         const deviceInactiveBefore = new Date(
           now.getTime() - 45 * 24 * 60 * 60 * 1000
         );
@@ -165,9 +152,7 @@ export const startSecurityCleanupCron = () => {
 
         metrics.devicesDeleted = deviceDeleteResult.deletedCount;
 
-        /* ============================
-           FINAL METRICS
-        ============================ */
+       
         metrics.durationMs = Date.now() - startTime;
 
         console.log("Cleanup completed", metrics);
@@ -175,8 +160,13 @@ export const startSecurityCleanupCron = () => {
       } catch (err) {
         console.error("Cleanup failed:", err);
       } finally {
-        if (lock) {
-          await redis.del(lockKey);
+        
+        try {
+          if (lock) {
+            await redis.del(lockKey);
+          }
+        } catch (err) {
+          console.error("Failed to release lock:", err);
         }
       }
     },
