@@ -27,32 +27,12 @@ import turnRoutes from "./routes/turn.routes.js";
 
 import {globalLimiter} from "./middlewares/rateLimiter.middleware.js";
 
-process.on("uncaughtException", (err) => {
-  console.error("🔥 UNCAUGHT EXCEPTION:", err);
-});
-
-process.on("unhandledRejection", (err) => {
-  console.error("🔥 UNHANDLED REJECTION:", err);
-});
-
 const app = express();
 
-app.use((req, res, next) => {
-  console.log("➡️", req.method, req.path, req.headers["user-agent"]);
-  next();
-});
 app.set("trust proxy", 2);
 /* ------------------ Core middleware ------------------ */
 app.use(express.json());
-app.use((req, res, next) => {
-  console.log("✅ Passed express.json");
-  next();
-});
 app.use(cookieParser());
-app.use((req, res, next) => {
-  console.log("✅ Passed cookieParser");
-  next();
-});
 
 app.use(
   cors({
@@ -62,14 +42,13 @@ app.use(
 );
 
 app.use((req, res, next) => {
-  console.log("✅ Passed CORS");
-  next();
-});
+  const ua = req.headers["user-agent"] || "";
 
-app.use(globalLimiter);
-app.use((req, res, next) => {
-  console.log("✅ Passed rate limiter");
-  next();
+  if (ua.includes("Render")) {
+    return next();
+  }
+
+  globalLimiter(req, res, next);
 });
 
 /* ------------------ Security: Mongo sanitize ------------------ */
@@ -86,7 +65,6 @@ app.use((req, res, next) => {
   next();
 });
 
-console.log("✅ Sanitize done");
 
 /* ------------------ Routes ------------------ */
 app.use("/api/auth",authRoutes);
