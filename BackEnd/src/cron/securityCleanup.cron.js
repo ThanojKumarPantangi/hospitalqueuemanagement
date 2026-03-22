@@ -5,13 +5,9 @@ import Session from "../models/session.model.js";
 import RefreshToken from "../models/refreshToken.model.js";
 import PasswordReset from "../models/passwordReset.model.js";
 import Message from "../models/message.model.js";
-
-/* ============================
-   SECURITY + MESSAGE CLEANUP CRON
-============================ */
+import Device from "../models/device.model.js";
 
 export const startSecurityCleanupCron = () => {
-
   if (process.env.ENABLE_INTERNAL_CRON !== "true") {
     console.log("Internal cron disabled");
     return;
@@ -22,20 +18,26 @@ export const startSecurityCleanupCron = () => {
   cron.schedule(
     "0 3 * * *",
     async () => {
-
+      const startTime = Date.now();
       const lockKey = "cron:security_cleanup_lock";
 
+      let lock;
+
+      // METRICS OBJECT
+      const metrics = {
+        refreshTokensDeleted: 0,
+        passwordResetsDeleted: 0,
+        sessionsDeactivated: 0,
+        sessionsDeleted: 0,
+        messagesDeleted: 0,
+        queueMessagesDeleted: 0,
+        devicesUntrusted: 0,
+        devicesDeleted: 0,
+        durationMs: 0,
+      };
+
       try {
-
-        /* ============================
-           DISTRIBUTED LOCK
-        ============================ */
-
-        const lock = await redis.set(
-          lockKey,
-          "locked",
-          { nx: true, ex: 600 } 
-        );
+        lock = await redis.set(lockKey, "locked", "NX", "EX", 600);
 
         if (!lock) {
           console.log("Cleanup skipped (another instance running)");
@@ -45,77 +47,96 @@ export const startSecurityCleanupCron = () => {
         const now = new Date();
 
         /* ============================
-           REFRESH TOKEN CLEANUP
+           REFRESH TOKENS
         ============================ */
-
         const revokedBefore = new Date(
           now.getTime() - 7 * 24 * 60 * 60 * 1000
         );
 
-        await RefreshToken.deleteMany({
+        const refreshResult = await RefreshToken.deleteMany({
           revoked: true,
-          updatedAt: { $lt: revokedBefore }
+          updatedAt: { $lt: revokedBefore },
         });
 
-        /* ============================
-           PASSWORD RESET CLEANUP
-        ============================ */
+        metrics.refreshTokensDeleted = refreshResult.deletedCount;
 
+        /* ============================
+           PASSWORD RESET
+        ============================ */
         const usedBefore = new Date(
           now.getTime() - 24 * 60 * 60 * 1000
         );
 
-        await PasswordReset.deleteMany({
+        const passwordResult = await PasswordReset.deleteMany({
           used: true,
-          updatedAt: { $lt: usedBefore }
+          updatedAt: { $lt: usedBefore },
         });
 
-        /* ============================
-           SESSION CLEANUP
-        ============================ */
+        metrics.passwordResetsDeleted = passwordResult.deletedCount;
 
+        /* ============================
+           SESSION DEACTIVATION
+        ============================ */
         const inactiveBefore = new Date(
           now.getTime() - 10 * 24 * 60 * 60 * 1000
         );
 
-        await Session.updateMany(
+        const sessionDeactivateResult = await Session.updateMany(
           { isActive: true, lastSeenAt: { $lt: inactiveBefore } },
           { $set: { isActive: false } }
         );
 
+        metrics.sessionsDeactivated = sessionDeactivateResult.modifiedCount;
+
+        /* ============================
+           SESSION DELETION
+        ============================ */
         const invalidBefore = new Date(
           now.getTime() - 30 * 24 * 60 * 60 * 1000
         );
 
-        await Session.deleteMany({
+        const sessionDeleteResult = await Session.deleteMany({
           $or: [
-            { isActive: false },
-            { expiresAt: { $lte: now } }
+            {
+              isActive: false,
+              updatedAt: { $lt: invalidBefore },
+            },
+            {
+              expiresAt: { $lte: now },
+            },
           ],
-          updatedAt: { $lt: invalidBefore }
         });
+
+        metrics.sessionsDeleted = sessionDeleteResult.deletedCount;
 
         /* ============================
-           MESSAGE CLEANUP
+           ANNOUNCEMENTS
         ============================ */
-
-        // delete expired announcements
-        await Message.deleteMany({
+        const messageResult = await Message.deleteMany({
           type: "ANNOUNCEMENT",
-          expiresAt: { $lte: now }
+          expiresAt: { $lte: now },
         });
 
-        // delete old chat messages (>90 days)
+        metrics.messagesDeleted = messageResult.deletedCount;
+
+        /* ============================
+           QUEUE MESSAGES
+        ============================ */
         const messageRetention = new Date(
           now.getTime() - 90 * 24 * 60 * 60 * 1000
         );
 
-        await Message.deleteMany({
+        const queueMessageResult = await Message.deleteMany({
           type: "QUEUE",
-          createdAt: { $lt: messageRetention }
+          createdAt: { $lt: messageRetention },
         });
 
-        await Device.updateMany(
+        metrics.queueMessagesDeleted = queueMessageResult.deletedCount;
+
+        /* ============================
+           DEVICE TRUST EXPIRY
+        ============================ */
+        const deviceUntrustResult = await Device.updateMany(
           {
             isTrusted: true,
             trustExpiresAt: { $lte: now },
@@ -128,26 +149,39 @@ export const startSecurityCleanupCron = () => {
           }
         );
 
+        metrics.devicesUntrusted = deviceUntrustResult.modifiedCount;
+
+        /* ============================
+           DEVICE CLEANUP
+        ============================ */
         const deviceInactiveBefore = new Date(
-          now.getTime() - 45 * 24 * 60 * 60 * 1000 
+          now.getTime() - 45 * 24 * 60 * 60 * 1000
         );
 
-        await Device.deleteMany({
+        const deviceDeleteResult = await Device.deleteMany({
           lastUsedAt: { $lt: deviceInactiveBefore },
           isTrusted: false,
         });
 
-        console.log("Cleanup completed successfully");
+        metrics.devicesDeleted = deviceDeleteResult.deletedCount;
+
+        /* ============================
+           FINAL METRICS
+        ============================ */
+        metrics.durationMs = Date.now() - startTime;
+
+        console.log("Cleanup completed", metrics);
 
       } catch (err) {
-
         console.error("Cleanup failed:", err);
-
+      } finally {
+        if (lock) {
+          await redis.del(lockKey);
+        }
       }
-
     },
     {
-      timezone: "Asia/Kolkata"
+      timezone: "Asia/Kolkata",
     }
   );
 };
