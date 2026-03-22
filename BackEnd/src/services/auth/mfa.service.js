@@ -98,15 +98,66 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
 
   const deviceId = decoded.deviceId; 
 
+  const userAgent = req.headers["user-agent"];
+
   const device = await Device.findOne({
     user: user._id,
     deviceId,
   });
 
+  const similarDevice = await Device.findOne({
+    user: user._id,
+    userAgent,
+    lastCountry: currentCountry || undefined,
+  });
+
   const newSecret = crypto.randomBytes(32).toString("hex");
   const newHash = await bcrypt.hash(newSecret, 12);
 
-  if (!device) {
+  if (device) {
+    device.deviceSecretHash = newHash;
+    device.lastUsedAt = new Date();
+    device.lastIp = cleanIp;
+    device.lastCountry = currentCountry;
+
+    await device.save();
+
+    res.cookie("deviceSecret", newSecret, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+    });
+
+    res.cookie("deviceId", device.deviceId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+    });
+  }
+  else if (similarDevice) {
+
+    similarDevice.deviceSecretHash = newHash;
+    similarDevice.lastUsedAt = new Date();
+    similarDevice.lastIp = cleanIp;
+    similarDevice.lastCountry = currentCountry;
+    similarDevice.deviceId = deviceId;
+
+    await similarDevice.save();
+
+    res.cookie("deviceSecret", newSecret, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+    });
+
+    res.cookie("deviceId", device.deviceId, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Strict",
+    });
+
+  }
+  else {
     await Device.create({
       user: user._id,
       deviceId,
@@ -134,26 +185,6 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
         sameSite: "Strict" 
       });
   }
-  else {
-    device.deviceSecretHash = newHash;
-    device.lastUsedAt = new Date();
-    device.lastIp = cleanIp;
-    device.lastCountry = currentCountry;
-
-    await device.save();
-
-    res.cookie("deviceSecret", newSecret, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
-    });
-
-    res.cookie("deviceId", device.deviceId, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "Strict",
-    });
-  }
 
   // Update account login memory
   security.lastLoginIp = cleanIp;
@@ -167,10 +198,9 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
   // ISSUE TOKENS via token service
   const tokens = await issueTokens(user, session);
 
-  const shouldAskTrustDevice =
-  !device || !device.isTrusted || false;
+  const shouldAskTrustDevice = !device.isTrusted || !similarDevice.isTrusted || false;
 
-  return { ...tokens, user,shouldAskTrustDevice};
+  return { ...tokens, user, shouldAskTrustDevice};
 };
 
 // MFA Login Flow
