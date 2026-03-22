@@ -92,10 +92,21 @@ api.interceptors.response.use(
     }
 
     /* ---------- IMPORTANT: DO NOTHING ON NORMAL 401 ---------- */
-    showToast({
-      type: "error",
-      message: "Unauthorized. Please login again or Reload the page.",
-    })
+    const publicRoutes = [
+      "/login",
+      "/verify-mfa",
+      "/setup-mfa",
+      "/verify-otp",
+      "/signup",
+      "/doctor-signup",
+      "/"
+    ];
+
+    const isPublicRoute = publicRoutes.some((route) => url.includes(route));
+    if(!isPublicRoute && status === 401){
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
     return Promise.reject(error);
   }
 );

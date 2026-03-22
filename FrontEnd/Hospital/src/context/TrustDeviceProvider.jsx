@@ -2,10 +2,12 @@ import TrustDeviceModal from "../components/TrustModal/TrustDeviceModal.jsx";
 import { useTrustDevicePrompt } from "../hooks/useTrustDevicePrompt";
 import api from "../api/axios.js";
 import { showToast } from "../utils/toastBus.js";
+import {useAuth} from "../hooks/useAuth.js";
 
 const TrustDeviceProvider = () => {
   const { open, setOpen } = useTrustDevicePrompt();
-   
+  const {user}=useAuth();
+  
   const handleTrust = async () => {
     try {
       const res=await api.post("/api/auth/device/trust");
@@ -30,6 +32,7 @@ const TrustDeviceProvider = () => {
       isOpen={open}
       onClose={() => setOpen(false)}
       onConfirm={handleTrust}
+      role={user?.role}
     />
   );
 };
