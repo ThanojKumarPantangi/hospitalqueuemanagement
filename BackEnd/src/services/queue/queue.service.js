@@ -13,7 +13,6 @@ import { getQueueKey, getScore } from "../../redis/queue.redis.js";
 /* ===================== CONSTANTS ===================== */
 
 const MAX_ADVANCE_DAYS = 5;
-const MAX_RETRIES = 3;
 
 // Explicit state machine
 const TOKEN_STATES = {
@@ -26,9 +25,9 @@ const TOKEN_STATES = {
 };
 
 const PRIORITY_ORDER = {
-  EMERGENCY: 3,
+  EMERGENCY: 1,
   SENIOR: 2,
-  NORMAL: 1,
+  NORMAL: 3,
 };
 
 /* ===================== UTILS ===================== */
@@ -50,14 +49,20 @@ const isTransitionAllowed = (from, to) =>
   TOKEN_STATES[from]?.includes(to);
 
 /* ===================== SOCKET EMITTER ===================== */
-const emit = (event, departmentId, payload = {}) => {
+const emitQueueEvent = (action, departmentId, payload = {}) => {
   const io = getIO();
-  io.to(departmentId.toString()).emit(event, payload);
-  io.to("admin-monitor").emit("ADMIN_TOKEN_UPDATE", {
+
+  const finalPayload = {
+    action,
     departmentId: departmentId.toString(),
-    action: event,
     ...payload,
-  });
+  };
+
+  //  same event everywhere
+  io.to(departmentId.toString()).emit("QUEUE_EVENT", finalPayload);
+
+  // admin also gets SAME format
+  io.to("admin-monitor").emit("QUEUE_EVENT", finalPayload);
 };
 
 /* ===================== CREATE TOKEN ===================== */
@@ -84,14 +89,14 @@ export const createToken = async ({
     throw new Error("No doctors available in this department");
   }
 
-  //  Normalize to IST day start (stored in DB as UTC equivalent)
+  // IST normalization
   const today = getStartOfISTDay(new Date());
   const dayStart = getStartOfISTDay(appointmentDate);
 
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayEnd.getDate() + 1);
 
-  //  Date validation (based on IST day)
+  // Date validation
   const diffDays = (dayStart - today) / (1000 * 60 * 60 * 24);
 
   if (diffDays < 0) throw new Error("Cannot book past dates");
@@ -99,7 +104,7 @@ export const createToken = async ({
     throw new Error(`Booking allowed only ${MAX_ADVANCE_DAYS} days ahead`);
   }
 
-  //  one active token per patient per IST day (range match)
+  // One active token per patient per day
   const existing = await Token.findOne({
     patient: patientId,
     appointmentDate: { $gte: dayStart, $lt: dayEnd },
@@ -110,7 +115,7 @@ export const createToken = async ({
     throw new Error("Patient already has an active token for this day");
   }
 
-  //  Priority control
+  // Priority control
   let finalPriority = "NORMAL";
   if (
     createdByRole === "ADMIN" &&
@@ -119,60 +124,65 @@ export const createToken = async ({
     finalPriority = requestedPriority;
   }
 
-  //  safe tokenNumber generation with retry
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  const priorityRank = PRIORITY_ORDER[finalPriority];
+
+  // Redis Keys
+  const dateStr = dayStart.toISOString().slice(0, 10);
+  const queueKey = `queue:${departmentId}:${dateStr}`;
+  const counterKey = `tokenCounter:${departmentId}:${dateStr}`;
+
+  // Expiry calculation
+  const nextDayStart = new Date(dayStart);
+  nextDayStart.setDate(nextDayStart.getDate() + 1);
+
+  const ttlSeconds = Math.max(
+    1,
+    Math.floor((nextDayStart - new Date()) / 1000)
+  );
+
+  try {
+    // Generate tokenNumber from Redis
+    const nextTokenNumber = await redis.incr(counterKey);
+
+    //  Create Mongo document
+    const token = await Token.create({
+      tokenNumber: nextTokenNumber,
+      patient: patientId,
+      department: departmentId,
+      priority: finalPriority,
+      priorityRank,
+      appointmentDate: dayStart,
+      consultationType,
+      createdByRole,
+    });
+
     try {
-      // Find last token for this department in the same IST day
-      const lastToken = await Token.findOne({
-        department: departmentId,
-        appointmentDate: { $gte: dayStart, $lt: dayEnd },
-      })
-        .sort({ tokenNumber: -1 })
-        .select("tokenNumber")
-        .lean();
+      // Add to Redis queue
+      const score = priorityRank * 100000 + nextTokenNumber;
 
-      const nextTokenNumber = lastToken ? lastToken.tokenNumber + 1 : 1;
-
-      //  Create token with appointmentDate stored as dayStart (consistent)
-      const token = await Token.create({
-        tokenNumber: nextTokenNumber,
-        patient: patientId,
-        department: departmentId,
-        priority: finalPriority,
-        priorityRank: PRIORITY_ORDER[finalPriority],
-        appointmentDate: dayStart,
-        consultationType,
-        createdByRole,
+      await redis.zadd(queueKey, {
+        score,
+        member: token._id.toString(),
       });
 
-      try {
-        const queueKey = getQueueKey(departmentId, dayStart);
-        const cacheKey = `expectedToken:${departmentId}:${dayStart.toISOString().slice(0,10)}`;
-        await redis.set(cacheKey, nextTokenNumber + 1, { ex: 60 });
+      // Set expiry ONLY if not set 
+      await redis.expire(queueKey, ttlSeconds, "NX");
+      await redis.expire(counterKey, ttlSeconds, "NX");
 
-        await redis.zadd(queueKey, {
-          score: getScore(token.priorityRank, token.tokenNumber),
-          member: token._id.toString(),
-        });
-
-        await redis.expire(queueKey, 60 * 60 * 24);
-      } catch (err) {
-        console.log("Redis queue add failed (safe ignore):", err.message);
-      }
-
-      //  Recalculate queue only if booking is for today
-      if (dayStart.getTime() === today.getTime()) {
-        await recalculateQueuePositions(departmentId);
-      }
-
-      return token;
     } catch (err) {
-      if (err.code === 11000 && attempt < MAX_RETRIES) continue;
-      throw err;
+      console.log("Redis operation failed (non-blocking):", err.message);
     }
-  }
 
-  throw new Error("Token creation failed");
+    // Optional: only for today's queue UI refresh
+    if (dayStart.getTime() === today.getTime()) {
+      await recalculateQueuePositions(departmentId);
+    }
+
+    return token;
+
+  } catch (err) {
+    throw new Error("Token creation failed: " + err.message);
+  }
 };
 
 /* ===================== CALL NEXT TOKEN (ATOMIC) ===================== */
@@ -188,7 +198,7 @@ export const getNextToken = async (departmentId, doctorId) => {
     throw new Error("Doctor not assigned to this department");
   }
 
-  // doctor can handle only one active patient
+  // One active patient per doctor
   const activeToken = await Token.findOne({
     assignedDoctor: doctorId,
     status: "CALLED",
@@ -203,18 +213,14 @@ export const getNextToken = async (departmentId, doctorId) => {
     throw new Error("Department is closed");
   }
 
-  const doctorName = await User.findById(doctorId)
-    .select("name")
-    .lean();
-
   const queueKey = getQueueKey(departmentId, today);
 
   let tokenId = null;
   let redisMiss = false;
 
-  // Try Redis atomic pop
+  // Pop from Redis (CORRECT ORDER)
   try {
-    const result = await redis.zpopmax(queueKey);
+    const result = await redis.zpopmin(queueKey);
 
     if (result?.length) {
       tokenId = result[0].member;
@@ -226,14 +232,14 @@ export const getNextToken = async (departmentId, doctorId) => {
     redisMiss = true;
   }
 
-  // Fallback to MongoDB if Redis empty / evicted
+  //  Mongo fallback
   if (!tokenId) {
     const fallback = await Token.findOne({
       department: departmentId,
       appointmentDate: today,
       status: "WAITING",
     })
-      .sort({ priorityRank: -1, tokenNumber: 1 })
+      .sort({ priorityRank: 1, tokenNumber: 1 }) 
       .select("_id");
 
     if (!fallback) {
@@ -243,7 +249,7 @@ export const getNextToken = async (departmentId, doctorId) => {
     tokenId = fallback._id;
   }
 
-  //Update token in DB
+  //Update token
   const nextToken = await Token.findByIdAndUpdate(
     tokenId,
     {
@@ -258,7 +264,7 @@ export const getNextToken = async (departmentId, doctorId) => {
     throw new Error("Token not found after selection");
   }
 
-  // If Redis key was missing (eviction/restart), rebuild queue
+  // Rebuild queue if Redis failed
   if (redisMiss) {
     try {
       const waitingTokens = await Token.find({
@@ -270,24 +276,37 @@ export const getNextToken = async (departmentId, doctorId) => {
       const pipeline = redis.pipeline();
 
       waitingTokens.forEach((t) => {
+        const score = t.priorityRank * 100000 + t.tokenNumber;
+
         pipeline.zadd(queueKey, {
-          score: getScore(t.priorityRank, t.tokenNumber),
+          score,
           member: t._id.toString(),
         });
       });
 
-      pipeline.expire(queueKey, 60 * 60 * 24);
+      // IST expiry
+      const nextDayStart = new Date(today);
+      nextDayStart.setDate(nextDayStart.getDate() + 1);
+
+      const ttlSeconds = Math.max(
+        1,
+        Math.floor((nextDayStart - new Date()) / 1000)
+      );
+
+      pipeline.expire(queueKey, ttlSeconds);
+
       await pipeline.exec();
     } catch (err) {
       console.log("Queue rebuild failed:", err.message);
     }
   }
 
-  emit("TOKEN_CALLED", departmentId, {
+  //  Emit event
+  emitQueueEvent("TOKEN_CALLED", departmentId, {
     tokenId: nextToken._id,
     tokenNumber: nextToken.tokenNumber,
     doctorId,
-    doctorName: doctorName?.name || "Doctor",
+    doctorName: doctor.name,
     patientName: nextToken.patient?.name,
   });
 
@@ -300,24 +319,23 @@ export const getNextToken = async (departmentId, doctorId) => {
 export const completeToken = async (tokenId) => {
   const today = getStartOfISTDay();
 
-  //  Load token (single source of truth)
   const token = await Token.findById(tokenId);
   if (!token) throw new Error("Token not found");
 
-  //  Ensure token is for today
-  if (token.appointmentDate.getTime() !== today.getTime()) {
+  // safer IST comparison
+  const tokenDay = getStartOfISTDay(token.appointmentDate);
+
+  if (tokenDay.getTime() !== today.getTime()) {
     throw new Error("Cannot complete token not scheduled for today");
   }
 
-  //  Ensure correct state
   if (!isTransitionAllowed(token.status, "COMPLETED")) {
     throw new Error("Invalid token state transition");
   }
 
-  //  HARD VALIDATION: visit must exist for THIS token & department
   const visitExists = await Visit.exists({
-    token: token._id,                 // same token
-    department: token.department,     // same department
+    token: token._id,
+    department: token.department,
   });
 
   if (!visitExists) {
@@ -326,20 +344,16 @@ export const completeToken = async (tokenId) => {
     );
   }
 
-  //  Complete token
   token.status = "COMPLETED";
   token.completedAt = new Date();
   await token.save();
 
-  try {
-    const queueKey = getQueueKey(token.department, token.appointmentDate);
-    await redis.zrem(queueKey, token._id.toString());
-  } catch (err) {
-    console.log("Redis removal failed:", err.message);
-  }
+  emitQueueEvent("TOKEN_COMPLETED", token.department.toString(), {
+    tokenId: token._id,
+    tokenNumber: token.tokenNumber,
+  });
 
-  emit("TOKEN_COMPLETED", token.department, { tokenId });
-  await recalculateQueuePositions(token.department);
+  await recalculateQueuePositions(token.department.toString());
 
   return token;
 };
@@ -368,17 +382,16 @@ export const skipToken = async (tokenId) => {
   }
 
   token.status = "SKIPPED";
+  token.skippedAt = new Date();
   await token.save();
 
-  try {
-    const queueKey = getQueueKey(token.department, token.appointmentDate);
-    await redis.zrem(queueKey, token._id.toString());
-  } catch (err) {
-    console.log("Redis removal failed:", err.message);
-  }
+  emitQueueEvent("TOKEN_SKIPPED", token.department.toString(), {
+    tokenId: token._id,
+    tokenNumber: token.tokenNumber,
+  });
 
-  emit("TOKEN_SKIPPED", token.department, { tokenId });
-  await recalculateQueuePositions(token.department);
+  await recalculateQueuePositions(token.department.toString());
+
   return token;
 };
 
@@ -405,21 +418,20 @@ export const markNoShow = async (tokenId) => {
   }
 
   token.status = "NO_SHOW";
+  token.noShowAt = new Date();
   await token.save();
 
-  try {
-    const queueKey = getQueueKey(token.department, token.appointmentDate);
-    await redis.zrem(queueKey, token._id.toString());
-  } catch (err) {
-    console.log("Redis removal failed:", err.message);
-  }
+  emitQueueEvent("TOKEN_NO_SHOW", token.department.toString(), {
+    tokenId: token._id,
+    tokenNumber: token.tokenNumber,
+  });
 
-  emit("TOKEN_NO_SHOW", token.department, { tokenId });
-  await recalculateQueuePositions(token.department);
+  await recalculateQueuePositions(token.department.toString());
+
   return token;
 };
 
-/* ===================== CANCEL TOKEN (WAITING ONLY) ===================== */
+/* ===================== CANCEL TOKEN ===================== */
 export const cancelToken = async (tokenId, userId) => {
   const token = await Token.findById(tokenId);
   if (!token) throw new Error("Token not found");
@@ -429,24 +441,37 @@ export const cancelToken = async (tokenId, userId) => {
   }
 
   if (token.status === "CANCELLED") {
-    return token; 
+    return token;
   }
-  
+
   if (!isTransitionAllowed(token.status, "CANCELLED")) {
     throw new Error("Token cannot be cancelled now");
   }
+
+  const wasWaiting = token.status === "WAITING";
 
   token.status = "CANCELLED";
   token.cancelledAt = new Date();
   await token.save();
 
-  try {
-    const queueKey = getQueueKey(token.department, token.appointmentDate);
-    await redis.zrem(queueKey, token._id.toString());
-  } catch (err) {
-    console.log("Redis removal failed:", err.message);
+  // Only remove if still in queue
+  if (wasWaiting) {
+    try {
+      const queueKey = getQueueKey(token.department, token.appointmentDate);
+      await redis.zrem(queueKey, token._id.toString());
+    } catch (err) {
+      console.log("Redis removal failed:", err.message);
+    }
   }
-  // await recalculateQueuePositions(token.department);
+
+  emitQueueEvent("TOKEN_CANCELLED", token.department.toString(), {
+    tokenId: token._id,
+    tokenNumber: token.tokenNumber,
+  });
+
+  // optional: keep it or skip (your choice)
+  await recalculateQueuePositions(token.department.toString());
+
   return token;
 };
 
@@ -464,8 +489,17 @@ export const getPatientActiveToken = async (patientId) => {
     .populate("department", "name slotDurationMinutes")
     .lean();
 
-  if (!token || token.status !== "WAITING") {
-    return token;
+  if (!token) return null;
+
+  // If not waiting → no queue position
+  if (token.status !== "WAITING") {
+    return {
+      ...token,
+      waitingCount: 0,
+      position: 1,
+      minMinutes: 0,
+      maxMinutes: 0,
+    };
   }
 
   const queueKey = getQueueKey(token.department._id, dayStart);
@@ -473,7 +507,6 @@ export const getPatientActiveToken = async (patientId) => {
   let patientsAhead = 0;
   let redisMiss = false;
 
-  //  Try Redis rank lookup (instant)
   try {
     const rank = await redis.zrank(queueKey, token._id.toString());
 
@@ -487,7 +520,7 @@ export const getPatientActiveToken = async (patientId) => {
     redisMiss = true;
   }
 
-  // Fallback to DB if Redis miss / eviction
+  // Mongo fallback (correct sorting)
   if (redisMiss) {
     const waitingTokens = await Token.find({
       department: token.department._id,
@@ -495,7 +528,7 @@ export const getPatientActiveToken = async (patientId) => {
       status: "WAITING",
     })
       .select("_id priorityRank tokenNumber")
-      .sort({ priorityRank: -1, tokenNumber: 1 })
+      .sort({ priorityRank: 1, tokenNumber: 1 })
       .lean();
 
     patientsAhead = waitingTokens.findIndex(
@@ -504,8 +537,16 @@ export const getPatientActiveToken = async (patientId) => {
 
     if (patientsAhead < 0) patientsAhead = 0;
 
-    // rebuild Redis queue
+    // Rebuild Redis queue with correct expiry
     try {
+      const nextDayStart = new Date(dayStart);
+      nextDayStart.setDate(nextDayStart.getDate() + 1);
+
+      const ttlSeconds = Math.max(
+        1,
+        Math.floor((nextDayStart - new Date()) / 1000)
+      );
+
       const pipeline = redis.pipeline();
 
       waitingTokens.forEach((t) => {
@@ -515,7 +556,8 @@ export const getPatientActiveToken = async (patientId) => {
         });
       });
 
-      pipeline.expire(queueKey, 60 * 60 * 24);
+      pipeline.expire(queueKey, ttlSeconds);
+
       await pipeline.exec();
     } catch (err) {
       console.log("Queue rebuild failed:", err.message);
@@ -533,11 +575,11 @@ export const getPatientActiveToken = async (patientId) => {
   return {
     ...token,
     waitingCount: patientsAhead,
+    position: patientsAhead + 1, 
     minMinutes: waitingTime.minMinutes,
     maxMinutes: waitingTime.maxMinutes,
   };
 };
-
 /* ===================== PATIENT Upcoming TOKEN ===================== */
 export const getUpcomingTokensForPatient = async (patientId) => {
   const today = getStartOfISTDay();
@@ -590,22 +632,22 @@ export const getExpectedTokenNumber = async ({
   appointmentDate,
 }) => {
   const date = getStartOfISTDay(appointmentDate);
+  const dateStr = date.toISOString().slice(0, 10);
 
-  const cacheKey = `expectedToken:${departmentId}:${date
-    .toISOString()
-    .slice(0, 10)}`;
+  const counterKey = `tokenCounter:${departmentId}:${dateStr}`;
 
-  // Try Redis cache first
+  //   Redis counter
   try {
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return Number(cached);
+    const current = await redis.get(counterKey);
+
+    if (current !== null) {
+      return Number(current) + 1;
     }
   } catch (err) {
     console.log("Redis read failed:", err.message);
   }
 
-  // Fallback to MongoDB (source of truth)
+  //  Fallback to Mongo ONLY if Redis missing
   const lastToken = await Token.findOne({
     department: departmentId,
     appointmentDate: date,
@@ -614,20 +656,7 @@ export const getExpectedTokenNumber = async ({
     .select("tokenNumber")
     .lean();
 
-  const expectedTokenNumber = lastToken
-    ? lastToken.tokenNumber + 1
-    : 1;
-
-  // Cache result for fast future lookup
-  try {
-    await redis.set(cacheKey, expectedTokenNumber, {
-      ex: 60, // cache 1 minute
-    });
-  } catch (err) {
-    console.log("Redis write failed:", err.message);
-  }
-
-  return expectedTokenNumber;
+  return lastToken ? lastToken.tokenNumber + 1 : 1;
 };
 
 /* ===================== Recalculate Queue Positions ===================== */
@@ -636,64 +665,85 @@ export const recalculateQueuePositions = async (departmentId) => {
   const today = getStartOfISTDay();
   const queueKey = getQueueKey(departmentId, today);
 
-  const department = await Department.findById(departmentId)
-    .select("slotDurationMinutes")
-    .lean();
-
-  const slotDurationMinutes = department?.slotDurationMinutes || 10;
-
-  let tokens = [];
-  let redisMiss = false;
-
-  // Try Redis first
   try {
-    const ids = await redis.zrange(queueKey, 0, -1, { rev: true });
-    
-    if (ids?.length) {
-      tokens = await Token.find({ _id: { $in: ids } })
-        .select("_id patient")
-        .lean();
+    // Lightweight global event 
+    // io.to(`department:${departmentId}`).emit("QUEUE_UPDATED", {
+    //   departmentId,
+    //   timestamp: Date.now(),
+    // });
 
-      // maintain Redis order
-      tokens.sort(
-        (a, b) => ids.indexOf(a._id.toString()) - ids.indexOf(b._id.toString())
-      );
-    } else {
+    const department = await Department.findById(departmentId)
+      .select("slotDurationMinutes")
+      .lean();
+
+    const slotDurationMinutes = department?.slotDurationMinutes || 10;
+
+    let tokens = [];
+    let redisMiss = false;
+
+    //  Correct Redis order
+    try {
+      const ids = await redis.zrange(queueKey, 0, -1);
+
+      if (ids?.length) {
+        const limitedIds = ids.slice(0, 15); // limit heavy updates
+
+        tokens = await Token.find({ _id: { $in: limitedIds } })
+          .select("_id patient")
+          .lean();
+
+        tokens.sort(
+          (a, b) =>
+            limitedIds.indexOf(a._id.toString()) -
+            limitedIds.indexOf(b._id.toString())
+        );
+      } else {
+        redisMiss = true;
+      }
+    } catch (err) {
+      console.log("Redis read failed:", err.message);
       redisMiss = true;
     }
-  } catch (err) {
-    console.log("Redis read failed:", err.message);
-    redisMiss = true;
-  }
 
-  // fallback to DB if Redis empty / evicted
-  if (redisMiss) {
-    tokens = await Token.find({
-      department: departmentId,
-      appointmentDate: today,
-      status: "WAITING",
-    })
-      .select("_id patient priorityRank tokenNumber")
-      .sort({ priorityRank: -1, tokenNumber: 1 })
-      .lean();
-  }
+    // Mongo fallback 
+    if (redisMiss) {
+      tokens = await Token.find({
+        department: departmentId,
+        appointmentDate: today,
+        status: "WAITING",
+      })
+        .select("_id patient priorityRank tokenNumber")
+        .sort({ priorityRank: 1, tokenNumber: 1 }) 
+        .limit(15)
+        .lean();
+    }
 
-  if (!tokens.length) return;
+    if (!tokens.length) return;
 
-  tokens.forEach((token, index) => {
-    const waitingTime = calculateWaitingTime({
-      patientsAhead: index,
-      slotDurationMinutes,
-    });
+    //  Emit only top users 
+    tokens.forEach((token, index) => {
+      const waitingTime = calculateWaitingTime({
+        patientsAhead: index,
+        slotDurationMinutes,
+      });
 
-    io.to(`user:${token.patient.toString()}`).emit(
-      "QUEUE_POSITION_UPDATE",
-      {
+      emitQueueEvent("QUEUE_POSITION_UPDATE", departmentId, {
         tokenId: token._id,
         ...waitingTime,
-      }
-    );
-  });
+      });
+
+      // io.to(`user:${token.patient.toString()}`).emit(
+      //   "QUEUE_POSITION_UPDATE",
+      //   {
+      //     tokenId: token._id,
+      //     ...waitingTime,
+      //   }
+      // );
+    });
+
+  } catch (err) {
+    console.log("Queue recalculation failed:", err.message);
+  }
 };
 
 /* ===================== FORMAT TIME ===================== */
@@ -709,13 +759,14 @@ const formatTime = (date) =>
 /* ===================== DASHBOARD QUEUE SUMMARY ===================== */
 export const getDoctorQueueSummary = async ({ departmentId, userId }) => {
   const today = getStartOfISTDay();
-  const cacheKey = `dashboard:${departmentId}:${today.toISOString().slice(0,10)}`;
+  const dateStr = today.toISOString().slice(0, 10);
+  const cacheKey = `dashboard:${departmentId}:${dateStr}`;
 
-  //  Try cache first
+  // Try cache first
   try {
     const cached = await redis.get(cacheKey);
     if (cached) {
-      return cached;
+      return JSON.parse(cached);
     }
   } catch (err) {
     console.log("Redis read failed:", err.message);
@@ -726,12 +777,15 @@ export const getDoctorQueueSummary = async ({ departmentId, userId }) => {
 
   const doctorProfile = await DoctorProfile.findOne({ user: userId }).lean();
 
-  const opdStartTime = doctorProfile?.opdTimings?.[0]?.startTime || "09:00";
+  const opdStartTime =
+    doctorProfile?.opdTimings?.[0]?.startTime || "09:00";
+
   const slotMinutes = department.slotDurationMinutes || 10;
 
   const [startHour, startMinute] = opdStartTime.split(":").map(Number);
 
-  const [totalToday, completed, remaining, waitingTokens] = await Promise.all([
+  // Parallel DB queries
+  const [totalToday, completed, waitingCount] = await Promise.all([
     Token.countDocuments({
       department: departmentId,
       appointmentDate: today,
@@ -746,22 +800,54 @@ export const getDoctorQueueSummary = async ({ departmentId, userId }) => {
       appointmentDate: today,
       status: "WAITING",
     }),
-    Token.find({
+  ]);
+
+  //  Get next 5 tokens from Redis (CORRECT ORDER)
+  const queueKey = getQueueKey(departmentId, today);
+
+  let nextTokens = [];
+
+  try {
+    const ids = await redis.zrange(queueKey, 0, 4);
+
+    if (ids?.length) {
+      const tokens = await Token.find({ _id: { $in: ids } })
+        .select("tokenNumber priority patient")
+        .populate("patient", "name")
+        .lean();
+
+      // maintain Redis order
+      tokens.sort(
+        (a, b) =>
+          ids.indexOf(a._id.toString()) -
+          ids.indexOf(b._id.toString())
+      );
+
+      nextTokens = tokens;
+    }
+  } catch (err) {
+    console.log("Redis queue fetch failed:", err.message);
+  }
+
+  //  
+  if (!nextTokens.length) {
+    nextTokens = await Token.find({
       department: departmentId,
       appointmentDate: today,
       status: "WAITING",
     })
-      .sort({ priorityRank: -1, tokenNumber: 1 })
+      .sort({ priorityRank: 1, tokenNumber: 1 })
       .limit(5)
       .populate("patient", "name")
       .select("tokenNumber priority patient")
-      .lean(),
-  ]);
+      .lean();
+  }
 
+  // Calculate expected times
   const opdStart = new Date(today);
   opdStart.setUTCHours(startHour - 5, startMinute - 30, 0, 0);
 
-  const nextWaiting = waitingTokens.map((t, index) => {
+  const nextWaiting = nextTokens.map((t, index) => {
     const expected = new Date(opdStart);
     expected.setUTCMinutes(expected.getUTCMinutes() + index * slotMinutes);
 
@@ -776,13 +862,13 @@ export const getDoctorQueueSummary = async ({ departmentId, userId }) => {
   const summary = {
     totalToday,
     completed,
-    remaining,
+    remaining: waitingCount,
     nextWaiting,
   };
 
-  //Cache for 15 seconds
+  // Cache 
   try {
-    await redis.set(cacheKey, summary, { ex: 15 });
+    await redis.set(cacheKey, JSON.stringify(summary), { ex: 15 });
   } catch (err) {
     console.log("Redis write failed:", err.message);
   }

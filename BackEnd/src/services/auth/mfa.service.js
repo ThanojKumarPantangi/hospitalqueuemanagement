@@ -22,6 +22,7 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
     throw new Error("MFA session expired");
   }
 
+
   if (
     !decoded?.id ||
     decoded.type !== "MFA_PENDING" 
@@ -97,6 +98,7 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
   const currentCountry = location?.country || null;
 
   const deviceId = decoded.deviceId; 
+  console.log(deviceId)
 
   const userAgent = req.headers["user-agent"];
 
@@ -154,7 +156,7 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
       sameSite: "Strict",
     });
 
-    res.cookie("deviceId", device.deviceId, {
+    res.cookie("deviceId", similarDevice.deviceId, {
       httpOnly: true,
       secure: true,
       sameSite: "Strict",
@@ -202,7 +204,7 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
   // ISSUE TOKENS via token service
   const tokens = await issueTokens(user, session);
 
-  const shouldAskTrustDevice = !device.isTrusted || !similarDevice.isTrusted || false;
+  const shouldAskTrustDevice = !device?.isTrusted || !similarDevice?.isTrusted || false;
 
   return { ...tokens, user, shouldAskTrustDevice};
 };
@@ -218,7 +220,7 @@ export const handleMfaFlow = async (
 
   const isTrustedDevice =
     existingDevice &&
-    existingDevice.isTrusted &&
+    existingDevice?.isTrusted &&
     existingDevice.trustExpiresAt > new Date();
 
   const isHighRisk = riskScore >= 50;

@@ -4,4 +4,4 @@ export const getQueueKey = (departmentId, date) => {
 };
 
 export const getScore = (priorityRank, tokenNumber) =>
-  priorityRank * 100000 - tokenNumber;
+  priorityRank * 100000 + tokenNumber;

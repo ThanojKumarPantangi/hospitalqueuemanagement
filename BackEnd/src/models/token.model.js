@@ -111,7 +111,6 @@ tokenSchema.index({
   status: 1,
 });
 
-// 🔥 ADD THESE
 tokenSchema.index({
   appointmentDate: 1,
   status: 1,

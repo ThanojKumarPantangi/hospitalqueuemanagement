@@ -37,10 +37,10 @@ export function useAdminMonitorSocket({
       }
     };
 
-    socket.on("ADMIN_TOKEN_UPDATE", handleAdminUpdate);
+    socket.on("QUEUE_EVENT", handleAdminUpdate);
 
     return () => {
-      socket.off("ADMIN_TOKEN_UPDATE", handleAdminUpdate);
+      socket.off("QUEUE_EVENT", handleAdminUpdate);
     };
   }, [
     socketRef,

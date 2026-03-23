@@ -103,6 +103,7 @@ const AdminCreateTokenModal = ({
       departmentId,
       appointmentDate,
       priority,
+      consultationType,
     });
   };
 

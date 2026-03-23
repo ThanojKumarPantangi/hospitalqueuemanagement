@@ -7,8 +7,13 @@ import Root from "./Root.jsx";
 
 registerSW({ immediate: true })
 
+import { Provider } from "react-redux";
+import {store} from "@/store/store.js";
+
 createRoot(document.getElementById("root")).render(
   // <React.StrictMode>
-  <Root />
+    <Provider store={store}>
+      <Root />
+    </Provider>
   // </React.StrictMode>
 );

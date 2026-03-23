@@ -66,24 +66,35 @@ export function useTokenSocket({
 
     const socket = socketRef.current;
 
-    const handleCalled = (payload) => onCalled?.(payload);
-    const handleSkipped = (payload) => onSkipped?.(payload);
-    const handleCompleted = (payload) => onCompleted?.(payload);
-    const handleNoShow = (payload) => onNoShow?.(payload);
-    const handleQueue = (payload) => onQueueUpdate?.(payload);
+  const handleQueueUpdate = (payload) => {
+      switch (payload.action) {
+        case "TOKEN_CALLED":
+          onCalled?.(payload);
+          break;
 
-    socket.on("TOKEN_CALLED", handleCalled);
-    socket.on("TOKEN_SKIPPED", handleSkipped);
-    socket.on("TOKEN_COMPLETED", handleCompleted);
-    socket.on("TOKEN_NO_SHOW", handleNoShow);
-    socket.on("QUEUE_POSITION_UPDATE", handleQueue);
+        case "TOKEN_COMPLETED":
+          onCompleted?.(payload);
+          break;
+
+        case "TOKEN_SKIPPED":
+          onSkipped?.(payload);
+          break;
+
+        case "QUEUE_POSITION_UPDATE":
+          onQueueUpdate?.(payload);
+          break;
+
+        default:
+          break;
+      }
+    };
+
+    
+    socket.on("QUEUE_EVENT", handleQueueUpdate);
 
     return () => {
-      socket.off("TOKEN_CALLED", handleCalled);
-      socket.off("TOKEN_SKIPPED", handleSkipped);
-      socket.off("TOKEN_COMPLETED", handleCompleted);
-      socket.off("TOKEN_NO_SHOW", handleNoShow);
-      socket.off("QUEUE_POSITION_UPDATE", handleQueue);
+      
+      socket.off("QUEUE_EVENT", handleQueueUpdate);
     };
   }, [onCalled, onSkipped, onCompleted, onNoShow, onQueueUpdate,socketRef]);
 
