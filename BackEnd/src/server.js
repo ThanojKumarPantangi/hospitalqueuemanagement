@@ -1,3 +1,11 @@
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("UNHANDLED REJECTION:", err);
+});
+
 import app from "./app.js";
 import connectDB from "./config/database.config.js";
 import http from "http";
