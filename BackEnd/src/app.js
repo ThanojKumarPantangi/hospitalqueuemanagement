@@ -46,7 +46,7 @@ app.get("/health", (req, res) => {
 
 /* ------------------ Security: Rate limiter ------------------ */
 
-app.use("/api", globalLimiter);
+// app.use("/api", globalLimiter);
 
 /* ------------------ Security: Mongo sanitize ------------------ */
 app.use((req, res, next) => {
