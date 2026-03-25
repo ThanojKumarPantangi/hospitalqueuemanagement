@@ -39,7 +39,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    const session = validateSession(decoded.sessionId, decoded.id)
+    const session =await validateSession(decoded.sessionId, decoded.id)
 
     if (!session || !session.isActive) {
       return res.status(401).json({

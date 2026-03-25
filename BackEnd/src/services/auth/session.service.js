@@ -63,7 +63,7 @@ export const validateSession = async (sessionId, userId) => {
   if (!session.isActive) {
     throw new Error("Session expired");
   }
-
+  
   if (
     session.absoluteExpiresAt &&
     session.absoluteExpiresAt < new Date()
