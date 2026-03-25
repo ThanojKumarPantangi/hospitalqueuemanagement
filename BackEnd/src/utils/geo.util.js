@@ -14,6 +14,7 @@ export const getLocationFromIp = async (ip) => {
       signal: controller.signal,
     });
 
+    console.log(res.status)
     clearTimeout(timeout);
 
     if (!res.ok) return null;
