@@ -18,7 +18,8 @@ export const evaluateLoginRisk = async ({
 
   const location = await getLocationFromIp(cleanIp);
   const currentCountry = location?.country || null;
-
+  
+  console.log(location)
   let existingDevice = null;
   let similarDevice = null;
 

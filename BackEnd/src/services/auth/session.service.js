@@ -32,7 +32,7 @@ export const createSession = async (user, req, cleanIp,location,deviceId=null) =
   if (shouldEnforceSingleSession(user.role)) {
     await revokeAllUserSessions(user._id);
   }
-
+  
   const absoluteExpiry = calculateAbsoluteExpiry(user.role);
 
   const session = await Session.create({

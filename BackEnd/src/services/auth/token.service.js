@@ -64,33 +64,39 @@ export const rotateRefreshToken = async (incomingToken) => {
 
     const newJti = uuidv4();
 
+    /* ---------- ATOMIC TOKEN CONSUMPTION ---------- */
     const storedToken = await RefreshToken.findOneAndUpdate(
       {
         user: decoded.id,
         session: decoded.sessionId,
         jti: decoded.jti,
-        revoked: false,
         tokenHash: incomingHash,
+        revoked: false, 
       },
       {
-        revoked: true,
-        replacedByJti: newJti,
+        $set: {
+          revoked: true,
+          replacedByJti: newJti,
+        },
       },
-      { new: true }
+      {
+        new: true,
+      }
     );
 
-    // Refresh token reuse detection
+    /* ---------- REUSE DETECTION ---------- */
     if (!storedToken) {
       await revokeAllUserSessions(decoded.id);
       throw new Error("REFRESH_TOKEN_REUSE_DETECTED");
     }
 
-    // Expired refresh token
+    /* ---------- EXPIRY CHECK ---------- */
     if (storedToken.expiresAt < new Date()) {
       await revokeAllUserSessions(decoded.id);
       throw new Error("SESSION_EXPIRED");
     }
 
+    /* ---------- GENERATE NEW TOKENS ---------- */
     const newAccessPayload = {
       id: decoded.id,
       role: session.role,
@@ -112,6 +118,7 @@ export const rotateRefreshToken = async (incomingToken) => {
       .update(newRefreshToken)
       .digest("hex");
 
+    /* ---------- STORE NEW REFRESH TOKEN ---------- */
     await RefreshToken.create({
       user: decoded.id,
       session: session._id,
@@ -125,9 +132,7 @@ export const rotateRefreshToken = async (incomingToken) => {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     };
-
   } catch (error) {
-
     if (error.name === "TokenExpiredError") {
       throw new Error("REFRESH_TOKEN_EXPIRED");
     }

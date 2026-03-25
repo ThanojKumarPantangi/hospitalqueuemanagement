@@ -6,9 +6,11 @@ const api = axios.create({
   withCredentials: true,
 });
 
-let isRefreshing = false;
+/* ---------- GLOBAL STATE ---------- */
+let refreshPromise = null;
 let failedQueue = [];
 
+/* ---------- PROCESS QUEUE ---------- */
 const processQueue = (error) => {
   failedQueue.forEach((p) => {
     if (error) {
@@ -20,12 +22,14 @@ const processQueue = (error) => {
   failedQueue = [];
 };
 
+/* ---------- INTERCEPTOR ---------- */
 api.interceptors.response.use(
   (response) => response,
 
   async (error) => {
     const originalRequest = error.config;
 
+    /* ---------- NETWORK ERROR ---------- */
     if (!error.response) {
       showToast({
         type: "error",
@@ -42,8 +46,7 @@ api.interceptors.response.use(
       url.includes("/api/auth/login") ||
       url.includes("/api/auth/refresh");
 
-    /* ---------- TOKEN EXPIRED → REFRESH ---------- */
-
+    /* ---------- SHOULD REFRESH ---------- */
     const shouldRefresh =
       status === 401 &&
       code === "TOKEN_EXPIRED" &&
@@ -51,47 +54,49 @@ api.interceptors.response.use(
       !isAuthEndpoint;
 
     if (shouldRefresh) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: () => resolve(api(originalRequest)),
-            reject,
-          });
-        });
-      }
-
+      // mark retry early to avoid loops
       originalRequest._retry = true;
-      isRefreshing = true;
 
-      try {
-        await api.post("/api/auth/refresh");
+      /* ---------- CREATE SINGLE REFRESH PROMISE ---------- */
+      if (!refreshPromise) {
+        refreshPromise = api
+          .post("/api/auth/refresh")
+          .then(() => {
+            processQueue(null);
+          })
+          .catch(async (refreshError) => {
+            processQueue(refreshError);
 
-        processQueue(null);
+            try {
+              await api.post("/api/auth/logout");
+            } catch {
+              // ignore
+            }
 
-        return api(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError);
+            showToast({
+              type: "error",
+              message: "Session expired. Please login again.",
+            });
 
-        try {
-          await api.post("/api/auth/logout");
-        } catch {
-          // 
-        }
+            window.location.href = "/login";
 
-        showToast({
-          type: "error",
-          message: "Session expired. Please login again.",
-        });
-
-        window.location.href = "/login";
-
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+            throw refreshError;
+          })
+          .finally(() => {
+            refreshPromise = null;
+          });
       }
+
+      /* ---------- QUEUE REQUEST ---------- */
+      return new Promise((resolve, reject) => {
+        failedQueue.push({
+          resolve: () => resolve(api(originalRequest)),
+          reject,
+        });
+      });
     }
 
-    /* ---------- IMPORTANT: DO NOTHING ON NORMAL 401 ---------- */
+    /* ---------- NORMAL 401 HANDLING ---------- */
     const publicRoutes = [
       "/login",
       "/verify-mfa",
@@ -99,14 +104,18 @@ api.interceptors.response.use(
       "/verify-otp",
       "/signup",
       "/doctor-signup",
-      "/"
+      "/",
     ];
 
-    const isPublicRoute = publicRoutes.some((route) => url.includes(route));
-    if(!isPublicRoute && status === 401){
+    const isPublicRoute = publicRoutes.some((route) =>
+      url.includes(route)
+    );
+
+    if (!isPublicRoute && status === 401) {
       window.location.href = "/login";
       return Promise.reject(error);
     }
+
     return Promise.reject(error);
   }
 );
