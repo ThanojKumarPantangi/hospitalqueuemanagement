@@ -16,13 +16,9 @@ export const evaluateLoginRisk = async ({
   const DEVICE_EXPIRY_DAYS = 60;
   const now = new Date();
 
-  console.log(cleanIp)
-
-  const location = await getLocationFromIp(cleanIp);
+  const location = await getLocationFromIp(cleanIp, redis);
   const currentCountry = location?.country || null;
   
-  console.log(location)
-
   let existingDevice = null;
   let similarDevice = null;
 

@@ -9,6 +9,7 @@ import { createSession } from "./session.service.js";
 import { issueTokens } from "./token.service.js";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import redis from "../../config/redisClient.js";
 
 export const verifyMfaService = async (tempToken, code, req,res) => {
   if (!tempToken || !code) {
@@ -94,7 +95,7 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
     : ip;
 
   // Get location
-  const location = await getLocationFromIp(cleanIp);
+  const location = await getLocationFromIp(cleanIp,redis);
   const currentCountry = location?.country || null;
 
   const deviceId = decoded.deviceId; 
