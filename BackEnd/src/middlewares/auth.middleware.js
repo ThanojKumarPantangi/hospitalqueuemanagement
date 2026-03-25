@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import Session from "../models/session.model.js";
+import { validateSession } from "../services/auth/session.service.js";
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -38,7 +39,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    const session = await Session.findById(decoded.sessionId);
+    const session = validateSession(decoded.sessionId, decoded.id)
 
     if (!session || !session.isActive) {
       return res.status(401).json({
