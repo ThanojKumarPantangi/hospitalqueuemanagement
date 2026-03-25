@@ -13,6 +13,7 @@ import {createToken,
 } from "../services/queue/queue.service.js";
 
 import { sendEmail } from "../utils/sendEmail.js";
+import {formatToISTDate} from "../utils/formatISTTime.util.js";
 import { tokenBookedTemplate } from "../emailTemplates/tokenBookedTemplate.js";
 import {tokenCancelledTemplate} from "../emailTemplates/tokenCancelledTemplate.js"
 
@@ -71,12 +72,7 @@ export const createTokenController = async (req, res) => {
             priority,
             tokenNumber: token.tokenNumber,
             departmentName: dept?.name || "Unknown Department",
-            appointmentDate: new Date(token.appointmentDate).toLocaleDateString("en-IN", {
-              timeZone: "Asia/Kolkata",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })
+            appointmentDate: formatToISTDate(token.appointmentDate),
           }),
         });
       }
@@ -168,12 +164,7 @@ export const cancelTokenController = async (req, res) => {
             name: patient.name,
             tokenNumber: token.tokenNumber,
             departmentName: dept?.name || "Department",
-            appointmentDate: new Date(token.appointmentDate).toLocaleDateString("en-IN", {
-              timeZone: "Asia/Kolkata",
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            }),
+            appointmentDate: formatToISTDate(token.appointmentDate),
             cancelledBy: req.user.role || "User",
           }),
         });

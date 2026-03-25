@@ -5,6 +5,7 @@ import Visit from "../../models/visit.model.js";
 import { getIO } from "../../sockets/index.js";
 
 import { calculateWaitingTime } from "../../utils/waitingTime.util.js";
+import { getStartOfISTDay } from "../../utils/formatISTTime.util.js";
 import DoctorProfile from "../../models/doctorProfile.model.js";
 
 import redis from "../../config/redisClient.js";
@@ -30,20 +31,6 @@ const PRIORITY_ORDER = {
   NORMAL: 3,
 };
 
-/* ===================== UTILS ===================== */
-const getStartOfISTDay = (date = new Date()) => {
-  const d = new Date(date);
-
-  // Convert to IST by adding 5:30
-  const istOffsetMs = 5.5 * 60 * 60 * 1000;
-  const istDate = new Date(d.getTime() + istOffsetMs);
-
-  // Start of IST day
-  istDate.setHours(0, 0, 0, 0);
-
-  // Convert back to UTC Date object for DB match
-  return new Date(istDate.getTime() - istOffsetMs);
-};
 
 const isTransitionAllowed = (from, to) =>
   TOKEN_STATES[from]?.includes(to);

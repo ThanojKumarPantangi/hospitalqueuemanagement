@@ -98,14 +98,30 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
   const currentCountry = location?.country || null;
 
   const deviceId = decoded.deviceId; 
-  console.log(deviceId)
 
   const userAgent = req.headers["user-agent"];
 
-  const device = await Device.findOne({
-    user: user._id,
-    deviceId,
-  });
+  const {deviceSecret}=req.cookies
+
+  let device=null;
+
+  if (deviceId && deviceSecret) {
+    const existingDevice = await Device.findOne({
+      user: user._id,
+      deviceId,
+    });
+
+    if (existingDevice) {
+      const isMatch = await bcrypt.compare(
+        deviceSecret,
+        device.deviceSecretHash
+      );
+
+      if (isMatch) {
+        device=existingDevice;
+      }
+    }
+  }
 
   let similarDevice = null;
   
@@ -134,7 +150,7 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
       sameSite: "Strict",
     });
 
-    res.cookie("deviceId", device.deviceId, {
+    res.cookie("deviceId", deviceId, {
       httpOnly: true,
       secure: true,
       sameSite: "Strict",
@@ -156,7 +172,7 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
       sameSite: "Strict",
     });
 
-    res.cookie("deviceId", similarDevice.deviceId, {
+    res.cookie("deviceId", deviceId, {
       httpOnly: true,
       secure: true,
       sameSite: "Strict",
