@@ -26,7 +26,7 @@ import {globalLimiter} from "./middlewares/rateLimiter.middleware.js";
 
 const app = express();
 
-app.set("trust proxy", 2);
+app.set("trust proxy", 1);
 /* ------------------ Core middleware ------------------ */
 app.use(express.json());
 app.use(cookieParser());
@@ -38,12 +38,15 @@ app.use(
   })
 );
 
-app.use((req, res, next) => {
-  if (req.path === "/health") {
-    return next(); 
-  }
-  globalLimiter(req, res, next);
+
+/* ------------------ Health check ------------------ */
+app.get("/health", (req, res) => {
+  res.json({ status: "OK" });
 });
+
+/* ------------------ Security: Rate limiter ------------------ */
+
+app.use("/api", globalLimiter);
 
 /* ------------------ Security: Mongo sanitize ------------------ */
 app.use((req, res, next) => {
@@ -79,11 +82,6 @@ app.use("/api/templates", templateRoutes);
 app.use("/api/consultations", consultationRoutes);
 app.use("/api/turn-credentials", turnRoutes);
 
-
-/* ------------------ Health check ------------------ */
-app.get("/health", (req, res) => {
-  res.json({ status: "OK" });
-});
 
 (async () => {
   try {
