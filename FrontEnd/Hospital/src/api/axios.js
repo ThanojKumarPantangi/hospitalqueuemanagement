@@ -108,11 +108,17 @@ api.interceptors.response.use(
       "/",
     ];
 
+    const requestUrl = originalRequest?.url || "";
+
+    const isVercelInsights =
+      requestUrl.includes("/_vercel/speed-insights/") ||
+      requestUrl.includes("vitals.vercel-insights.com");
+
     const isPublicRoute = publicRoutes.some((route) =>
       url.includes(route)
     );
 
-    if (!isPublicRoute && status === 401) {
+    if (!isPublicRoute && !isVercelInsights && status === 401) {
       window.location.href = "/login";
       return Promise.reject(error);
     }
