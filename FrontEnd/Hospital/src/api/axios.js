@@ -41,10 +41,11 @@ api.interceptors.response.use(
     const status = error.response.status;
     const code = error.response.data?.code;
     const url = originalRequest?.url || "";
-
+ 
     const isAuthEndpoint =
       url.includes("/api/auth/login") ||
-      url.includes("/api/auth/refresh");
+      url.includes("/api/auth/refresh") ||
+      url.includes("/_vercel/speed-insights/");
 
     /* ---------- SHOULD REFRESH ---------- */
     const shouldRefresh =
@@ -107,13 +108,11 @@ api.interceptors.response.use(
       "/",
     ];
 
-    const isVercelInsights = url.includes("/_vercel/speed-insights/");
-
     const isPublicRoute = publicRoutes.some((route) =>
       url.includes(route)
     );
 
-    if (!isPublicRoute && !isVercelInsights && status === 401) {
+    if (!isPublicRoute && status === 401) {
       window.location.href = "/login";
       return Promise.reject(error);
     }
