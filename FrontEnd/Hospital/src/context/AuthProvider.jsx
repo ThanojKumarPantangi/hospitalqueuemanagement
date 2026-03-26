@@ -33,6 +33,10 @@ export const AuthProvider = ({ children }) => {
       "/verify-mfa",
       "/setup-mfa",
       "/verify-otp",
+      "/forgot-password",
+      "/reset-password",
+      "/doctor-signup",
+      "/signup",
     ];
 
     
