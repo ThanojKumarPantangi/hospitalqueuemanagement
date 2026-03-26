@@ -45,6 +45,9 @@ api.interceptors.response.use(
     const isAuthEndpoint =
       url.includes("/api/auth/login") ||
       url.includes("/api/auth/refresh") ||
+      url.includes("/api/auth/logout") ||
+      url.includes("/api/auth/signup") ||
+      url.includes("/api/auth/doctor-signup") ||
       url.includes("/_vercel/speed-insights/");
 
     /* ---------- SHOULD REFRESH ---------- */
