@@ -107,13 +107,13 @@ api.interceptors.response.use(
       "/",
     ];
 
-    const urlvalue=url.includes("/_vercel/speed-insights/vitals")
+    const isVercelInsights = url.includes("/_vercel/speed-insights/");
 
     const isPublicRoute = publicRoutes.some((route) =>
       url.includes(route)
     );
 
-    if (!isPublicRoute&&!urlvalue && status === 401) {
+    if (!isPublicRoute && !isVercelInsights && status === 401) {
       window.location.href = "/login";
       return Promise.reject(error);
     }
