@@ -57,7 +57,17 @@ api.interceptors.response.use(
       !originalRequest._retry &&
       !isAuthEndpoint;
 
-    if (shouldRefresh) {
+    const publicRoutes = [
+      "/login",
+      "/verify-mfa",
+      "/setup-mfa",
+      "/verify-otp",
+      "/signup",
+      "/doctor-signup",
+      "/",
+    ];
+
+    if (shouldRefresh && !publicRoutes.includes(url)) {
       // mark retry early to avoid loops
       originalRequest._retry = true;
 
@@ -101,15 +111,6 @@ api.interceptors.response.use(
     }
 
     /* ---------- NORMAL 401 HANDLING ---------- */
-    const publicRoutes = [
-      "/login",
-      "/verify-mfa",
-      "/setup-mfa",
-      "/verify-otp",
-      "/signup",
-      "/doctor-signup",
-      "/",
-    ];
 
     const requestUrl = originalRequest?.url || "";
 
