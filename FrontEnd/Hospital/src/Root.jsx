@@ -23,7 +23,7 @@ export default function Root() {
         <AuthProvider>
           <ThemeProvider>
             <App />
-            <SpeedInsights />
+            
 
             {toast && (
               <Toast
