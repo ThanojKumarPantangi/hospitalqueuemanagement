@@ -41,33 +41,46 @@ api.interceptors.response.use(
     const status = error.response.status;
     const code = error.response.data?.code;
     const url = originalRequest?.url || "";
- 
+
     const isAuthEndpoint =
       url.includes("/api/auth/login") ||
       url.includes("/api/auth/refresh") ||
       url.includes("/api/auth/logout") ||
       url.includes("/api/auth/signup") ||
       url.includes("/api/auth/doctor-signup") ||
+      url.includes("/api/auth/me") ||
       url.includes("/_vercel/speed-insights/");
+
+    const isAuthInitialized = localStorage.getItem("isAuthInitialized") === "true";
 
     /* ---------- SHOULD REFRESH ---------- */
     const shouldRefresh =
       status === 401 &&
       code === "TOKEN_EXPIRED" &&
       !originalRequest._retry &&
-      !isAuthEndpoint;
+      !isAuthEndpoint &&
+      isAuthInitialized;
 
-    const publicRoutes = [
+    const currentPath = window.location.pathname;
+    const publicPages = [
+      "/",
       "/login",
-      "/verify-mfa",
-      "/setup-mfa",
-      "/verify-otp",
       "/signup",
       "/doctor-signup",
-      "/",
+      "/forgot",
+      "/reset",
+      "/forgot-password",
+      "/reset-password",
+      "/verify-mfa",
+      "/setup-mfa",
+      "/verify-otp"
     ];
 
-    if (shouldRefresh && !publicRoutes.includes(url)) {
+    const isPublicPage = publicPages.includes(currentPath) ||
+      currentPath.startsWith("/reset") ||
+      currentPath.startsWith("/forgot");
+
+    if (shouldRefresh && !isPublicPage) {
       // mark retry early to avoid loops
       originalRequest._retry = true;
 
@@ -92,6 +105,7 @@ api.interceptors.response.use(
               message: "Session expired. Please login again.",
             });
 
+            localStorage.removeItem("isAuthInitialized");
             window.location.href = "/login";
 
             throw refreshError;
@@ -118,11 +132,8 @@ api.interceptors.response.use(
       requestUrl.includes("/_vercel/speed-insights/") ||
       requestUrl.includes("vitals.vercel-insights.com");
 
-    const isPublicRoute = publicRoutes.some((route) =>
-      url.includes(route)
-    );
-
-    if (!isPublicRoute && !isVercelInsights && status === 401) {
+    if (!isPublicPage && !isVercelInsights && status === 401) {
+      localStorage.removeItem("isAuthInitialized");
       window.location.href = "/login";
       return Promise.reject(error);
     }

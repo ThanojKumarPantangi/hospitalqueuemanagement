@@ -16,9 +16,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.get("/api/auth/me");
       setUser(res.data);
+      localStorage.setItem("isAuthInitialized", "true");
     } catch (err) {
       if (err?.response?.status === 401) {
-        setUser(null); 
+        setUser(null);
+        localStorage.removeItem("isAuthInitialized");
       } else {
         console.error("Unexpected auth error:", err);
       }
@@ -28,24 +30,30 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    const isAuthInitialized = localStorage.getItem("isAuthInitialized") === "true";
     const publicRoutes = [
+      "/",
       "/login",
       "/verify-mfa",
       "/setup-mfa",
       "/verify-otp",
+      "/forgot",
+      "/reset",
       "/forgot-password",
       "/reset-password",
       "/doctor-signup",
       "/signup",
     ];
 
-    
-    if (publicRoutes.includes(location.pathname)) {
+    const isPublicRoute = publicRoutes.includes(location.pathname) ||
+      location.pathname.startsWith("/reset") ||
+      location.pathname.startsWith("/forgot");
+
+    if (isPublicRoute && !isAuthInitialized) {
       setLoading(false);
       return;
     }
 
-    
     if (fetchedRef.current) return;
 
     fetchedRef.current = true;
@@ -64,7 +72,8 @@ export const AuthProvider = ({ children }) => {
   }, [user, connectSocket, disconnectSocket]);
 
   const login = async () => {
-    fetchedRef.current = false; 
+    fetchedRef.current = false;
+    localStorage.setItem("isAuthInitialized", "true");
     await fetchUser();
   };
 
@@ -76,6 +85,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     fetchedRef.current = false;
+    localStorage.removeItem("isAuthInitialized");
     setUser(null);
     disconnectSocket();
   };
