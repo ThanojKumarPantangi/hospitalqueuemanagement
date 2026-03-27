@@ -73,6 +73,25 @@ export default function SessionCard({ session, isCurrent, onLogout,onRemove }) {
 
   const showLocation = Boolean(locationText || timezoneText);
 
+  const getColorClasses = (status) => {
+    switch (status) {
+      case "safe":
+        return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30";
+
+      case "warning":
+        return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30";
+
+      case "danger":
+        return "bg-red-100 text-red-700 border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30";
+
+      case "expired":
+        return "bg-gray-200 text-gray-600 border-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600";
+
+      default:
+        return "";
+    }
+  };
+
   const timeLeft = getTimeLeft(session.trustExpiresAt);
 
   const ip = session?.ipAddress;
@@ -157,17 +176,17 @@ export default function SessionCard({ session, isCurrent, onLogout,onRemove }) {
             )}
 
             {session.isTrusted && (
-              <span className="
-                inline-flex items-center gap-1 mt-1
-                px-2 py-0.5
-                text-[11px] font-bold uppercase tracking-wider
-                rounded-md
-                bg-emerald-100 text-emerald-700
-                border border-emerald-200
-                dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30
-              ">
+              <span
+                className={`
+                  inline-flex items-center gap-1 mt-1
+                  px-2 py-0.5
+                  text-[11px] font-bold uppercase tracking-wider
+                  rounded-md border
+                  ${getColorClasses(timeLeft?.status)}
+                `}
+              >
                 <ShieldCheck size={12} />
-                Trusted {timeLeft && `• ${timeLeft}`}
+                Trusted {timeLeft?.label && `• ${timeLeft.label}`}
               </span>
             )}
           </div>

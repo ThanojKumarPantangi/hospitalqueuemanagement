@@ -3,15 +3,24 @@ const getTimeLeft = (expiry) => {
 
   const diff = new Date(expiry) - new Date();
 
-  if (diff <= 0) return "Expired";
+  if (diff <= 0) {
+    return { label: "Expired", status: "expired" };
+  }
 
   const minutes = Math.floor(diff / (1000 * 60));
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-  if (days > 0) return `${days}d left`;
-  if (hours > 0) return `${hours}h left`;
-  return `${minutes}m left`;
+  if (days > 0) {
+    return { label: `${days}d left`, status: "safe" };
+  }
+
+  if (hours > 0) {
+    return { label: `${hours}h left`, status: "warning" };
+  }
+
+  
+  return { label: "Expires soon", status: "danger" };
 };
 
 export default getTimeLeft;
