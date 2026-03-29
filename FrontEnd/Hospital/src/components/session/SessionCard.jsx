@@ -186,7 +186,9 @@ export default function SessionCard({ session, isCurrent, onLogout,onRemove }) {
                 `}
               >
                 <ShieldCheck size={12} />
-                Trusted {timeLeft?.label && `• ${timeLeft.label}`}
+                {timeLeft?.status === "expired"
+                  ? "Trust expired"
+                  : `Trusted ${timeLeft?.label ? `• ${timeLeft.label}` : ""}`}
               </span>
             )}
           </div>
