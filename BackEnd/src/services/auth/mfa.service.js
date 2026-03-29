@@ -149,12 +149,14 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
       httpOnly: true,
       secure: true,
       sameSite: "Strict",
+      maxAge: 1000 * 60 * 60 * 24 * 30,
     });
 
     res.cookie("deviceId", deviceId, {
       httpOnly: true,
       secure: true,
       sameSite: "Strict",
+      maxAge: 1000 * 60 * 60 * 24 * 30,
     });
   }
   else if (similarDevice) {
@@ -171,12 +173,14 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
       httpOnly: true,
       secure: true,
       sameSite: "Strict",
+      maxAge: 1000 * 60 * 60 * 24 * 30,
     });
 
     res.cookie("deviceId", deviceId, {
       httpOnly: true,
       secure: true,
       sameSite: "Strict",
+      maxAge: 1000 * 60 * 60 * 24 * 30,
     });
 
   }
@@ -198,14 +202,16 @@ export const verifyMfaService = async (tempToken, code, req,res) => {
       { 
         httpOnly: true, 
         secure: true, 
-        sameSite: "Strict" 
+        sameSite: "Strict",
+        maxAge: 1000 * 60 * 60 * 24 * 30,
       });
 
     res.cookie("deviceSecret", newSecret, 
       { 
         httpOnly: true, 
         secure: true, 
-        sameSite: "Strict" 
+        sameSite: "Strict",
+        maxAge: 1000 * 60 * 60 * 24 * 30,
       });
   }
 
