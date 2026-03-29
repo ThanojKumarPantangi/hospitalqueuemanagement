@@ -24,6 +24,8 @@ export const initSocket = (server) => {
     },
   });
 
+  const roomCallMap = new Map();
+
   /* ============================
      AUTH MIDDLEWARE
   ============================ */
@@ -185,6 +187,13 @@ export const initSocket = (server) => {
        WEBRTC SIGNALING
     ============================ */
 
+    let callId = roomCallMap.get(roomId);
+
+    if (!callId) {
+      callId = Date.now().toString();
+      roomCallMap.set(roomId, callId);
+    }
+
     socket.on("webrtc:join-room", async ({ roomId, userType }) => {
 
       if (!roomId) return;
@@ -281,11 +290,11 @@ export const initSocket = (server) => {
 
         if (roomSize === 1) {
 
-          socket.emit("webrtc:room-created");
+          socket.emit("webrtc:room-created",{ callId });
 
         } else {
 
-          socket.emit("webrtc:room-joined");
+          socket.emit("webrtc:room-joined",{ callId });
           socket.to(roomId).emit("webrtc:user-joined");
 
         }
@@ -299,29 +308,32 @@ export const initSocket = (server) => {
 
     });
 
-    socket.on("webrtc:offer", ({ roomId, offer }) => {
+    socket.on("webrtc:offer", ({ roomId, offer,callId }) => {
 
       socket.to(roomId).emit("webrtc:offer", {
         offer,
-        sender: socket.id
+        sender: socket.id,
+        callId
       });
 
     });
 
-    socket.on("webrtc:answer", ({ roomId, answer }) => {
+    socket.on("webrtc:answer", ({ roomId, answer, callId}) => {
 
       socket.to(roomId).emit("webrtc:answer", {
         answer,
-        sender: socket.id
+        sender: socket.id,
+        callId
       });
 
     });
 
-    socket.on("webrtc:ice-candidate", ({ roomId, candidate }) => {
+    socket.on("webrtc:ice-candidate", ({ roomId, candidate, callId}) => {
 
       socket.to(roomId).emit("webrtc:ice-candidate", {
         candidate,
-        sender: socket.id
+        sender: socket.id,
+        callId
       });
 
     });
@@ -351,6 +363,7 @@ export const initSocket = (server) => {
           if (!session.patientJoined && !session.doctorJoined) {
             session.active = false;
             session.endedAt = new Date();
+            roomCallMap.delete(roomId);
           }
           await session.save();
         }

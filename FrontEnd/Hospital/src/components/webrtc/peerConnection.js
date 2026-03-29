@@ -3,6 +3,7 @@ import { turnCredentialsApi } from "../../api/consulation.api";
 export const createPeerConnection = async (
   localStream,
   socket,
+  callIdRef,
   roomId,
   onRemoteStream,
   onConnectionStateChange
@@ -69,7 +70,8 @@ export const createPeerConnection = async (
 
       socket.emit("webrtc:ice-candidate", {
         roomId,
-        candidate
+        candidate,
+        callId:callIdRef
       });
 
     };

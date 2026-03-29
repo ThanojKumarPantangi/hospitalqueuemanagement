@@ -17,6 +17,8 @@ export default function VideoCallCore({ roomId, role, isOpen, onClose,token }) {
   const statsIntervalRef = useRef(null);
   const timerRef = useRef(null);
 
+  const callIdRef = useRef(null);
+
   const { socketRef, connectSocket } = useSocket();
 
   const [joined, setJoined] = useState(false);
@@ -77,35 +79,52 @@ export default function VideoCallCore({ roomId, role, isOpen, onClose,token }) {
     const socket = socketRef.current;
     if (!socket) return;
 
-    const handleRoomCreated = () => {
-      console.log("Room created, waiting for peer...");
+    const handleRoomCreated = ({ callId }) => {
+      callIdRef.current = callId;
+      console.log("Room created");
     };
 
-    const handleRoomJoined = async () => {
+    const handleRoomJoined = async ({ callId }) => {
+      callIdRef.current = callId;
+
       const pc = pcRef.current;
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      socket.emit("webrtc:offer", { roomId, offer });
+      socket.emit("webrtc:offer", {
+        roomId,
+        offer,
+        callId
+      });
     };
 
-    const handleOffer = async ({ offer }) => {
+    const handleOffer = async ({ offer, callId }) => {
+      if (callId !== callIdRef.current) return;
+
       const pc = pcRef.current;
+      if (!pc) return;
 
       await pc.setRemoteDescription(offer);
 
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
-      socket.emit("webrtc:answer", { roomId, answer });
+      socket.emit("webrtc:answer", {
+        roomId,
+        answer,
+        callId
+      });
 
       iceQueueRef.current.forEach((c) => pc.addIceCandidate(c));
       iceQueueRef.current = [];
     };
 
-    const handleAnswer = async ({ answer }) => {
+    const handleAnswer = async ({ answer, callId }) => {
+      if (callId !== callIdRef.current) return;
+
       const pc = pcRef.current;
+      if (!pc) return;
 
       if (pc.signalingState === "have-local-offer") {
         await pc.setRemoteDescription(answer);
@@ -115,7 +134,9 @@ export default function VideoCallCore({ roomId, role, isOpen, onClose,token }) {
       }
     };
 
-    const handleIceCandidate = async ({ candidate }) => {
+    const handleIceCandidate = async ({ candidate, callId }) => {
+      if (callId !== callIdRef.current) return;
+
       const pc = pcRef.current;
       if (!pc) return;
 
@@ -137,6 +158,12 @@ export default function VideoCallCore({ roomId, role, isOpen, onClose,token }) {
         pcRef.current.close();
         pcRef.current = null;
       }
+
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+
+      iceQueueRef.current = [];
 
       setSignalStrength("Disconnected");
     };
@@ -178,6 +205,7 @@ export default function VideoCallCore({ roomId, role, isOpen, onClose,token }) {
     const pc = await createPeerConnection(
       stream,
       socket,
+      callIdRef.current,
       roomId,
       (remoteStream) => {
         if (remoteVideoRef.current) {
@@ -209,7 +237,7 @@ export default function VideoCallCore({ roomId, role, isOpen, onClose,token }) {
     }
 
     socket.emit("webrtc:leave-room");
-
+    callIdRef.current = null;
     clearInterval(statsIntervalRef.current);
     stopCallTimer();
 
