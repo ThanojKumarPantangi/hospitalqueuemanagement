@@ -753,7 +753,11 @@ export const getDoctorQueueSummary = async ({ departmentId, userId }) => {
   try {
     const cached = await redis.get(cacheKey);
     if (cached) {
-      return JSON.parse(cached);
+      try {
+        return JSON.parse(cached);
+      } catch (err) {
+        await redis.del(cacheKey);
+      }
     }
   } catch (err) {
     console.log("Redis read failed:", err.message);
