@@ -25,6 +25,15 @@ export const createDepartment = async (req, res) => {
       });
     }
 
+    const fee = Number(consultationFee);
+
+    if (isNaN(fee) || fee < 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Consultation fee must be greater than or equal to 100",
+      });
+    }
+
     const exists = await Department.exists({ name: name.trim().toLowerCase() });
     if (exists) {
       throw new Error("Department with this name already exists");

@@ -202,11 +202,12 @@ const DepartmentModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                   value={formData.name}
                   onChange={(e) => handleChange("name", e.target.value)}
                   placeholder="e.g. Cardiology"
-                  className={`w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border-2 rounded-2xl outline-none transition-all font-semibold text-gray-900 dark:text-white placeholder-gray-400 ${
-                    touched.name && errors.name 
-                    ? "border-rose-100 bg-rose-50/50 focus:border-rose-500 focus:bg-white dark:bg-rose-900/10 dark:border-rose-900" 
-                    : "border-transparent focus:border-teal-500 focus:bg-white dark:focus:bg-gray-950 hover:bg-white dark:hover:bg-gray-900"
-                  }`}
+                  className={`w-full pl-12 pr-4 py-4 border-2 rounded-2xl outline-none transition-all font-semibold text-gray-900 dark:text-white placeholder-gray-400
+                    ${
+                      touched.name && errors.name
+                        ? "border-rose-500 bg-rose-50 dark:bg-rose-900/10"
+                        : "border-transparent bg-gray-50 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-900 focus:border-teal-500 focus:bg-white dark:focus:bg-gray-950"
+                    }`}
                 />
                 {touched.name && errors.name && (
                   <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-500">
@@ -352,13 +353,23 @@ const DepartmentModal = ({ isOpen, onClose, onSubmit, initialData = null }) => {
                    ₹
                  </span>
                  <input
-                   type="number"
-                   min="0"
-                   value={formData.consultationFee}
-                   onChange={(e) => handleChange("consultationFee", Number(e.target.value))}
-                   className="bg-transparent text-5xl font-black outline-none w-full placeholder-gray-600"
-                   placeholder="0"
-                 />
+                    type="number"
+                    min="100"
+                    step="1"
+                    value={formData.consultationFee ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value;
+
+                      if (value === "") {
+                        handleChange("consultationFee", "");
+                        return;
+                      }
+
+                      handleChange("consultationFee", Number(value));
+                    }}
+                    className="bg-transparent text-5xl font-black outline-none w-full placeholder-gray-600"
+                    placeholder="100"
+                  />
                </div>
                
                <p className="relative z-10 mt-4 text-xs text-gray-400 flex items-center gap-2">

@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2,
   Clock,
-  IndianRupee,
   Plus,
   Power,
   Edit2,
@@ -31,7 +30,6 @@ const AdminDepartments = () => {
   const [departments, setDepartments] = useState([]);
   const [loadingDeptId, setLoadingDeptId] = useState(null);
 
-  // ✅ Fetch skeleton state (added only)
   const [isFetchingDepartments, setIsFetchingDepartments] = useState(true);
 
   // Modal + Toast
@@ -41,7 +39,15 @@ const AdminDepartments = () => {
 
   // Search + Filter
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL"); // ALL | OPEN | CLOSED
+  const [statusFilter, setStatusFilter] = useState("ALL"); 
+  
+  let badgeText = "All Departments Closed";
+
+  if (openCount > 0 && openCount < departments.length) {
+    badgeText = "Partially Operational";
+  } else if (openCount === departments.length && openCount > 0) {
+    badgeText = "Fully Operational";
+  }
 
   // ===================== Fetch Departments =====================
   useEffect(() => {
@@ -75,7 +81,6 @@ const AdminDepartments = () => {
         message: "Successfully updated department status",
       });
 
-      // ✅ keep UI synced
       setDepartments((prev) =>
         prev.map((dept) =>
           dept._id === departmentId ? { ...dept, isOpen: !currentIsOpen } : dept
@@ -109,9 +114,18 @@ const AdminDepartments = () => {
 
   // ===================== Submit handler =====================
   const handleSubmit = async (formData) => {
+    const fee = Number(formData.consultationFee);
+
+    if (isNaN(fee) || fee < 100) {
+      return showToast({
+        type: "error",
+        message: "Consultation fee must be at least ₹100",
+      });
+    }
+
     try {
       if (editingDepartment) {
-        // ✏️ UPDATE
+
         const res = await updateDepartmentApi(editingDepartment._id, formData);
 
         showToast({
@@ -125,7 +139,7 @@ const AdminDepartments = () => {
           )
         );
       } else {
-        // ➕ CREATE
+        
         const res = await createDepartmentApi(formData);
 
         showToast({
@@ -610,7 +624,7 @@ const AdminDepartments = () => {
                 >
                   <Sparkles className="w-4 h-4" />
                   <span className="text-xs font-extrabold uppercase tracking-wide">
-                    Admin Experience
+                    {badgeText}
                   </span>
                 </motion.div>
               </div>
