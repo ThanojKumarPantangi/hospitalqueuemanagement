@@ -187,16 +187,16 @@ export const initSocket = (server) => {
        WEBRTC SIGNALING
     ============================ */
 
-    let callId = roomCallMap.get(roomId);
-
-    if (!callId) {
-      callId = Date.now().toString();
-      roomCallMap.set(roomId, callId);
-    }
-
     socket.on("webrtc:join-room", async ({ roomId, userType }) => {
 
       if (!roomId) return;
+
+      let callId = roomCallMap.get(roomId);
+
+      if (!callId) {
+        callId = Date.now().toString();
+        roomCallMap.set(roomId, callId);
+      }
 
       try {
 
